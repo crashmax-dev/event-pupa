@@ -1,9 +1,12 @@
 package main
 
 import (
+	"Biba/helpers"
 	"fmt"
+	"os"
 	"sort"
 	"sync"
+	"time"
 )
 
 type EventLoop interface {
@@ -11,36 +14,33 @@ type EventLoop interface {
 	Trigger(eventName string)
 }
 
-type Event interface {
-	GetName() string
-}
+//type Event interface {
+//	GetName() string
+//}
 
 type eventLoop struct {
 	//events []event
 	events map[string][]event
 	mx     *sync.RWMutex
-	test   int
 }
 
 type event struct {
 	//name string
 	priority int
 	fun      func()
+	isOnce   bool
 }
 
 //func (e *event) GetName() string {
 //	return e.name
 //}
 
-// priotity can't be multiple, better use direct `priority int` and pass zero if not need
-func (e *eventLoop) On(eventName string, eventFunc func(), priority ...int) {
+func (e *eventLoop) On(eventName string, newEvent event) {
 	e.mx.Lock()
 	defer e.mx.Unlock()
-	//e.events = append(e.events, event{name: eventName, fun: eventFunc})
-	e.events[eventName] = append(e.events[eventName], event{fun: eventFunc})
-	if len(priority) > 0 {
-		// last step ago we added callback, and now we looking for it, just for priority setup
-		e.events[eventName][len(e.events[eventName])-1].priority = priority[0]
+
+	e.events[eventName] = append(e.events[eventName], newEvent)
+	if newEvent.priority > 0 {
 		sort.Slice(e.events[eventName], func(i, j int) bool {
 			return e.events[eventName][i].priority > e.events[eventName][j].priority
 		})
@@ -56,24 +56,22 @@ func (e *eventLoop) Trigger(eventName string) {
 	//	}
 	//}
 
-	// there is no particular need to sync event callbacks
-	// and there is potential lock
-	// just one of callable can freeze any actions with e,
-	// cause of wg.Wait and сallable execution (long, in high loaded system even 1 second can be `forever`)
-	var wg sync.WaitGroup
-	for _, ev := range e.events[eventName] {
-		wg.Add(1)
+	fmt.Print(e.events[eventName])
+	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
+		curEvent := e.events[eventName][i]
 		go func(ev event) {
 			ev.fun()
-			wg.Done()
-		}(ev)
+		}(curEvent)
+
+		if curEvent.isOnce {
+			e.events[eventName] = helpers.RemoveIndex(e.events[eventName], i)
+		}
 	}
-	wg.Wait()
 }
 
 func main() {
 	// easiest way to loop main forever, in case of async code test
-	//quit := make(chan os.Signal)
+	quit := make(chan os.Signal)
 
 	evLoop := eventLoop{
 		//events: make([]event, 0),
@@ -81,19 +79,32 @@ func main() {
 		mx:     &sync.RWMutex{},
 	}
 
-	// must be called async
-	evLoop.On("keke", func() {
+	eventDefault := event{fun: func() {
 		fmt.Printf("%s\n", "lol")
-	})
+	}}
+	go evLoop.On("keke", eventDefault)
 
-	// must be called async
-	evLoop.On("keke", func() {
+	eventPriority := event{fun: func() {
 		fmt.Printf("%s\n", "lol2")
-	}, 1)
+	}, priority: 1}
+	go evLoop.On("keke", eventPriority)
 
-	// must be called async
-	evLoop.Trigger("keke")
+	eventSingle := event{fun: func() {
+		fmt.Printf("%s\n", "Lol single")
+	}, isOnce: true}
+	go evLoop.On("keke", eventSingle)
+
+	go evLoop.Trigger("keke")
+	go evLoop.Trigger("keke")
+
+	// create goroutine which will emulate work
+	// preventing deadlock
+	go func() {
+		for {
+			time.Sleep(100)
+		}
+	}()
 
 	// easiest way to loop main forever
-	//<-quit
+	<-quit
 }
