@@ -18,9 +18,12 @@ const (
 )
 
 type EventLoop interface {
-	On(eventName string, eventFunc func())
+	On(eventName string, newEvent event)
 	Trigger(eventName string)
 	Toggle(eventFunc ...EventFunc)
+	ScheduleEvent(event eventSchedule)
+	StartScheduler()
+	StopScheduler()
 }
 
 //type Event interface {
@@ -29,9 +32,12 @@ type EventLoop interface {
 
 type eventLoop struct {
 	//events []event
-	events   map[string][]event
-	mx       *sync.RWMutex
-	disabled []EventFunc
+	events             map[string][]event
+	intervalEvents     []eventSchedule
+	mx                 *sync.RWMutex
+	disabled           []EventFunc
+	quitScheduler      chan bool
+	isSchedulerRunning bool
 }
 
 type event struct {
@@ -41,11 +47,17 @@ type event struct {
 	isOnce   bool
 }
 
+type eventSchedule struct {
+	base     event
+	interval int
+}
+
 //func (e *event) GetName() string {
 //	return e.name
 //}
 
 func (e *eventLoop) On(eventName string, newEvent event) {
+	//Если выключено добавление - не добавляем
 	if slices.Contains(e.disabled, ON) {
 		return
 	}
@@ -73,7 +85,7 @@ func (e *eventLoop) Trigger(eventName string) {
 	//	}
 	//}
 
-	fmt.Print(e.events[eventName])
+	//fmt.Print(e.events[eventName])
 	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
 		curEvent := e.events[eventName][i]
 		go func(ev event) {
@@ -96,15 +108,55 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunc) {
 	}
 }
 
+func (e *eventLoop) runScheduledEvent(event eventSchedule) {
+	fmt.Println("Scheduled event started")
+	ticker := time.NewTicker(time.Duration(event.interval) * time.Millisecond)
+	for {
+		select {
+		case <-ticker.C:
+			event.base.fun()
+		case <-e.quitScheduler:
+			ticker.Stop()
+			fmt.Println("Scheduled event stopped")
+			return
+		}
+	}
+}
+
+func (e *eventLoop) ScheduleEvent(newEvent eventSchedule) {
+	e.intervalEvents = append(e.intervalEvents, newEvent)
+	if e.isSchedulerRunning {
+		e.runScheduledEvent(newEvent)
+	}
+}
+
+func (e *eventLoop) StartScheduler() {
+	for _, evts := range e.intervalEvents {
+		go e.runScheduledEvent(evts)
+	}
+	e.isSchedulerRunning = true
+	fmt.Println("Scheduler started")
+}
+
+func (e *eventLoop) StopScheduler() {
+	fmt.Println("Scheduler stopping...")
+	e.quitScheduler <- true
+	fmt.Println("Scheduler stopped...")
+	e.isSchedulerRunning = false
+
+}
+
 func main() {
 	// easiest way to loop main forever, in case of async code test
 	quit := make(chan os.Signal)
 
-	evLoop := eventLoop{
+	var evLoop EventLoop = &eventLoop{
 		//events: make([]event, 0),
-		events:   make(map[string][]event, 0),
-		mx:       &sync.RWMutex{},
-		disabled: []EventFunc{},
+		events:         make(map[string][]event, 0),
+		mx:             &sync.RWMutex{},
+		disabled:       []EventFunc{},
+		intervalEvents: make([]eventSchedule, 0),
+		quitScheduler:  make(chan bool),
 	}
 
 	eventDefault := event{fun: func() {
@@ -134,6 +186,18 @@ func main() {
 	time.Sleep(200)
 	go evLoop.Trigger("keke")
 
+	intervalEvent := eventSchedule{interval: 500, base: event{fun: func() {
+		i := 1
+		fmt.Printf("Hi, scheduler fire count: %v\t", i)
+		i++
+	}}}
+
+	go evLoop.ScheduleEvent(intervalEvent)
+	go evLoop.StartScheduler()
+	time.Sleep(2 * time.Second)
+	go evLoop.StopScheduler()
+	time.Sleep(1 * time.Second)
+	go evLoop.StartScheduler()
 	// create goroutine which will emulate work
 	// preventing deadlock
 	go func() {
