@@ -18,12 +18,13 @@ const (
 )
 
 type EventLoop interface {
-	On(eventName string, newEvent event)
+	On(eventName string, newEvent event, out chan<- int)
 	Trigger(eventName string)
 	Toggle(eventFunc ...EventFunc)
-	ScheduleEvent(event eventSchedule)
+	ScheduleEvent(event eventSchedule, out chan<- int)
 	StartScheduler()
 	StopScheduler()
+	RemoveEvent(id int) bool
 }
 
 //type Event interface {
@@ -36,12 +37,14 @@ type eventLoop struct {
 	intervalEvents     []eventSchedule
 	mx                 *sync.RWMutex
 	disabled           []EventFunc
-	quitScheduler      chan bool
 	isSchedulerRunning bool
+	curEventId         int
+	stopScheduler      chan bool
 }
 
 type event struct {
 	//name string
+	id       int
 	priority int
 	fun      func()
 	isOnce   bool
@@ -50,25 +53,35 @@ type event struct {
 type eventSchedule struct {
 	base     event
 	interval int
+	quit     chan bool
 }
 
 //func (e *event) GetName() string {
 //	return e.name
 //}
 
-func (e *eventLoop) On(eventName string, newEvent event) {
+func (e *eventLoop) On(eventName string, newEvent event, out chan<- int) {
 	//Если выключено добавление - не добавляем
 	if slices.Contains(e.disabled, ON) {
+		if out != nil {
+			out <- -1
+		}
 		return
 	}
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
+	e.curEventId++
+	newEvent.id = e.curEventId
 	e.events[eventName] = append(e.events[eventName], newEvent)
 	if newEvent.priority > 0 {
 		sort.Slice(e.events[eventName], func(i, j int) bool {
-			return e.events[eventName][i].priority > e.events[eventName][j].priority
+			return e.events[eventName][i].priority < e.events[eventName][j].priority
 		})
+	}
+
+	if out != nil {
+		out <- e.curEventId
 	}
 }
 
@@ -115,7 +128,15 @@ func (e *eventLoop) runScheduledEvent(event eventSchedule) {
 		select {
 		case <-ticker.C:
 			event.base.fun()
-		case <-e.quitScheduler:
+
+		//Я не понял как в селекте вызывать один и тот же код для разных каналов, пока так
+		//TODO переделать в func Select(cases []SelectCase) (chosen int, recv Value, recvOK bool)
+		case <-event.quit:
+			ticker.Stop()
+			fmt.Println("Scheduled event stopped")
+			return
+
+		case <-e.stopScheduler:
 			ticker.Stop()
 			fmt.Println("Scheduled event stopped")
 			return
@@ -123,10 +144,15 @@ func (e *eventLoop) runScheduledEvent(event eventSchedule) {
 	}
 }
 
-func (e *eventLoop) ScheduleEvent(newEvent eventSchedule) {
+func (e *eventLoop) ScheduleEvent(newEvent eventSchedule, out chan<- int) {
+	e.curEventId++
+	newEvent.base.id = e.curEventId
 	e.intervalEvents = append(e.intervalEvents, newEvent)
 	if e.isSchedulerRunning {
 		e.runScheduledEvent(newEvent)
+	}
+	if out != nil {
+		out <- e.curEventId
 	}
 }
 
@@ -140,10 +166,31 @@ func (e *eventLoop) StartScheduler() {
 
 func (e *eventLoop) StopScheduler() {
 	fmt.Println("Scheduler stopping...")
-	e.quitScheduler <- true
-	fmt.Println("Scheduler stopped...")
+	e.stopScheduler <- true
+	fmt.Println("Scheduler stopped.")
 	e.isSchedulerRunning = false
 
+}
+
+func (e *eventLoop) RemoveEvent(id int) bool {
+
+	for key, events := range e.events {
+		for i := len(events) - 1; i >= 0; i-- {
+			if events[i].id == id {
+				e.events[key] = helpers.RemoveIndex(e.events[key], i)
+				return true
+			}
+		}
+	}
+
+	for i := len(e.intervalEvents) - 1; i >= 0; i-- {
+		if e.intervalEvents[i].base.id == id {
+			e.intervalEvents[i].quit <- true
+			e.intervalEvents = helpers.RemoveIndex(e.intervalEvents, i)
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -156,23 +203,23 @@ func main() {
 		mx:             &sync.RWMutex{},
 		disabled:       []EventFunc{},
 		intervalEvents: make([]eventSchedule, 0),
-		quitScheduler:  make(chan bool),
+		stopScheduler:  make(chan bool),
 	}
 
 	eventDefault := event{fun: func() {
 		fmt.Printf("%s\n", "lol")
 	}}
-	go evLoop.On("keke", eventDefault)
+	go evLoop.On("keke", eventDefault, nil)
 
 	eventPriority := event{fun: func() {
 		fmt.Printf("%s\n", "lol2")
 	}, priority: 1}
-	go evLoop.On("keke", eventPriority)
+	go evLoop.On("keke", eventPriority, nil)
 
 	eventSingle := event{fun: func() {
 		fmt.Printf("%s\n", "Lol single")
 	}, isOnce: true}
-	go evLoop.On("keke", eventSingle)
+	go evLoop.On("keke", eventSingle, nil)
 
 	time.Sleep(50)
 	go evLoop.Trigger("keke")
@@ -186,18 +233,24 @@ func main() {
 	time.Sleep(200)
 	go evLoop.Trigger("keke")
 
-	intervalEvent := eventSchedule{interval: 500, base: event{fun: func() {
+	intervalEvent := eventSchedule{quit: make(chan bool), interval: 500, base: event{fun: func() {
 		i := 1
 		fmt.Printf("Hi, scheduler fire count: %v\t", i)
 		i++
 	}}}
 
-	go evLoop.ScheduleEvent(intervalEvent)
+	intervalEvtCh := make(chan int)
+	go evLoop.ScheduleEvent(intervalEvent, intervalEvtCh)
+	evId := <-intervalEvtCh
+
 	go evLoop.StartScheduler()
 	time.Sleep(2 * time.Second)
-	go evLoop.StopScheduler()
-	time.Sleep(1 * time.Second)
-	go evLoop.StartScheduler()
+
+	go evLoop.RemoveEvent(evId)
+
+	//go evLoop.StopScheduler()
+	//time.Sleep(1 * time.Second)
+	//go evLoop.StartScheduler()
 	// create goroutine which will emulate work
 	// preventing deadlock
 	go func() {
