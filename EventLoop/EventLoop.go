@@ -18,13 +18,14 @@ const (
 )
 
 type EventLoop interface {
-	On(eventName string, newEvent event, out chan<- int)
+	On(eventName string, newEvent *event, out chan<- int)
 	Trigger(eventName string)
 	Toggle(eventFunc ...EventFunc)
-	ScheduleEvent(event eventSchedule, out chan<- int)
+	ScheduleEvent(event *eventSchedule, out chan<- int)
 	StartScheduler()
 	StopScheduler()
 	RemoveEvent(id int) bool
+	Subscribe(triggers []*eventTrigger, listeners []*eventListener)
 }
 
 //type Event interface {
@@ -33,8 +34,8 @@ type EventLoop interface {
 
 type eventLoop struct {
 	//events []event
-	events             map[string][]event
-	intervalEvents     []eventSchedule
+	events             map[string][]*event
+	intervalEvents     []*eventSchedule
 	mx                 *sync.RWMutex
 	disabled           []EventFunc
 	isSchedulerRunning bool
@@ -48,6 +49,8 @@ type event struct {
 	priority int
 	fun      func()
 	isOnce   bool
+
+	trigger eventTrigger
 }
 
 type eventSchedule struct {
@@ -56,16 +59,51 @@ type eventSchedule struct {
 	quit     chan bool
 }
 
+type eventTrigger struct {
+	syncGroups []*sync.WaitGroup
+}
+
+type eventListener struct {
+	base   event
+	waiter *sync.WaitGroup
+}
+
 //func (e *event) GetName() string {
 //	return e.name
 //}
 
-func (e *eventLoop) On(eventName string, newEvent event, out chan<- int) {
+func (e *eventLoop) Subscribe(triggers []*eventTrigger, listeners []*eventListener) {
+	for _, v := range listeners {
+
+		sg := sync.WaitGroup{}
+		waitCount := len(triggers)
+		sg.Add(waitCount)
+		v.waiter = &sg
+
+		go func(waitCount int) {
+			for {
+				v.waiter.Wait()
+				v.base.fun()
+				v.waiter.Add(waitCount)
+			}
+		}(waitCount)
+
+		for _, t := range triggers {
+			if t.syncGroups == nil {
+				t.syncGroups = []*sync.WaitGroup{}
+			}
+			t.syncGroups = append(t.syncGroups, &sg)
+		}
+	}
+}
+
+func (e *eventLoop) On(eventName string, newEvent *event, out chan<- int) {
 	//Если выключено добавление - не добавляем
 	if slices.Contains(e.disabled, ON) {
 		if out != nil {
 			out <- -1
 		}
+		fmt.Println("Can't attach listener, On disabled!")
 		return
 	}
 	e.mx.Lock()
@@ -87,23 +125,21 @@ func (e *eventLoop) On(eventName string, newEvent event, out chan<- int) {
 
 func (e *eventLoop) Trigger(eventName string) {
 	if slices.Contains(e.disabled, TRIGGER) {
+		fmt.Println("Can't trigger, trigger disabled!")
 		return
 	}
 
 	e.mx.RLock()
 	defer e.mx.RUnlock()
-	//for _, ev := range e.events {
-	//	if ev.GetName() == eventName {
-	//		go ev.fun()
-	//	}
-	//}
 
-	//fmt.Print(e.events[eventName])
 	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
 		curEvent := e.events[eventName][i]
 		go func(ev event) {
 			ev.fun()
-		}(curEvent)
+			for _, sg := range ev.trigger.syncGroups {
+				sg.Done()
+			}
+		}(*curEvent)
 
 		if curEvent.isOnce {
 			//TODO пофиксить, иногда вылетает с ошибонькой
@@ -122,7 +158,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunc) {
 	}
 }
 
-func (e *eventLoop) runScheduledEvent(event eventSchedule) {
+func (e *eventLoop) runScheduledEvent(event *eventSchedule) {
 	fmt.Println("Scheduled event started")
 	ticker := time.NewTicker(time.Duration(event.interval) * time.Millisecond)
 	for {
@@ -145,7 +181,7 @@ func (e *eventLoop) runScheduledEvent(event eventSchedule) {
 	}
 }
 
-func (e *eventLoop) ScheduleEvent(newEvent eventSchedule, out chan<- int) {
+func (e *eventLoop) ScheduleEvent(newEvent *eventSchedule, out chan<- int) {
 	e.curEventId++
 	newEvent.base.id = e.curEventId
 	e.intervalEvents = append(e.intervalEvents, newEvent)
@@ -201,27 +237,27 @@ func main() {
 
 	var evLoop EventLoop = &eventLoop{
 		//events: make([]event, 0),
-		events:         make(map[string][]event, 0),
+		events:         make(map[string][]*event, 0),
 		mx:             &sync.RWMutex{},
 		disabled:       []EventFunc{},
-		intervalEvents: make([]eventSchedule, 0),
+		intervalEvents: make([]*eventSchedule, 0),
 		stopScheduler:  make(chan bool),
 	}
 
 	var eventDefault = event{fun: func() {
 		fmt.Printf("%s\n", "lol")
 	}}
-	go evLoop.On("keke", eventDefault, nil)
+	go evLoop.On("keke", &eventDefault, nil)
 
 	eventPriority := event{fun: func() {
 		fmt.Printf("%s\n", "lol2")
 	}, priority: 1}
-	go evLoop.On("keke", eventPriority, nil)
+	go evLoop.On("keke", &eventPriority, nil)
 
 	eventSingle := event{fun: func() {
 		fmt.Printf("%s\n", "Lol single")
 	}, isOnce: true}
-	go evLoop.On("keke", eventSingle, nil)
+	go evLoop.On("keke", &eventSingle, nil)
 
 	time.Sleep(50)
 	go evLoop.Trigger("keke")
@@ -242,7 +278,7 @@ func main() {
 	}}}
 
 	intervalEvtCh := make(chan int)
-	go evLoop.ScheduleEvent(intervalEvent, intervalEvtCh)
+	go evLoop.ScheduleEvent(&intervalEvent, intervalEvtCh)
 	evId := <-intervalEvtCh
 
 	go evLoop.StartScheduler()
@@ -255,7 +291,16 @@ func main() {
 
 	go evLoop.Toggle(TRIGGER)
 	time.Sleep(time.Second)
-	fmt.Println("Triggering sub event...")
+	fmt.Println("Triggering sub event")
+
+	evListener := eventListener{base: event{fun: func() {
+		fmt.Println("Event in event srabotalo N O R M A L N O")
+	}}}
+	eventDefault.trigger = eventTrigger{}
+	go evLoop.Subscribe([]*eventTrigger{&eventDefault.trigger}, []*eventListener{&evListener})
+	time.Sleep(time.Second)
+	go evLoop.Trigger("keke")
+	time.Sleep(time.Second)
 	go evLoop.Trigger("keke")
 	// create goroutine which will emulate work
 	// preventing deadlock
