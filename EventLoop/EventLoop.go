@@ -106,6 +106,7 @@ func (e *eventLoop) Trigger(eventName string) {
 		}(curEvent)
 
 		if curEvent.isOnce {
+			//TODO пофиксить, иногда вылетает с ошибонькой
 			e.events[eventName] = helpers.RemoveIndex(e.events[eventName], i)
 		}
 	}
@@ -114,7 +115,7 @@ func (e *eventLoop) Trigger(eventName string) {
 func (e *eventLoop) Toggle(eventFuncs ...EventFunc) {
 	for _, v := range eventFuncs {
 		if x := slices.Index(e.disabled, v); x != -1 {
-			helpers.RemoveIndex(e.disabled, x)
+			e.disabled = helpers.RemoveIndex(e.disabled, x)
 		} else {
 			e.disabled = append(e.disabled, v)
 		}
@@ -166,10 +167,11 @@ func (e *eventLoop) StartScheduler() {
 
 func (e *eventLoop) StopScheduler() {
 	fmt.Println("Scheduler stopping...")
-	e.stopScheduler <- true
-	fmt.Println("Scheduler stopped.")
+	if len(e.intervalEvents) > 0 {
+		e.stopScheduler <- true
+	}
 	e.isSchedulerRunning = false
-
+	fmt.Println("Scheduler stopped.")
 }
 
 func (e *eventLoop) RemoveEvent(id int) bool {
@@ -206,7 +208,7 @@ func main() {
 		stopScheduler:  make(chan bool),
 	}
 
-	eventDefault := event{fun: func() {
+	var eventDefault = event{fun: func() {
 		fmt.Printf("%s\n", "lol")
 	}}
 	go evLoop.On("keke", eventDefault, nil)
@@ -248,9 +250,13 @@ func main() {
 
 	go evLoop.RemoveEvent(evId)
 
+	time.Sleep(time.Second)
 	//go evLoop.StopScheduler()
-	//time.Sleep(1 * time.Second)
-	//go evLoop.StartScheduler()
+
+	go evLoop.Toggle(TRIGGER)
+	time.Sleep(time.Second)
+	fmt.Println("Triggering sub event...")
+	go evLoop.Trigger("keke")
 	// create goroutine which will emulate work
 	// preventing deadlock
 	go func() {
