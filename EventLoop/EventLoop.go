@@ -2,11 +2,14 @@ package main
 
 import (
 	"Biba/helpers"
+	"context"
 	"fmt"
 	"golang.org/x/exp/slices"
 	"os"
+	"os/signal"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -18,14 +21,14 @@ const (
 )
 
 type EventLoop interface {
-	On(eventName string, newEvent *event, out chan<- int)
-	Trigger(eventName string)
+	On(ctx context.Context, eventName string, newEvent *event, out chan<- int)
+	Trigger(ctx context.Context, eventName string)
 	Toggle(eventFunc ...EventFunc)
-	ScheduleEvent(event *eventSchedule, out chan<- int)
-	StartScheduler()
+	ScheduleEvent(ctx context.Context, newEvent *eventSchedule, out chan<- int)
+	StartScheduler(ctx context.Context)
 	StopScheduler()
 	RemoveEvent(id int) bool
-	Subscribe(triggers []*eventTrigger, listeners []*eventListener)
+	Subscribe(ctx context.Context, triggers []*eventTrigger, listeners []*eventListener)
 }
 
 //type Event interface {
@@ -47,7 +50,7 @@ type event struct {
 	//name string
 	id       int
 	priority int
-	fun      func()
+	fun      func(ctx context.Context)
 	isOnce   bool
 
 	trigger eventTrigger
@@ -55,49 +58,83 @@ type event struct {
 
 type eventSchedule struct {
 	base     event
-	interval int
+	interval time.Duration
 	quit     chan bool
 }
 
 type eventTrigger struct {
-	syncGroups []*sync.WaitGroup
+	channels []chan int
+	mx       sync.Mutex
 }
 
 type eventListener struct {
-	base   event
-	waiter *sync.WaitGroup
+	base event
+	ch   []chan int
+	mx   sync.Mutex
 }
 
 //func (e *event) GetName() string {
 //	return e.name
 //}
 
-func (e *eventLoop) Subscribe(triggers []*eventTrigger, listeners []*eventListener) {
+func (e *eventLoop) Subscribe(ctx context.Context, triggers []*eventTrigger, listeners []*eventListener) {
+	if isContextDone(ctx) {
+		//TODO выводить в логи пердупреждение, что контекст закрыт
+		return
+	}
 	for _, v := range listeners {
 
-		sg := sync.WaitGroup{}
-		waitCount := len(triggers)
-		sg.Add(waitCount)
-		v.waiter = &sg
-
-		go func(waitCount int) {
-			for {
-				v.waiter.Wait()
-				v.base.fun()
-				v.waiter.Add(waitCount)
-			}
-		}(waitCount)
-
 		for _, t := range triggers {
-			if t.syncGroups == nil {
-				t.syncGroups = []*sync.WaitGroup{}
+			ch := make(chan int, 1)
+			if v.ch == nil {
+				v.ch = []chan int{}
 			}
-			t.syncGroups = append(t.syncGroups, &sg)
+			v.ch = append(v.ch, ch)
+
+			if t.channels == nil {
+				t.channels = []chan int{}
+			}
+			t.channels = append(t.channels, ch)
 		}
+
+		go func(ctx context.Context, v *eventListener) {
+			for {
+				select {
+				case <-ctx.Done():
+					//TODO выводить в логи пердупреждение, что контекст закрыт
+					return
+				default:
+					v.mx.Lock()
+					fmt.Println("Waiting for triggers...")
+					fmt.Printf("Reading channels: %v\n", v.ch)
+					for _, ch := range v.ch {
+						fmt.Printf("Reading from %v\n", ch)
+						<-ch
+					}
+					fmt.Println("go viponlnyatsa")
+					v.base.fun(ctx)
+					v.mx.Unlock()
+				}
+			}
+		}(ctx, v)
 	}
 }
 
-func (e *eventLoop) On(eventName string, newEvent *event, out chan<- int) {
+func isContextDone(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
+
+func (e *eventLoop) On(ctx context.Context, eventName string, newEvent *event, out chan<- int) {
+	if isContextDone(ctx) {
+		//TODO выводить в логи пердупреждение, что контекст закрыт
+		return
+	}
+
 	//Если выключено добавление - не добавляем
 	if slices.Contains(e.disabled, ON) {
 		if out != nil {
@@ -121,25 +158,39 @@ func (e *eventLoop) On(eventName string, newEvent *event, out chan<- int) {
 	if out != nil {
 		out <- e.curEventId
 	}
+
 }
 
-func (e *eventLoop) Trigger(eventName string) {
+func (e *eventLoop) Trigger(ctx context.Context, eventName string) {
+
+	if isContextDone(ctx) {
+		//TODO выводить в логи пердупреждение, что контекст закрыт
+		return
+	}
+
 	if slices.Contains(e.disabled, TRIGGER) {
 		fmt.Println("Can't trigger, trigger disabled!")
 		return
 	}
 
-	e.mx.RLock()
-	defer e.mx.RUnlock()
+	e.mx.Lock()
+	defer e.mx.Unlock()
 
 	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
 		curEvent := e.events[eventName][i]
-		go func(ev event) {
-			ev.fun()
-			for _, sg := range ev.trigger.syncGroups {
-				sg.Done()
+
+		go func(ev *event) {
+			ev.fun(ctx)
+			ev.trigger.mx.Lock()
+			fmt.Println("Sending messages...")
+			fmt.Println(ev.trigger.channels)
+			for _, ch := range ev.trigger.channels {
+				fmt.Printf("Writing to %v\n", ch)
+				ch <- 1
 			}
-		}(*curEvent)
+			fmt.Println("All messages send")
+			ev.trigger.mx.Unlock()
+		}(curEvent)
 
 		if curEvent.isOnce {
 			//TODO пофиксить, иногда вылетает с ошибонькой
@@ -158,44 +209,80 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunc) {
 	}
 }
 
-func (e *eventLoop) runScheduledEvent(event *eventSchedule) {
-	fmt.Println("Scheduled event started")
-	ticker := time.NewTicker(time.Duration(event.interval) * time.Millisecond)
-	for {
-		select {
-		case <-ticker.C:
-			event.base.fun()
-
-		//Я не понял как в селекте вызывать один и тот же код для разных каналов, пока так
-		//TODO переделать в func Select(cases []SelectCase) (chosen int, recv Value, recvOK bool)
-		case <-event.quit:
-			ticker.Stop()
-			fmt.Println("Scheduled event stopped")
-			return
-
-		case <-e.stopScheduler:
-			ticker.Stop()
-			fmt.Println("Scheduled event stopped")
-			return
-		}
+// done нужен для прекращения работы ивентов-интервалов.
+// Чекает разные каналы, и если с любого пришёл сигнал - гг (канал самого ивента, канал ивентлупа и context.Done()
+func done(eventCh, eventLoopCh <-chan bool, ctx context.Context) <-chan struct{} {
+	result := make(chan struct{}, 1)
+	result <- struct{}{}
+	//fmt.Println("Bobs")
+	select {
+	case <-ctx.Done():
+		fmt.Println("Scheduler stopped because of context")
+		return result
+	case <-eventCh:
+		fmt.Println("Scheduler stopped because of event want to stop")
+		return result
+	case <-eventLoopCh:
+		fmt.Println("Scheduler stopped because of event manager commands")
+		return result
+	default:
+		return make(chan struct{})
 	}
 }
 
-func (e *eventLoop) ScheduleEvent(newEvent *eventSchedule, out chan<- int) {
+func (e *eventLoop) runScheduledEvent(ctx context.Context, event *eventSchedule) {
+	fmt.Printf("Scheduled event started with interval %v\n", event.interval)
+	ticker := time.NewTicker(event.interval)
+	defer ticker.Stop()
+	fmt.Println("Run infinite cycle")
+	for {
+		select {
+		//case <-ticker.C:
+		case <-ticker.C:
+			event.base.fun(ctx)
+		case <-done(event.quit, e.stopScheduler, ctx):
+			fmt.Println("Scheduled event stopped")
+			return
+		case <-event.quit:
+			fmt.Println("Event quited")
+		case <-e.stopScheduler:
+			fmt.Println("Scheduler stopped")
+		case <-ctx.Done():
+			fmt.Println("Context stopped")
+		}
+	}
+	//fmt.Printf("Scheduled event finished")
+}
+
+// ScheduleEvent добавляет ивент в список ивентов-таймеров. Если шедулер запущен - запускает этот ивент.
+func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent *eventSchedule, out chan<- int) {
+	if isContextDone(ctx) {
+		//TODO выводить в логи пердупреждение, что контекст закрыт
+		return
+	}
+
 	e.curEventId++
 	newEvent.base.id = e.curEventId
 	e.intervalEvents = append(e.intervalEvents, newEvent)
+
 	if e.isSchedulerRunning {
-		e.runScheduledEvent(newEvent)
+		go e.runScheduledEvent(ctx, newEvent)
 	}
 	if out != nil {
 		out <- e.curEventId
 	}
+
 }
 
-func (e *eventLoop) StartScheduler() {
+func (e *eventLoop) StartScheduler(ctx context.Context) {
+	if isContextDone(ctx) {
+		//TODO выводить в логи пердупреждение, что контекст закрыт
+		fmt.Println("TEST TEST")
+		return
+	}
+
 	for _, evts := range e.intervalEvents {
-		go e.runScheduledEvent(evts)
+		go e.runScheduledEvent(ctx, evts)
 	}
 	e.isSchedulerRunning = true
 	fmt.Println("Scheduler started")
@@ -203,7 +290,10 @@ func (e *eventLoop) StartScheduler() {
 
 func (e *eventLoop) StopScheduler() {
 	fmt.Println("Scheduler stopping...")
-	if len(e.intervalEvents) > 0 {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+	if len(e.intervalEvents) > 0 && e.isSchedulerRunning {
+		fmt.Println("Send signal to stop")
 		e.stopScheduler <- true
 	}
 	e.isSchedulerRunning = false
@@ -211,6 +301,8 @@ func (e *eventLoop) StopScheduler() {
 }
 
 func (e *eventLoop) RemoveEvent(id int) bool {
+	e.mx.Lock()
+	defer e.mx.Unlock()
 
 	for key, events := range e.events {
 		for i := len(events) - 1; i >= 0; i-- {
@@ -233,7 +325,10 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 
 func main() {
 	// easiest way to loop main forever, in case of async code test
-	quit := make(chan os.Signal)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	var evLoop EventLoop = &eventLoop{
 		//events: make([]event, 0),
@@ -244,47 +339,44 @@ func main() {
 		stopScheduler:  make(chan bool),
 	}
 
-	var eventDefault = event{fun: func() {
+	var eventDefault = event{fun: func(ctx context.Context) {
 		fmt.Printf("%s\n", "lol")
 	}}
-	go evLoop.On("keke", &eventDefault, nil)
+	go evLoop.On(ctx, "keke", &eventDefault, nil)
 
-	eventPriority := event{fun: func() {
+	eventPriority := event{fun: func(ctx context.Context) {
 		fmt.Printf("%s\n", "lol2")
 	}, priority: 1}
-	go evLoop.On("keke", &eventPriority, nil)
-
-	eventSingle := event{fun: func() {
-		fmt.Printf("%s\n", "Lol single")
-	}, isOnce: true}
-	go evLoop.On("keke", &eventSingle, nil)
+	go evLoop.On(ctx, "keke", &eventPriority, nil)
 
 	time.Sleep(50)
-	go evLoop.Trigger("keke")
+	go evLoop.Trigger(ctx, "keke")
 
 	time.Sleep(100)
-	go evLoop.Trigger("keke")
+	go evLoop.Trigger(ctx, "keke")
 
 	time.Sleep(150)
 	go evLoop.Toggle(TRIGGER)
-	go evLoop.Trigger("keke")
+	go evLoop.Trigger(ctx, "keke")
 	time.Sleep(200)
-	go evLoop.Trigger("keke")
+	go evLoop.Trigger(ctx, "keke")
 
-	intervalEvent := eventSchedule{quit: make(chan bool), interval: 500, base: event{fun: func() {
+	intervalEvent := eventSchedule{quit: make(chan bool), interval: 500 * time.Millisecond, base: event{fun: func(ctx context.Context) func(ctx context.Context) {
 		i := 1
-		fmt.Printf("Hi, scheduler fire count: %v\t", i)
-		i++
-	}}}
+		return func(ctx context.Context) {
+			fmt.Printf("Hi, scheduler fire count: %v\t", i)
+			i++
+		}
+	}(ctx)}}
 
 	intervalEvtCh := make(chan int)
-	go evLoop.ScheduleEvent(&intervalEvent, intervalEvtCh)
-	evId := <-intervalEvtCh
+	go evLoop.ScheduleEvent(ctx, &intervalEvent, intervalEvtCh)
+	//evId := <-intervalEvtCh
 
-	go evLoop.StartScheduler()
+	go evLoop.StartScheduler(ctx)
 	time.Sleep(2 * time.Second)
 
-	go evLoop.RemoveEvent(evId)
+	//go evLoop.RemoveEvent(evId)
 
 	time.Sleep(time.Second)
 	//go evLoop.StopScheduler()
@@ -293,23 +385,50 @@ func main() {
 	time.Sleep(time.Second)
 	fmt.Println("Triggering sub event")
 
-	evListener := eventListener{base: event{fun: func() {
+	evListener := eventListener{base: event{fun: func(ctx context.Context) {
 		fmt.Println("Event in event srabotalo N O R M A L N O")
 	}}}
 	eventDefault.trigger = eventTrigger{}
-	go evLoop.Subscribe([]*eventTrigger{&eventDefault.trigger}, []*eventListener{&evListener})
+	go evLoop.Subscribe(ctx, []*eventTrigger{&eventDefault.trigger}, []*eventListener{&evListener})
 	time.Sleep(time.Second)
-	go evLoop.Trigger("keke")
-	time.Sleep(time.Second)
-	go evLoop.Trigger("keke")
+	go evLoop.Trigger(ctx, "keke")
+	//time.Sleep(time.Second)
+	go evLoop.Trigger(ctx, "keke")
 	// create goroutine which will emulate work
 	// preventing deadlock
-	go func() {
-		for {
-			time.Sleep(100)
-		}
-	}()
+	//go func() {
+	//	for {
+	//		time.Sleep(100)
+	//	}
+	//}()
 
 	// easiest way to loop main forever
-	<-quit
+	for {
+		select {
+		case sType := <-quit:
+			signal.Stop(quit)
+			fmt.Printf("Program finished: %v", sType)
+			evLoop.StopScheduler()
+			cancel()
+			//evLoop.StopScheduler()
+			os.Exit(0)
+			return
+		default:
+			time.Sleep(time.Second)
+		}
+	}
+
+	//go func() {
+	//	signalType := <-quit
+	//	signal.Stop(quit)
+	//	log.Println("Exit command received. Exiting...")
+	//
+	//	// this is a good place to flush everything to disk
+	//	// before terminating.
+	//	log.Println("Signal type : ", signalType)
+	//
+	//	os.Exit(0)
+	//
+	//}()
+
 }
