@@ -27,6 +27,18 @@ func NewIntervalEvent(fun func(ctx context.Context), interval time.Duration) Int
 	return &event{id: helpers.GenerateIdFromNow(), fun: fun, schedule: schedule.NewScheduleEvent(interval)}
 }
 
+func NewOnceEvent(fun func(ctx context.Context)) Interface {
+	return &event{id: helpers.GenerateIdFromNow(), fun: fun, isOnce: true}
+}
+
+func NewPriorityEvent(fun func(ctx context.Context), priority int) Interface {
+	return &event{id: helpers.GenerateIdFromNow(), fun: fun, priority: priority}
+}
+
+func (ev *event) GetId() int {
+	return ev.id
+}
+
 func (ev *event) GetPriority() int {
 	return ev.priority
 }
@@ -40,9 +52,16 @@ func (ev *event) RunFunction(ctx context.Context) {
 }
 
 func (ev *event) GetSubscriber() subscriber.Interface {
+	if ev.subscriber == nil {
+		ev.subscriber = subscriber.NewSubscriber()
+	}
 	return ev.subscriber
 }
 
 func (ev *event) GetSchedule() schedule.Interface {
 	return ev.schedule
+}
+
+func (ev *event) IsOnce() bool {
+	return ev.isOnce
 }

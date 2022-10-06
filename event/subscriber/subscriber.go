@@ -9,6 +9,10 @@ type eventsubscriber struct {
 	mx       sync.Mutex
 }
 
+func NewSubscriber() Interface {
+	return &eventsubscriber{}
+}
+
 func (ev *eventsubscriber) LockMutex() {
 	ev.mx.Lock()
 }

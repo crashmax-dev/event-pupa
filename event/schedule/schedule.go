@@ -12,3 +12,11 @@ type eventschedule struct {
 func NewScheduleEvent(interval time.Duration) Interface {
 	return &eventschedule{interval: interval}
 }
+
+func (e eventschedule) GetInterval() time.Duration {
+	return e.interval
+}
+
+func (e eventschedule) GetQuitChannel() chan bool {
+	return e.quit
+}

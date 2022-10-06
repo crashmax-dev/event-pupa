@@ -2,8 +2,6 @@ package eventloop
 
 import (
 	"EventManager/event"
-	"EventManager/event/schedule"
-	"EventManager/event/subscriber"
 	"EventManager/helpers"
 	"context"
 	"fmt"
@@ -16,7 +14,7 @@ import (
 type eventLoop struct {
 	//events []event
 	events             map[string][]event.Interface
-	intervalEvents     []*schedule.Interface
+	intervalEvents     []event.Interface
 	mx                 *sync.RWMutex
 	disabled           []EventFunction
 	isSchedulerRunning bool
@@ -34,39 +32,40 @@ func NewEventLoop() *eventLoop {
 	return &eventLoop{mx: &sync.RWMutex{}, events: make(map[string][]event.Interface, 0)}
 }
 
-func (e *eventLoop) Subscribe(ctx context.Context, triggers []subscriber.Interface, listeners []subscriber.Interface) {
+func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) {
 	if isContextDone(ctx) {
 		//TODO выводить в логи пердупреждение, что контекст закрыт
 		return
 	}
 	for _, v := range listeners {
-
+		trigger := v.GetSubscriber()
 		for _, t := range triggers {
 			ch := make(chan int, 1)
-			v.AddChannel(ch)
+			trigger.AddChannel(ch)
 
-			t.AddChannel(ch)
+			t.GetSubscriber().AddChannel(ch)
 		}
 
-		go func(ctx context.Context, v subscriber.Interface) {
+		go func(ctx context.Context, v event.Interface) {
 			for {
 				select {
 				case <-ctx.Done():
 					//TODO выводить в логи пердупреждение, что контекст закрыт
 					return
 				default:
-					v.LockMutex()
+
+					trigger.LockMutex()
 					//v.mx.Lock()
 					fmt.Println("Waiting for triggers...")
-					channels := v.GetChannels()
+					channels := trigger.GetChannels()
 					fmt.Printf("Reading channels: %v\n", channels)
 					for _, ch := range channels {
 						fmt.Printf("Reading from %v\n", ch)
 						<-ch
 					}
 					fmt.Println("go viponlnyatsa")
-					v.GetBase().RunFunction(ctx)
-					v.UnlockMutex()
+					v.RunFunction(ctx)
+					trigger.UnlockMutex()
 				}
 			}
 		}(ctx, v)
@@ -132,13 +131,18 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string) {
 
 		go func(ev event.Interface) {
 			ev.RunFunction(ctx)
-			if triggerChannels := ev.GetSubscriber().GetChannels(); len(triggerChannels) > 0 {
+			listener := ev.GetSubscriber()
+
+			if listener == nil {
+				return
+			}
+			if triggerChannels := listener.GetChannels(); len(triggerChannels) > 0 {
 				evTrigger := ev.GetSubscriber()
 				evTrigger.LockMutex()
 				//evTrigger.mx.Lock()
 				fmt.Println("Sending messages...")
 				fmt.Println(triggerChannels)
-				for _, ch := range ev.trigger.channels {
+				for _, ch := range triggerChannels {
 					fmt.Printf("Writing to %v\n", ch)
 					ch <- 1
 				}
@@ -148,14 +152,14 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string) {
 			}
 		}(curEvent)
 
-		if curEvent.isOnce {
+		if curEvent.IsOnce() {
 			//TODO пофиксить, иногда вылетает с ошибонькой
 			e.events[eventName] = helpers.RemoveIndex(e.events[eventName], i)
 		}
 	}
 }
 
-func (e *eventLoop) Toggle(eventFuncs ...EventFunc) {
+func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	for _, v := range eventFuncs {
 		if x := slices.Index(e.disabled, v); x != -1 {
 			e.disabled = helpers.RemoveIndex(e.disabled, x)
@@ -186,47 +190,46 @@ func done(eventCh, eventLoopCh <-chan bool, ctx context.Context) <-chan struct{}
 	}
 }
 
-func (e *eventLoop) runScheduledEvent(ctx context.Context, event *event.eventSchedule) {
-	fmt.Printf("Scheduled event started with interval %v\n", event.interval)
-	ticker := time.NewTicker(event.interval)
+func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface) {
+	evntInterval := event.GetSchedule().GetInterval()
+	fmt.Printf("Scheduled event starting with interval %v\n", evntInterval)
+	ticker := time.NewTicker(evntInterval)
 	defer ticker.Stop()
 	fmt.Println("Run infinite cycle")
 	for {
 		select {
 		//case <-ticker.C:
 		case <-ticker.C:
-			event.base.fun(ctx)
-		case <-done(event.quit, e.stopScheduler, ctx):
+			event.RunFunction(ctx)
+		case <-done(event.GetSchedule().GetQuitChannel(), e.stopScheduler, ctx):
 			fmt.Println("Scheduled event stopped")
 			return
-		case <-event.quit:
-			fmt.Println("Interface quited")
-		case <-e.stopScheduler:
-			fmt.Println("Scheduler stopped")
-		case <-ctx.Done():
-			fmt.Println("Context stopped")
+			//case <-event.quit:
+			//	fmt.Println("Interface quited")
+			//case <-e.stopScheduler:
+			//	fmt.Println("Scheduler stopped")
+			//case <-ctx.Done():
+			//	fmt.Println("Context stopped")
 		}
 	}
 	//fmt.Printf("Scheduled event finished")
 }
 
 // ScheduleEvent добавляет ивент в список ивентов-таймеров. Если шедулер запущен - запускает этот ивент.
-func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent *event.eventSchedule, out chan<- int) {
+func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- int) {
 	if isContextDone(ctx) {
 		//TODO выводить в логи пердупреждение, что контекст закрыт
 		return
 	}
 
-	e.curEventId++
-	newEvent.base.id = e.curEventId
 	e.intervalEvents = append(e.intervalEvents, newEvent)
 
 	if e.isSchedulerRunning {
 		go e.runScheduledEvent(ctx, newEvent)
 	}
-	if out != nil {
-		out <- e.curEventId
-	}
+	//if out != nil {
+	//	out <- e.curEventId
+	//}
 
 }
 
@@ -263,7 +266,7 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 
 	for key, events := range e.events {
 		for i := len(events) - 1; i >= 0; i-- {
-			if events[i].id == id {
+			if events[i].GetId() == id {
 				e.events[key] = helpers.RemoveIndex(e.events[key], i)
 				return true
 			}
@@ -271,8 +274,8 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 	}
 
 	for i := len(e.intervalEvents) - 1; i >= 0; i-- {
-		if e.intervalEvents[i].base.id == id {
-			e.intervalEvents[i].quit <- true
+		if e.intervalEvents[i].GetId() == id {
+			e.intervalEvents[i].GetSchedule().GetQuitChannel() <- true
 			e.intervalEvents = helpers.RemoveIndex(e.intervalEvents, i)
 			return true
 		}
