@@ -1,4 +1,4 @@
-module Biba
+module EventManager
 
 go 1.19
 
