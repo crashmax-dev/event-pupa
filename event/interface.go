@@ -1,9 +1,9 @@
 package event
 
 import (
-	"EventManager/event/schedule"
-	"EventManager/event/subscriber"
 	"context"
+	"eventloop/event/schedule"
+	"eventloop/event/subscriber"
 )
 
 type Interface interface {

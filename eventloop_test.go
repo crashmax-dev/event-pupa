@@ -1,31 +1,19 @@
-package eventloop
+package LearnProject
 
 import (
-	"EventManager/event"
 	"context"
-	"sync"
+	"eventloop/event"
 	"testing"
 	"time"
 )
 
-func newDefaultEventLoop() *eventLoop {
-	return &eventLoop{
-		//events: make([]event, 0),
-		events:         make(map[string][]event.Interface, 0),
-		mx:             &sync.RWMutex{},
-		disabled:       []EventFunction{},
-		intervalEvents: make([]event.Interface, 0),
-		stopScheduler:  make(chan bool),
-	}
-}
-
 func TestOnAndTrigger(t *testing.T) {
 	const WANT = 1
 	var (
-		number int
-		evLoop = NewEventLoop()
-		ctx, _ = context.WithCancel(context.Background())
-		numInc = func(ctx context.Context) {
+		number      int
+		evLoop      = NewEventLoop()
+		ctx, cancel = context.WithCancel(context.Background())
+		numInc      = func(ctx context.Context) {
 			number++
 		}
 	)
@@ -34,7 +22,7 @@ func TestOnAndTrigger(t *testing.T) {
 		eventDefault = event.NewEvent(numInc)
 	)
 
-	go evLoop.On(ctx, "test", eventDefault)
+	go evLoop.On(ctx, "test", eventDefault, nil)
 	time.Sleep(time.Millisecond * 20)
 	go evLoop.Trigger(ctx, "test")
 	time.Sleep(time.Millisecond * 20)
@@ -42,21 +30,22 @@ func TestOnAndTrigger(t *testing.T) {
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
 	}
+	cancel()
 }
 
 func TestOnce(t *testing.T) {
 	const WANT = 1
 	var (
-		number int
-		evLoop = NewEventLoop()
-		ctx, _ = context.WithCancel(context.Background())
-		numInc = func(ctx context.Context) {
+		number      int
+		evLoop      = NewEventLoop()
+		ctx, cancel = context.WithCancel(context.Background())
+		numInc      = func(ctx context.Context) {
 			number++
 		}
 	)
 
 	eventSingle := event.NewOnceEvent(numInc)
-	evLoop.On(ctx, "test", eventSingle)
+	evLoop.On(ctx, "test", eventSingle, nil)
 	evLoop.Trigger(ctx, "test")
 	evLoop.Trigger(ctx, "test")
 	time.Sleep(time.Millisecond * 20)
@@ -64,15 +53,17 @@ func TestOnce(t *testing.T) {
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
 	}
+
+	cancel()
 }
 
 func TestMultipleDefaultAndOnce(t *testing.T) {
 	const WANT = 7
 	var (
-		number int
-		evLoop = NewEventLoop()
-		ctx, _ = context.WithCancel(context.Background())
-		numInc = func(ctx context.Context) {
+		number      int
+		evLoop      = NewEventLoop()
+		ctx, cancel = context.WithCancel(context.Background())
+		numInc      = func(ctx context.Context) {
 			number++
 		}
 	)
@@ -83,9 +74,9 @@ func TestMultipleDefaultAndOnce(t *testing.T) {
 		eventOnce   = event.NewOnceEvent(numInc)
 	)
 
-	go evLoop.On(ctx, "test", eventFirst)
-	go evLoop.On(ctx, "test", eventSecond)
-	go evLoop.On(ctx, "test", eventOnce)
+	go evLoop.On(ctx, "test", eventFirst, nil)
+	go evLoop.On(ctx, "test", eventSecond, nil)
+	go evLoop.On(ctx, "test", eventOnce, nil)
 
 	time.Sleep(time.Millisecond * 20)
 	go evLoop.Trigger(ctx, "test")
@@ -98,15 +89,17 @@ func TestMultipleDefaultAndOnce(t *testing.T) {
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
 	}
+
+	cancel()
 }
 
 func TestStartScheduler(t *testing.T) {
 	const WANT = 3
 	var (
-		number int
-		evLoop = NewEventLoop()
-		ctx, _ = context.WithCancel(context.Background())
-		numInc = func(ctx context.Context) {
+		number      int
+		evLoop      = NewEventLoop()
+		ctx, cancel = context.WithCancel(context.Background())
+		numInc      = func(ctx context.Context) {
 			number++
 		}
 	)
@@ -119,18 +112,20 @@ func TestStartScheduler(t *testing.T) {
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
 	}
+
+	cancel()
 }
 
 func TestSubevent(t *testing.T) {
 	const WANT = 10
 	var (
-		number int
-		evLoop = NewEventLoop()
-		ctx, _ = context.WithCancel(context.Background())
-		numInc = func(ctx context.Context) {
-			evLoop.mx.Lock()
+		number      int
+		evLoop      = NewEventLoop()
+		ctx, cancel = context.WithCancel(context.Background())
+		numInc      = func(ctx context.Context) {
+			evLoop.LockMutex()
 			number++
-			evLoop.mx.Unlock()
+			evLoop.UnlockMutex()
 		}
 	)
 
@@ -142,9 +137,9 @@ func TestSubevent(t *testing.T) {
 		eventDefault3 = event.NewEvent(numInc)
 	)
 
-	go evLoop.On(ctx, "test", eventDefault)
-	go evLoop.On(ctx, "test", eventDefault2)
-	go evLoop.On(ctx, "test", eventDefault3)
+	go evLoop.On(ctx, "test", eventDefault, nil)
+	go evLoop.On(ctx, "test", eventDefault2, nil)
+	go evLoop.On(ctx, "test", eventDefault3, nil)
 	time.Sleep(time.Millisecond * 20)
 	go evLoop.Subscribe(ctx, []event.Interface{eventDefault, eventDefault2, eventDefault3},
 		[]event.Interface{evListener, evListener2})
@@ -156,4 +151,6 @@ func TestSubevent(t *testing.T) {
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
 	}
+
+	cancel()
 }

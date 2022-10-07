@@ -1,10 +1,10 @@
 package event
 
 import (
-	"EventManager/event/schedule"
-	"EventManager/event/subscriber"
-	"EventManager/helpers"
 	"context"
+	"eventloop/event/schedule"
+	"eventloop/event/subscriber"
+	"eventloop/helpers"
 	"time"
 )
 

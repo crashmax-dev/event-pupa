@@ -1,9 +1,9 @@
-package eventloop
+package LearnProject
 
 import (
-	"EventManager/event"
-	"EventManager/helpers"
 	"context"
+	"eventloop/event"
+	"eventloop/helpers"
 	"fmt"
 	"golang.org/x/exp/slices"
 	"sort"
@@ -21,7 +21,7 @@ type eventLoop struct {
 	stopScheduler      chan bool
 }
 
-func NewEventLoop() *eventLoop {
+func NewEventLoop() Interface {
 	//var evLoop eventloop = &eventLoop{
 	//	events:         make(map[string][]*event, 0),
 	//	mx:             &sync.RWMutex{},
@@ -81,7 +81,7 @@ func isContextDone(ctx context.Context) bool {
 	}
 }
 
-func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface) {
+func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- int) {
 	if isContextDone(ctx) {
 		//TODO выводить в логи пердупреждение, что контекст закрыт
 		return
@@ -89,9 +89,9 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 
 	//Если выключено добавление - не добавляем
 	if slices.Contains(e.disabled, ON) {
-		//if out != nil {
-		//	out <- -1
-		//}
+		if out != nil {
+			out <- newEvent.GetId()
+		}
 		fmt.Println("Can't attach listener, On disabled!")
 		return
 	}
@@ -105,9 +105,9 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		})
 	}
 
-	//if out != nil {
-	//	out <- newEvent.
-	//}
+	if out != nil {
+		out <- newEvent.GetId()
+	}
 
 }
 
@@ -227,9 +227,9 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 	if e.isSchedulerRunning {
 		go e.runScheduledEvent(ctx, newEvent)
 	}
-	//if out != nil {
-	//	out <- e.curEventId
-	//}
+	if out != nil {
+		out <- newEvent.GetId()
+	}
 
 }
 
@@ -281,4 +281,12 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 		}
 	}
 	return false
+}
+
+func (e *eventLoop) LockMutex() {
+	e.mx.Lock()
+}
+
+func (e *eventLoop) UnlockMutex() {
+	e.mx.Unlock()
 }
