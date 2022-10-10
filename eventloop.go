@@ -1,4 +1,4 @@
-package LearnProject
+package eventloop
 
 import (
 	"context"
@@ -104,6 +104,7 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 			return e.events[eventName][i].GetPriority() < e.events[eventName][j].GetPriority()
 		})
 	}
+	fmt.Println(eventName, e.events[eventName])
 
 	if out != nil {
 		out <- newEvent.GetId()
@@ -111,13 +112,13 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 
 }
 
-func (e *eventLoop) Trigger(ctx context.Context, eventName string) {
+func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- string) {
 
 	if isContextDone(ctx) {
 		//TODO выводить в логи пердупреждение, что контекст закрыт
+		fmt.Println("Context canceled")
 		return
 	}
-
 	if slices.Contains(e.disabled, TRIGGER) {
 		fmt.Println("Can't subscriber, subscriber disabled!")
 		return
@@ -128,9 +129,12 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string) {
 
 	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
 		curEvent := e.events[eventName][i]
-
 		go func(ev event.Interface) {
-			ev.RunFunction(ctx)
+
+			result := ev.RunFunction(ctx)
+			if out != nil {
+				out <- result
+			}
 			listener := ev.GetSubscriber()
 
 			if listener == nil {
@@ -200,7 +204,8 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 		select {
 		//case <-ticker.C:
 		case <-ticker.C:
-			event.RunFunction(ctx)
+			//TODO подумоть, нужно ли запускать функцию интервального ивента как горутину
+			go event.RunFunction(ctx)
 		case <-done(event.GetSchedule().GetQuitChannel(), e.stopScheduler, ctx):
 			fmt.Println("Scheduled event stopped")
 			return

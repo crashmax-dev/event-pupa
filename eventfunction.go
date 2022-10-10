@@ -1,4 +1,4 @@
-package LearnProject
+package eventloop
 
 type EventFunction uint8
 

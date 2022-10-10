@@ -5,6 +5,7 @@ import (
 	"eventloop/event/schedule"
 	"eventloop/event/subscriber"
 	"eventloop/helpers"
+	"sync"
 	"time"
 )
 
@@ -12,26 +13,27 @@ type event struct {
 	//name string
 	id       int
 	priority int
-	fun      func(ctx context.Context)
+	fun      func(ctx context.Context) string
 	isOnce   bool
+	mx       sync.Mutex
 
 	subscriber subscriber.Interface
 	schedule   schedule.Interface
 }
 
-func NewEvent(fun func(ctx context.Context)) Interface {
+func NewEvent(fun func(ctx context.Context) string) Interface {
 	return &event{id: helpers.GenerateIdFromNow(), fun: fun}
 }
 
-func NewIntervalEvent(fun func(ctx context.Context), interval time.Duration) Interface {
+func NewIntervalEvent(fun func(ctx context.Context) string, interval time.Duration) Interface {
 	return &event{id: helpers.GenerateIdFromNow(), fun: fun, schedule: schedule.NewScheduleEvent(interval)}
 }
 
-func NewOnceEvent(fun func(ctx context.Context)) Interface {
+func NewOnceEvent(fun func(ctx context.Context) string) Interface {
 	return &event{id: helpers.GenerateIdFromNow(), fun: fun, isOnce: true}
 }
 
-func NewPriorityEvent(fun func(ctx context.Context), priority int) Interface {
+func NewPriorityEvent(fun func(ctx context.Context) string, priority int) Interface {
 	return &event{id: helpers.GenerateIdFromNow(), fun: fun, priority: priority}
 }
 
@@ -47,8 +49,8 @@ func (ev *event) SetPriority(prior int) {
 	ev.priority = prior
 }
 
-func (ev *event) RunFunction(ctx context.Context) {
-	ev.fun(ctx)
+func (ev *event) RunFunction(ctx context.Context) string {
+	return ev.fun(ctx)
 }
 
 func (ev *event) GetSubscriber() subscriber.Interface {

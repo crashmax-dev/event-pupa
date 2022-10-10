@@ -10,7 +10,7 @@ type Interface interface {
 	GetId() int
 	GetPriority() int
 	SetPriority(prior int)
-	RunFunction(ctx context.Context)
+	RunFunction(ctx context.Context) string
 	GetSubscriber() subscriber.Interface
 	GetSchedule() schedule.Interface
 	IsOnce() bool

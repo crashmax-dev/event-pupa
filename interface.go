@@ -1,4 +1,4 @@
-package LearnProject
+package eventloop
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 type Interface interface {
 	On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- int)
-	Trigger(ctx context.Context, eventName string)
+	Trigger(ctx context.Context, eventName string, out chan<- string)
 	Toggle(eventFunc ...EventFunction)
 	ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- int)
 	StartScheduler(ctx context.Context)
