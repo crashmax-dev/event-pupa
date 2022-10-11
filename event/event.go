@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"errors"
 	"eventloop/event/schedule"
 	"eventloop/event/subscriber"
 	"eventloop/helpers"
@@ -60,8 +61,11 @@ func (ev *event) GetSubscriber() subscriber.Interface {
 	return ev.subscriber
 }
 
-func (ev *event) GetSchedule() schedule.Interface {
-	return ev.schedule
+func (ev *event) GetSchedule() (schedule.Interface, error) {
+	if ev.schedule == nil {
+		return nil, errors.New("It is not an interval event")
+	}
+	return ev.schedule, nil
 }
 
 func (ev *event) IsOnce() bool {

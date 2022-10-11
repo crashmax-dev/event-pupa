@@ -10,7 +10,7 @@ type eventschedule struct {
 }
 
 func NewScheduleEvent(interval time.Duration) Interface {
-	return &eventschedule{interval: interval}
+	return &eventschedule{interval: interval, quit: make(chan bool)}
 }
 
 func (e eventschedule) GetInterval() time.Duration {

@@ -6,6 +6,7 @@ import (
 	"eventloop/helpers"
 	"fmt"
 	"golang.org/x/exp/slices"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -92,7 +93,7 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		if out != nil {
 			out <- newEvent.GetId()
 		}
-		fmt.Println("Can't attach listener, On disabled!")
+		fmt.Println("Can'done attach listener, On disabled!")
 		return
 	}
 	e.mx.Lock()
@@ -120,7 +121,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 		return
 	}
 	if slices.Contains(e.disabled, TRIGGER) {
-		fmt.Println("Can't subscriber, subscriber disabled!")
+		fmt.Println("Can'done subscriber, subscriber disabled!")
 		return
 	}
 
@@ -173,9 +174,9 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	}
 }
 
-// done нужен для прекращения работы ивентов-интервалов.
+// isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - гг (канал самого ивента, канал ивентлупа и context.Done()
-func done(eventCh, eventLoopCh <-chan bool, ctx context.Context) <-chan struct{} {
+func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
 	//fmt.Println("Bobs")
@@ -195,7 +196,8 @@ func done(eventCh, eventLoopCh <-chan bool, ctx context.Context) <-chan struct{}
 }
 
 func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface) {
-	evntInterval := event.GetSchedule().GetInterval()
+	evntSchedule, _ := event.GetSchedule()
+	evntInterval := evntSchedule.GetInterval()
 	fmt.Printf("Scheduled event starting with interval %v\n", evntInterval)
 	ticker := time.NewTicker(evntInterval)
 	defer ticker.Stop()
@@ -206,13 +208,12 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 		case <-ticker.C:
 			//TODO подумоть, нужно ли запускать функцию интервального ивента как горутину
 			go event.RunFunction(ctx)
-		case <-done(event.GetSchedule().GetQuitChannel(), e.stopScheduler, ctx):
-			fmt.Println("Scheduled event stopped")
+		case <-isScheduledEventDone(evntSchedule.GetQuitChannel(), e.stopScheduler, ctx):
 			return
-			//case <-event.quit:
-			//	fmt.Println("Interface quited")
-			//case <-e.stopScheduler:
-			//	fmt.Println("Scheduler stopped")
+		//case <-evntSchedule.GetQuitChannel():
+		//	fmt.Println("Interface quited")
+		case <-e.stopScheduler:
+			fmt.Println("Scheduler stopped")
 			//case <-ctx.Done():
 			//	fmt.Println("Context stopped")
 		}
@@ -222,8 +223,13 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 
 // ScheduleEvent добавляет ивент в список ивентов-таймеров. Если шедулер запущен - запускает этот ивент.
 func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- int) {
+	if _, e := newEvent.GetSchedule(); e != nil {
+		fmt.Fprintln(os.Stderr, e)
+		return
+	}
+
 	if isContextDone(ctx) {
-		//TODO выводить в логи пердупреждение, что контекст закрыт
+		fmt.Println("Can't schedule, context closed")
 		return
 	}
 
@@ -235,7 +241,6 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 	if out != nil {
 		out <- newEvent.GetId()
 	}
-
 }
 
 func (e *eventLoop) StartScheduler(ctx context.Context) {
@@ -245,8 +250,14 @@ func (e *eventLoop) StartScheduler(ctx context.Context) {
 		return
 	}
 
+	if e.isSchedulerRunning {
+		fmt.Println("Scheduler is already running")
+		return
+	}
+
 	for _, evts := range e.intervalEvents {
-		go e.runScheduledEvent(ctx, evts)
+		curEvts := evts
+		go e.runScheduledEvent(ctx, curEvts)
 	}
 
 	e.isSchedulerRunning = true
@@ -280,7 +291,10 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 
 	for i := len(e.intervalEvents) - 1; i >= 0; i-- {
 		if e.intervalEvents[i].GetId() == id {
-			e.intervalEvents[i].GetSchedule().GetQuitChannel() <- true
+			schedEvent, _ := e.intervalEvents[i].GetSchedule()
+			if e.isSchedulerRunning {
+				schedEvent.GetQuitChannel() <- true
+			}
 			e.intervalEvents = helpers.RemoveIndex(e.intervalEvents, i)
 			return true
 		}

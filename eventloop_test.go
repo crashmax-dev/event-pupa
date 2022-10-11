@@ -3,9 +3,7 @@ package eventloop
 import (
 	"context"
 	"eventloop/event"
-	"fmt"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -18,97 +16,6 @@ type Test struct {
 	name string
 	f    func(ctx context.Context, eventName string, farg func(ctx context.Context) string) string
 	want int
-}
-
-func TestOnAndTrigger(t *testing.T) {
-
-	t.Parallel()
-
-	tests := []Test{{name: "Simple", f: TriggerOn_Simple, want: 1},
-		{name: "Multiple", f: TriggerOn_Multiple, want: 3},
-		{name: "Once", f: TriggerOn_Once, want: 1},
-		//{name: "ToggleOn", f: TriggerOn_ToggleOn, want: 2},
-		//{name: "ToggleTrigger", f: TriggerOn_ToggleTrigger, want: 1},
-		{name: "MultipleDefaultAndOnce", f: TriggerOn_MultipleDefaultAndOnce, want: 7}}
-
-	var (
-		workFunc = func(ctx context.Context) func(ctx context.Context) string {
-			var number int
-			return func(ctx context.Context) string {
-				fmt.Printf("Current number: %d \n", number)
-				number++
-				return strconv.Itoa(number)
-			}
-		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second*1)
-	)
-
-	t.Run("OnTriggerGroup", func(t *testing.T) {
-		for _, test := range tests {
-			curTest := test
-			t.Run(curTest.name, func(t *testing.T) {
-				t.Parallel()
-				result, _ := strconv.Atoi(curTest.f(ctx, curTest.name, workFunc(ctx)))
-
-				if result != curTest.want {
-					t.Errorf("Test %s Number = %d; WANT %d", curTest.name, result, curTest.want)
-				}
-			})
-		}
-	})
-
-	cancel()
-}
-
-func TriggerOn_Simple(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
-	var (
-		eventDefault = event.NewEvent(farg)
-	)
-
-	go evLoop.On(ctx, eventName, eventDefault, nil)
-	time.Sleep(time.Millisecond * 20)
-
-	ch := make(chan string, 1)
-	go evLoop.Trigger(ctx, eventName, ch)
-	time.Sleep(time.Millisecond * 20)
-
-	result := <-ch
-	return result
-}
-
-func TriggerOn_Multiple(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
-
-	var (
-		eventDefault  = event.NewEvent(farg)
-		eventDefault2 = event.NewEvent(farg)
-	)
-
-	ch := make(chan string, 1)
-	go evLoop.On(ctx, eventName, eventDefault, nil)
-	time.Sleep(time.Millisecond * 10)
-	go evLoop.Trigger(ctx, eventName, nil)
-	time.Sleep(time.Millisecond * 10)
-
-	go evLoop.On(ctx, eventName, eventDefault2, nil)
-	time.Sleep(time.Millisecond * 10)
-	go evLoop.Trigger(ctx, eventName, ch)
-	time.Sleep(time.Millisecond * 10)
-	<-ch
-	return <-ch
-}
-
-func TriggerOn_Once(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
-
-	eventSingle := event.NewOnceEvent(farg)
-	go evLoop.On(ctx, eventName, eventSingle, nil)
-	ch := make(chan string, 1)
-	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, eventName, ch)
-	time.Sleep(time.Millisecond * 10)
-	go evLoop.Trigger(ctx, eventName, ch)
-	time.Sleep(time.Millisecond * 20)
-
-	return <-ch
 }
 
 func TriggerOn_ToggleOn(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
@@ -165,33 +72,74 @@ func TriggerOn_ToggleTrigger(ctx context.Context, eventName string, farg func(ct
 	return <-ch
 }
 
-func TriggerOn_MultipleDefaultAndOnce(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
+func TestIsContextDone(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	if isContextDone(ctx) {
+		t.Errorf("Context isScheduledEventDone: true; Want: false")
+	}
+	cancel()
+	if !isContextDone(ctx) {
+		t.Errorf("Context isScheduledEventDone: false; Want: true")
+	}
 
-	var (
-		eventFirst  = event.NewEvent(farg)
-		eventSecond = event.NewEvent(farg)
-		eventOnce   = event.NewOnceEvent(farg)
-		ch          = make(chan string, 1)
-	)
+}
 
-	go evLoop.On(ctx, eventName, eventFirst, nil)
-	go evLoop.On(ctx, eventName, eventSecond, nil)
-	go evLoop.On(ctx, eventName, eventOnce, nil)
+func TestIsScheduledEventDone(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	eventCh, eventLoopCh := make(chan bool, 1), make(chan bool, 1)
 
-	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, eventName, nil)
-	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, eventName, nil)
-	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, eventName, ch)
-	time.Sleep(time.Millisecond * 20)
-	<-ch
-	return <-ch
+	tests := []struct {
+		init func()
+		done func()
+		dflt func()
+	}{{
+		done: func() {
+			t.Errorf("isScheduledEventDone: true; Want: false")
+		},
+	},
+		{
+			init: func() {
+				eventCh <- true
+			},
+			dflt: func() {
+				t.Errorf("isScheduledEventDone by event channel: false; Want: true")
+			},
+		},
+		{
+			init: func() {
+				eventLoopCh <- true
+			},
+			dflt: func() {
+				t.Errorf("isScheduledEventDone by eventloop channel: false; Want: true")
+			},
+		},
+		{
+			init: func() {
+				cancel()
+			},
+			dflt: func() {
+				t.Errorf("isScheduledEventDone by context: false; Want: true")
+			},
+		}}
+
+	for _, t := range tests {
+		if t.init != nil {
+			t.init()
+		}
+		select {
+		case <-isScheduledEventDone(eventCh, eventLoopCh, ctx):
+			if t.done != nil {
+				t.done()
+			}
+		default:
+			if t.dflt != nil {
+				t.dflt()
+			}
+		}
+	}
 }
 
 func TestStartScheduler(t *testing.T) {
-	t.Parallel()
-
 	const WANT = 4
 	var (
 		number int
@@ -204,20 +152,91 @@ func TestStartScheduler(t *testing.T) {
 
 	evSched := event.NewIntervalEvent(numInc, time.Millisecond*20)
 	go evLoop.ScheduleEvent(ctx, evSched, nil)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 20)
 	go evLoop.StartScheduler(ctx)
 	time.Sleep(time.Millisecond * 100)
 	cancel()
 
-	fmt.Println(WANT, number)
 	if number != WANT && number != WANT+1 {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
 	}
 }
 
-func TestSubevent(t *testing.T) {
-	t.Parallel()
+func TestScheduleEventAfterStartAndStop(t *testing.T) {
+	const WANT = 5
+	var (
+		number int
+		numInc = func(ctx context.Context) string {
+			number++
+			return ""
+		}
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	)
+	defer cancel()
 
+	evSched := event.NewIntervalEvent(numInc, time.Millisecond*20)
+	go evLoop.StartScheduler(ctx)
+	time.Sleep(time.Millisecond * 10)
+	go evLoop.ScheduleEvent(ctx, evSched, nil)
+	time.Sleep(time.Millisecond * 100)
+	go evLoop.StopScheduler()
+	time.Sleep(time.Millisecond * 500)
+
+	if number != WANT && number != WANT+1 {
+		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+	}
+}
+
+func TestRemoveEvent(t *testing.T) {
+	const (
+		WANT      = 7
+		EVENTNAME = "RemoveEventRegularFirst"
+	)
+	var (
+		number int
+		numInc = func(ctx context.Context) string {
+			number++
+			return ""
+		}
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	)
+	defer cancel()
+	var (
+		evSched       = event.NewIntervalEvent(numInc, time.Millisecond*20)
+		eventDefault  = event.NewEvent(numInc)
+		eventDefault2 = event.NewEvent(numInc)
+		eventDefault3 = event.NewEvent(numInc)
+	)
+	evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+	evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	evLoop.On(ctx, EVENTNAME, eventDefault3, nil)
+
+	go evLoop.ScheduleEvent(ctx, evSched, nil)
+	time.Sleep(time.Millisecond * 10)
+
+	go evLoop.StartScheduler(ctx)
+	time.Sleep(time.Millisecond * 100)
+
+	go evLoop.RemoveEvent(eventDefault2.GetId())
+	go evLoop.RemoveEvent(evSched.GetId())
+	go evLoop.RemoveEvent(eventDefault.GetId())
+	time.Sleep(time.Millisecond * 10)
+
+	go evLoop.Trigger(ctx, EVENTNAME, nil)
+	time.Sleep(time.Millisecond * 10)
+
+	go evLoop.RemoveEvent(eventDefault2.GetId())
+	time.Sleep(time.Millisecond * 10)
+
+	go evLoop.Trigger(ctx, EVENTNAME, nil)
+	time.Sleep(time.Millisecond * 10)
+
+	if number != WANT {
+		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+	}
+}
+
+func TestSubevent(t *testing.T) {
 	const WANT = 10
 	var (
 		number      int

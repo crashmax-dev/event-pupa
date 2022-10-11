@@ -12,6 +12,6 @@ type Interface interface {
 	SetPriority(prior int)
 	RunFunction(ctx context.Context) string
 	GetSubscriber() subscriber.Interface
-	GetSchedule() schedule.Interface
+	GetSchedule() (schedule.Interface, error)
 	IsOnce() bool
 }
