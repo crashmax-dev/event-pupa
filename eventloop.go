@@ -6,6 +6,7 @@ import (
 	"eventloop/helpers"
 	"fmt"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/slices"
 	"os"
 	"sort"
@@ -25,7 +26,23 @@ type eventLoop struct {
 	logger *zap.Logger
 }
 
-func NewEventLoop() Interface {
+func initLogger(level zapcore.Level) *zap.Logger {
+	var (
+		logger *zap.Logger
+		err    error
+	)
+	if level > zap.DebugLevel {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		panic(err)
+	}
+	return logger
+}
+
+func NewEventLoop(level zapcore.Level) Interface {
 	//var evLoop eventloop = &eventLoop{
 	//	events:         make(map[string][]*event, 0),
 	//	mx:             &sync.RWMutex{},
@@ -33,7 +50,10 @@ func NewEventLoop() Interface {
 	//	intervalEvents: make([]*eventSchedule, 0),
 	//	stopScheduler:  make(chan bool),
 	//}
-	return &eventLoop{mx: &sync.RWMutex{}, events: make(map[string][]event.Interface, 0), stopScheduler: make(chan bool)}
+	return &eventLoop{mx: &sync.RWMutex{},
+		events:        make(map[string][]event.Interface, 0),
+		stopScheduler: make(chan bool),
+		logger:        initLogger(level)}
 }
 
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) {
