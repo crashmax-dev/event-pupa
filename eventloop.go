@@ -5,6 +5,7 @@ import (
 	"eventloop/event"
 	"eventloop/helpers"
 	"fmt"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"os"
 	"sort"
@@ -20,6 +21,8 @@ type eventLoop struct {
 	disabled           []EventFunction
 	isSchedulerRunning bool
 	stopScheduler      chan bool
+
+	logger *zap.Logger
 }
 
 func NewEventLoop() Interface {
@@ -30,7 +33,7 @@ func NewEventLoop() Interface {
 	//	intervalEvents: make([]*eventSchedule, 0),
 	//	stopScheduler:  make(chan bool),
 	//}
-	return &eventLoop{mx: &sync.RWMutex{}, events: make(map[string][]event.Interface, 0)}
+	return &eventLoop{mx: &sync.RWMutex{}, events: make(map[string][]event.Interface, 0), stopScheduler: make(chan bool)}
 }
 
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) {
@@ -209,20 +212,15 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 			//TODO подумоть, нужно ли запускать функцию интервального ивента как горутину
 			go event.RunFunction(ctx)
 		case <-isScheduledEventDone(evntSchedule.GetQuitChannel(), e.stopScheduler, ctx):
+			//fmt.Printf("Scheduled event finished")
 			return
-		//case <-evntSchedule.GetQuitChannel():
-		//	fmt.Println("Interface quited")
-		case <-e.stopScheduler:
-			fmt.Println("Scheduler stopped")
-			//case <-ctx.Done():
-			//	fmt.Println("Context stopped")
 		}
 	}
-	//fmt.Printf("Scheduled event finished")
 }
 
 // ScheduleEvent добавляет ивент в список ивентов-таймеров. Если шедулер запущен - запускает этот ивент.
 func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- int) {
+
 	if _, e := newEvent.GetSchedule(); e != nil {
 		fmt.Fprintln(os.Stderr, e)
 		return

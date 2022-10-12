@@ -81,7 +81,6 @@ func TestIsContextDone(t *testing.T) {
 	if !isContextDone(ctx) {
 		t.Errorf("Context isScheduledEventDone: false; Want: true")
 	}
-
 }
 
 func TestIsScheduledEventDone(t *testing.T) {
