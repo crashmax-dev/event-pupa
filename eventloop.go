@@ -8,11 +8,21 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/slices"
+	"log"
+	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
 )
+
+//type LoggerLevel string
+//
+//const (
+//	DEBUG LoggerLevel = iota
+//	PROD
+//)
 
 type eventLoop struct {
 	//events []event
@@ -23,23 +33,71 @@ type eventLoop struct {
 	isSchedulerRunning bool
 	stopScheduler      chan bool
 
-	logger *zap.Logger
+	logger *zap.SugaredLogger
 }
 
-func initLogger(level zapcore.Level) *zap.Logger {
+func initLogger(level zapcore.Level) *zap.SugaredLogger {
+
+	const LOGPATH = "logs"
+
 	var (
-		logger *zap.Logger
-		err    error
+		levelSelected zapcore.Level
 	)
-	if level > zap.DebugLevel {
-		logger, err = zap.NewDevelopment()
+
+	if level == zap.DebugLevel {
+		levelSelected = zapcore.DebugLevel
 	} else {
-		logger, err = zap.NewProduction()
+		levelSelected = zapcore.ErrorLevel
 	}
+	atom := zap.NewAtomicLevelAt(levelSelected)
+
+	err := os.MkdirAll(LOGPATH, os.ModePerm)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
-	return logger
+
+	filename := helpers.GetOSFilePath(filepath.Join("logs",
+		fmt.Sprintf("log%s.log",
+			//time.Now().Format("02-01-2006T150405-0700"))))
+			time.Now().Format("02012006"))))
+
+	config := zap.Config{
+		Level:    atom,
+		Encoding: "json",
+		EncoderConfig: zapcore.EncoderConfig{
+			TimeKey:     "time",
+			MessageKey:  "message",
+			LevelKey:    "level",
+			NameKey:     "namekey",
+			FunctionKey: "functionkey",
+			EncodeLevel: zapcore.LowercaseLevelEncoder,
+			EncodeTime:  zapcore.ISO8601TimeEncoder},
+		OutputPaths:      []string{filename},
+		ErrorOutputPaths: []string{filename},
+	}
+	newWinFileSink := func(u *url.URL) (zap.Sink, error) {
+		// Remove leading slash left by url.Parse()
+		return os.OpenFile(u.Path[1:], os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	}
+
+	//rawJSON := []byte(`{
+	//  "level": "debug",
+	//  "encoding": "json",
+	//  "encoderConfig": {
+	//    "messageKey": "message",
+	//    "levelKey": "level",
+	//    "levelEncoder": "lowercase"
+	//  }
+	//}`)
+
+	zap.RegisterSink("winfile", newWinFileSink)
+	logger := zap.Must(config.Build())
+
+	defer logger.Sync()
+
+	logger.Info("logger construction succeeded")
+
+	return logger.Sugar()
 }
 
 func NewEventLoop(level zapcore.Level) Interface {
@@ -50,15 +108,17 @@ func NewEventLoop(level zapcore.Level) Interface {
 	//	intervalEvents: make([]*eventSchedule, 0),
 	//	stopScheduler:  make(chan bool),
 	//}
-	return &eventLoop{mx: &sync.RWMutex{},
+	return &eventLoop{
+		mx:            &sync.RWMutex{},
 		events:        make(map[string][]event.Interface, 0),
 		stopScheduler: make(chan bool),
-		logger:        initLogger(level)}
+		logger:        initLogger(level),
+	}
 }
 
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) {
 	if isContextDone(ctx) {
-		//TODO выводить в логи пердупреждение, что контекст закрыт
+		e.logger.Warnw("Can't subscribe, context is done", "triggers", triggers, "listeners", listeners)
 		return
 	}
 	for _, v := range listeners {
@@ -66,28 +126,28 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		for _, t := range triggers {
 			ch := make(chan int, 1)
 			trigger.AddChannel(ch)
-
+			e.logger.Infow("Event subscribed", "trigger", t.GetId(), "listener", v.GetId())
 			t.GetSubscriber().AddChannel(ch)
 		}
 
+		//Запскаем ждуна, когда триггеры сработают, и срабатываем сами
 		go func(ctx context.Context, v event.Interface) {
 			for {
 				select {
 				case <-ctx.Done():
-					//TODO выводить в логи пердупреждение, что контекст закрыт
+					e.logger.Infow("Stop listening because of context", "eventId", v.GetId())
 					return
 				default:
-
 					trigger.LockMutex()
 					//v.mx.Lock()
-					fmt.Println("Waiting for triggers...")
+					e.logger.Debugw("Waiting for triggers...", "event", v.GetId())
 					channels := trigger.GetChannels()
-					fmt.Printf("Reading channels: %v\n", channels)
+					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetId())
 					for _, ch := range channels {
-						fmt.Printf("Reading from %v\n", ch)
+						e.logger.Debugw("Waiting for channel", "ch", ch, "event", v.GetId())
 						<-ch
 					}
-					fmt.Println("go viponlnyatsa")
+					e.logger.Infow("Subscriber event fired", "event", v.GetId())
 					v.RunFunction(ctx)
 					trigger.UnlockMutex()
 				}
@@ -107,7 +167,9 @@ func isContextDone(ctx context.Context) bool {
 
 func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- int) {
 	if isContextDone(ctx) {
-		//TODO выводить в логи пердупреждение, что контекст закрыт
+		e.logger.Warnw("Can't add listener to event, context is done",
+			"event", newEvent.GetId(),
+			"eventname", eventName)
 		return
 	}
 
@@ -116,7 +178,9 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		if out != nil {
 			out <- newEvent.GetId()
 		}
-		fmt.Println("Can'done attach listener, On disabled!")
+		e.logger.Warnw("Can'done attach listener, On disabled",
+			"event", newEvent.GetId(),
+			"eventname", eventName)
 		return
 	}
 	e.mx.Lock()
@@ -128,60 +192,61 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 			return e.events[eventName][i].GetPriority() < e.events[eventName][j].GetPriority()
 		})
 	}
-	fmt.Println(eventName, e.events[eventName])
+
+	e.logger.Debugw("Event added", "eventname", eventName, "eventlist", e.events[eventName])
 
 	if out != nil {
 		out <- newEvent.GetId()
 	}
-
 }
 
 func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- string) {
 
 	if isContextDone(ctx) {
-		//TODO выводить в логи пердупреждение, что контекст закрыт
-		fmt.Println("Context canceled")
+		e.logger.Warnw("Can't trigger event, context is done",
+			"eventname", eventName)
 		return
 	}
 	if slices.Contains(e.disabled, TRIGGER) {
-		fmt.Println("Can'done subscriber, subscriber disabled!")
+		e.logger.Warnw("Can't trigger event, trigger is disabled",
+			"eventname", eventName)
 		return
 	}
 
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
+	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
+
 	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
 		curEvent := e.events[eventName][i]
-		go func(ev event.Interface) {
 
+		go func(ev event.Interface) {
 			result := ev.RunFunction(ctx)
 			if out != nil {
 				out <- result
 			}
-			listener := ev.GetSubscriber()
 
+			listener := ev.GetSubscriber()
 			if listener == nil {
 				return
 			}
-			if triggerChannels := listener.GetChannels(); len(triggerChannels) > 0 {
+			if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
 				evTrigger := ev.GetSubscriber()
 				evTrigger.LockMutex()
 				//evTrigger.mx.Lock()
-				fmt.Println("Sending messages...")
-				fmt.Println(triggerChannels)
-				for _, ch := range triggerChannels {
-					fmt.Printf("Writing to %v\n", ch)
+				e.logger.Debugw("Sending messages...", "listener", listenerChannels, "trigger", ev.GetId())
+				for _, ch := range listenerChannels {
+					e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetId())
 					ch <- 1
 				}
-				fmt.Println("All messages send")
+				e.logger.Infow("All messages send", "trigger", ev.GetId())
 				evTrigger.UnlockMutex()
 				//ev.subscriber.mx.Unlock()
 			}
 		}(curEvent)
 
 		if curEvent.IsOnce() {
-			//TODO пофиксить, иногда вылетает с ошибонькой
 			e.events[eventName] = helpers.RemoveIndex(e.events[eventName], i)
 		}
 	}
@@ -190,8 +255,10 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	for _, v := range eventFuncs {
 		if x := slices.Index(e.disabled, v); x != -1 {
+			e.logger.Infow("Enabling functions", "eventfuncs", eventFuncs)
 			e.disabled = helpers.RemoveIndex(e.disabled, x)
 		} else {
+			e.logger.Infow("Disabling functions", "eventfuncs", eventFuncs)
 			e.disabled = append(e.disabled, v)
 		}
 	}

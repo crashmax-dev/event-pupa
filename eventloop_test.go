@@ -3,6 +3,7 @@ package eventloop
 import (
 	"context"
 	"eventloop/event"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"testing"
 	"time"
@@ -18,58 +19,84 @@ type Test struct {
 	want int
 }
 
-func TriggerOn_ToggleOn(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
-
-	var (
-		eventDefault  = event.NewEvent(farg)
-		eventDefault2 = event.NewEvent(farg)
-		ch            = make(chan string, 1)
+func TestToggleOn(t *testing.T) {
+	const (
+		WANT      = 2
+		EVENTNAME = "TOGGLEON"
 	)
 
-	go evLoop.On(ctx, eventName, eventDefault, nil)
-	time.Sleep(time.Millisecond * 20)
+	var (
+		number int
+		numInc = func(ctx context.Context) string {
+			number++
+			return ""
+		}
+		eventDefault  = event.NewEvent(numInc)
+		eventDefault2 = event.NewEvent(numInc)
+		ctx, cancel   = context.WithTimeout(context.Background(), time.Second)
+	)
+
+	defer cancel()
+
+	go evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+	time.Sleep(time.Millisecond * 10)
 
 	go evLoop.Toggle(ON)
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.On(ctx, eventName, eventDefault, nil)
-	time.Sleep(time.Millisecond * 20)
+	go evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	time.Sleep(time.Millisecond * 10)
 
 	go evLoop.Toggle(ON)
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.On(ctx, eventName, eventDefault2, nil)
-	time.Sleep(time.Millisecond * 20)
+	go evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.Trigger(ctx, eventName, ch)
-	time.Sleep(time.Millisecond * 20)
-	<-ch
-	return <-ch
+	go evLoop.Trigger(ctx, EVENTNAME, nil)
+	time.Sleep(time.Millisecond * 10)
+
+	if number != WANT {
+		t.Errorf("Number: %v; Want: %v", number, WANT)
+	}
 }
 
-func TriggerOn_ToggleTrigger(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
-
-	var (
-		eventDefault = event.NewEvent(farg)
-		ch           = make(chan string, 1)
+func TestToggleTrigger(t *testing.T) {
+	const (
+		WANT      = 1
+		EVENTNAME = "toggletrigger"
 	)
 
-	go evLoop.On(ctx, eventName, eventDefault, nil)
+	var (
+		number int
+		numInc = func(ctx context.Context) string {
+			number++
+			return ""
+		}
+		eventDefault = event.NewEvent(numInc)
+		ctx, cancel  = context.WithTimeout(context.Background(), time.Second)
+	)
+
+	defer cancel()
+
+	go evLoop.On(ctx, EVENTNAME, eventDefault, nil)
 	time.Sleep(time.Millisecond * 20)
 
 	go evLoop.Toggle(TRIGGER)
 	time.Sleep(time.Millisecond * 20)
 
-	go evLoop.Trigger(ctx, eventName, nil)
+	go evLoop.Trigger(ctx, EVENTNAME, nil)
 	time.Sleep(time.Millisecond * 20)
 
 	go evLoop.Toggle(TRIGGER)
 	time.Sleep(time.Millisecond * 20)
 
-	go evLoop.Trigger(ctx, eventName, ch)
+	go evLoop.Trigger(ctx, EVENTNAME, nil)
 	time.Sleep(time.Millisecond * 20)
 
-	return <-ch
+	if number != WANT {
+		t.Errorf("Number: %v; Want: %v", number, WANT)
+	}
 }
 
 func TestIsContextDone(t *testing.T) {
@@ -275,6 +302,6 @@ func TestSubevent(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	evLoop = NewEventLoop()
+	evLoop = NewEventLoop(zapcore.DebugLevel)
 	os.Exit(m.Run())
 }
