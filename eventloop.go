@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"time"
 )
@@ -25,9 +24,11 @@ import (
 //	PROD
 //)
 
+// 1. String - EventName, 2. Int - приоритет, 3. String - Event Id
+type eventsList map[string]map[int]map[string]event.Interface
+
 type eventLoop struct {
-	//events []event
-	events             map[string]map[string]event.Interface
+	events             eventsList
 	intervalEvents     []event.Interface
 	mx                 *sync.RWMutex
 	disabled           []EventFunction
@@ -35,6 +36,13 @@ type eventLoop struct {
 	stopScheduler      chan bool
 
 	logger *zap.SugaredLogger
+}
+
+func syncLogger(logger *zap.Logger) {
+	err := logger.Sync()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func initLogger(level zapcore.Level) *zap.SugaredLogger {
@@ -90,10 +98,13 @@ func initLogger(level zapcore.Level) *zap.SugaredLogger {
 	//  }
 	//}`)
 
-	zap.RegisterSink("winfile", newWinFileSink)
+	err = zap.RegisterSink("winfile", newWinFileSink)
+	if err != nil {
+		panic(err)
+	}
 	logger := zap.Must(config.Build())
 
-	defer logger.Sync()
+	defer syncLogger(logger)
 
 	logger.Info("logger construction succeeded")
 
@@ -108,9 +119,10 @@ func NewEventLoop(level zapcore.Level) Interface {
 	//	intervalEvents: make([]*eventSchedule, 0),
 	//	stopScheduler:  make(chan bool),
 	//}
+
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
-		events:        make(map[string]map[string]event.Interface),
+		events:        make(eventsList),
 		stopScheduler: make(chan bool),
 		logger:        initLogger(level),
 	}
@@ -186,13 +198,21 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	e.events[eventName][newEvent.GetId().String()] = newEvent
-	//append(e.events[eventName], newEvent)
-	if newEvent.GetPriority() > 0 {
-		sort.Slice(e.events[eventName], func(i, j int) bool {
-			return e.events[eventName][i].GetPriority() < e.events[eventName][j].GetPriority()
-		})
+	if e.events[eventName] == nil {
+		e.events[eventName] = make(map[int]map[string]event.Interface)
 	}
+
+	if e.events[eventName][newEvent.GetPriority()] == nil {
+		e.events[eventName][newEvent.GetPriority()] = make(map[string]event.Interface)
+	}
+
+	e.events[eventName][newEvent.GetPriority()][newEvent.GetId().String()] = newEvent
+	//append(e.events[eventName], newEvent)
+	//if newEvent.GetPriority() > 0 {
+	//	sort.Slice(e.events[eventName], func(i, j int) bool {
+	//		return e.events[eventName][i].GetPriority() < e.events[eventName][j].GetPriority()
+	//	})
+	//}
 
 	e.logger.Debugw("Event added", "eventname", eventName, "eventlist", e.events[eventName])
 
@@ -219,47 +239,49 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 
 	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
 
-	for i := len(e.events[eventName]) - 1; i >= 0; i-- {
-		curEvent := e.events[eventName][i]
+	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
+		for key, value := range e.events[eventName][priorIndex] {
 
-		go func(ev event.Interface) {
-			result := ev.RunFunction(ctx)
-			if out != nil {
-				out <- result
-			}
-
-			listener := ev.GetSubscriber()
-			if listener == nil {
-				return
-			}
-			if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
-				evTrigger := ev.GetSubscriber()
-				evTrigger.LockMutex()
-				//evTrigger.mx.Lock()
-				e.logger.Debugw("Sending messages...", "listener", listenerChannels, "trigger", ev.GetId())
-				for _, ch := range listenerChannels {
-					e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetId())
-					ch <- 1
+			go func(ev event.Interface) {
+				result := ev.RunFunction(ctx)
+				if out != nil {
+					out <- result
 				}
-				e.logger.Infow("All messages send", "trigger", ev.GetId())
-				evTrigger.UnlockMutex()
-				//ev.subscriber.mx.Unlock()
-			}
-		}(curEvent)
 
-		if curEvent.IsOnce() {
-			e.events[eventName] = helpers.RemoveIndex(e.events[eventName], i)
+				listener := ev.GetSubscriber()
+				if listener == nil {
+					return
+				}
+				if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
+					evTrigger := ev.GetSubscriber()
+					evTrigger.LockMutex()
+					//evTrigger.mx.Lock()
+					e.logger.Debugw("Sending messages...", "listener", listenerChannels, "trigger", ev.GetId())
+					for _, ch := range listenerChannels {
+						e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetId())
+						ch <- 1
+					}
+					e.logger.Infow("All messages send", "trigger", ev.GetId())
+					evTrigger.UnlockMutex()
+					//ev.subscriber.mx.Unlock()
+				}
+			}(value)
+
+			if value.IsOnce() {
+				delete(e.events[eventName][priorIndex], key)
+			}
 		}
+
 	}
 }
 
 func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	for _, v := range eventFuncs {
 		if x := slices.Index(e.disabled, v); x != -1 {
-			e.logger.Infow("Enabling functions", "eventfuncs", eventFuncs)
+			e.logger.Infof("Enabling functions %+v", eventFuncs)
 			e.disabled = helpers.RemoveIndex(e.disabled, x)
 		} else {
-			e.logger.Infow("Disabling functions", "eventfuncs", eventFuncs)
+			e.logger.Infof("Disabling functions %#v", eventFuncs)
 			e.disabled = append(e.disabled, v)
 		}
 	}
@@ -369,25 +391,36 @@ func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	for key, events := range e.events {
-		for i := len(events) - 1; i >= 0; i-- {
-			if events[i].GetId() == id {
-				e.events[key] = helpers.RemoveIndex(e.events[key], i)
-				e.logger.Infow("Event removed from regular events", "event", events[i].GetId())
-				return true
+	for eventNameKey, eventNameValue := range e.events {
+		for priorKey, priorValue := range eventNameValue {
+			for eventIdKey, eventIdValue := range priorValue {
+				if eventIdValue.GetId() == id {
+
+					delete(priorValue, eventIdKey)
+					if len(priorValue) == 0 {
+						delete(eventNameValue, priorKey)
+						if len(eventNameValue) == 0 {
+							delete(e.events, eventNameKey)
+						}
+					}
+
+					e.logger.Infow("Event removed from regular events", "event", eventIdValue.GetId())
+					return true
+				}
 			}
 		}
 	}
 
 	for i := len(e.intervalEvents) - 1; i >= 0; i-- {
 		if e.intervalEvents[i].GetId() == id {
+			e.logger.Infow("Removing scheduled event", "event", e.intervalEvents[i].GetId())
 			schedEvent, _ := e.intervalEvents[i].GetSchedule()
 			if e.isSchedulerRunning {
 				e.logger.Infow("Event is running, stopping...", "event", e.intervalEvents[i].GetId())
 				schedEvent.GetQuitChannel() <- true
 			}
 			e.intervalEvents = helpers.RemoveIndex(e.intervalEvents, i)
-			e.logger.Infow("Event removed from regular events", "event", e.intervalEvents[i].GetId())
+			e.logger.Infow("Event removed from regular events")
 			return true
 		}
 	}
