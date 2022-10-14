@@ -153,7 +153,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 			t.init()
 		}
 		select {
-		case <-isScheduledEventDone(eventCh, eventLoopCh, ctx):
+		case <-isScheduledEventDone(eventCh, eventLoopCh, ctx, nil):
 			if t.done != nil {
 				t.done()
 			}
@@ -243,7 +243,7 @@ func TestRemoveEvent(t *testing.T) {
 	go evLoop.StartScheduler(ctx)
 	time.Sleep(time.Millisecond * 100)
 
-	go evLoop.RemoveEvent(eventDefault2.GetId())
+	go evLoop.RemoveEvent(eventDefault3.GetId())
 	go evLoop.RemoveEvent(evSched.GetId())
 	go evLoop.RemoveEvent(eventDefault.GetId())
 	time.Sleep(time.Millisecond * 10)
@@ -259,6 +259,8 @@ func TestRemoveEvent(t *testing.T) {
 
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+	} else {
+		t.Logf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
 	}
 }
 

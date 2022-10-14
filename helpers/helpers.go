@@ -1,21 +1,27 @@
 package helpers
 
 import (
-	"fmt"
 	"runtime"
-	"strconv"
-	"time"
+	"sync"
 )
 
+var riMx sync.Mutex
+
 func RemoveIndex[T any](s []T, index int) []T {
-	fmt.Println(s, index)
-	return append(s[:index], s[index+1:]...)
+	riMx.Lock()
+	if len(s) > 1 {
+		return append(s[:index], s[index+1:]...)
+	} else {
+		return []T{}
+	}
 }
 
-func GenerateIdFromNow() int {
-	id, _ := strconv.Atoi(time.Now().Format("20060102150405"))
-	return id
-}
+//func GenerateIdFromNow() string {
+//	t := time.Now()
+//	//t = t.Add(time.Millisecond)
+//	id := strings.Replace(t.Format("20060102150405.00000000000000000"), ".", "", -1)
+//	return id
+//}
 
 func GetOSFilePath(filePath string) string {
 	os := runtime.GOOS

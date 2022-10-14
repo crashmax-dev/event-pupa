@@ -5,14 +5,14 @@ import (
 	"errors"
 	"eventloop/event/schedule"
 	"eventloop/event/subscriber"
-	"eventloop/helpers"
+	"github.com/google/uuid"
 	"sync"
 	"time"
 )
 
 type event struct {
 	//name string
-	id       int
+	id       uuid.UUID
 	priority int
 	fun      func(ctx context.Context) string
 	isOnce   bool
@@ -23,22 +23,22 @@ type event struct {
 }
 
 func NewEvent(fun func(ctx context.Context) string) Interface {
-	return &event{id: helpers.GenerateIdFromNow(), fun: fun}
+	return &event{id: uuid.New(), fun: fun}
 }
 
 func NewIntervalEvent(fun func(ctx context.Context) string, interval time.Duration) Interface {
-	return &event{id: helpers.GenerateIdFromNow(), fun: fun, schedule: schedule.NewScheduleEvent(interval)}
+	return &event{id: uuid.New(), fun: fun, schedule: schedule.NewScheduleEvent(interval)}
 }
 
 func NewOnceEvent(fun func(ctx context.Context) string) Interface {
-	return &event{id: helpers.GenerateIdFromNow(), fun: fun, isOnce: true}
+	return &event{id: uuid.New(), fun: fun, isOnce: true}
 }
 
 func NewPriorityEvent(fun func(ctx context.Context) string, priority int) Interface {
-	return &event{id: helpers.GenerateIdFromNow(), fun: fun, priority: priority}
+	return &event{id: uuid.New(), fun: fun, priority: priority}
 }
 
-func (ev *event) GetId() int {
+func (ev *event) GetId() uuid.UUID {
 	return ev.id
 }
 

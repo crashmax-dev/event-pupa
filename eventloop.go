@@ -5,6 +5,7 @@ import (
 	"eventloop/event"
 	"eventloop/helpers"
 	"fmt"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/slices"
@@ -26,7 +27,7 @@ import (
 
 type eventLoop struct {
 	//events []event
-	events             map[string][]event.Interface
+	events             map[string]map[string]event.Interface
 	intervalEvents     []event.Interface
 	mx                 *sync.RWMutex
 	disabled           []EventFunction
@@ -69,7 +70,6 @@ func initLogger(level zapcore.Level) *zap.SugaredLogger {
 			MessageKey:  "message",
 			LevelKey:    "level",
 			NameKey:     "namekey",
-			FunctionKey: "functionkey",
 			EncodeLevel: zapcore.LowercaseLevelEncoder,
 			EncodeTime:  zapcore.ISO8601TimeEncoder},
 		OutputPaths:      []string{filename},
@@ -110,7 +110,7 @@ func NewEventLoop(level zapcore.Level) Interface {
 	//}
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
-		events:        make(map[string][]event.Interface, 0),
+		events:        make(map[string]map[string]event.Interface),
 		stopScheduler: make(chan bool),
 		logger:        initLogger(level),
 	}
@@ -165,7 +165,7 @@ func isContextDone(ctx context.Context) bool {
 	}
 }
 
-func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- int) {
+func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) {
 	if isContextDone(ctx) {
 		e.logger.Warnw("Can't add listener to event, context is done",
 			"event", newEvent.GetId(),
@@ -178,7 +178,7 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		if out != nil {
 			out <- newEvent.GetId()
 		}
-		e.logger.Warnw("Can'done attach listener, On disabled",
+		e.logger.Warnw("Can't attach listener, On disabled",
 			"event", newEvent.GetId(),
 			"eventname", eventName)
 		return
@@ -186,7 +186,8 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	e.events[eventName] = append(e.events[eventName], newEvent)
+	e.events[eventName][newEvent.GetId().String()] = newEvent
+	//append(e.events[eventName], newEvent)
 	if newEvent.GetPriority() > 0 {
 		sort.Slice(e.events[eventName], func(i, j int) bool {
 			return e.events[eventName][i].GetPriority() < e.events[eventName][j].GetPriority()
@@ -266,19 +267,25 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - гг (канал самого ивента, канал ивентлупа и context.Done()
-func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context) <-chan struct{} {
+func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context, logger *zap.SugaredLogger) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
 	//fmt.Println("Bobs")
 	select {
 	case <-ctx.Done():
-		fmt.Println("Scheduler stopped because of context")
+		if logger != nil {
+			logger.Warnw("Scheduler stopped because of context")
+		}
 		return result
 	case <-eventCh:
-		fmt.Println("Scheduler stopped because of event want to stop")
+		if logger != nil {
+			logger.Infow("Scheduler stopped because of event want to stop")
+		}
 		return result
 	case <-eventLoopCh:
-		fmt.Println("Scheduler stopped because of event manager commands")
+		if logger != nil {
+			logger.Infow("Scheduler stopped because of event manager commands")
+		}
 		return result
 	default:
 		return make(chan struct{})
@@ -288,33 +295,31 @@ func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context)
 func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface) {
 	evntSchedule, _ := event.GetSchedule()
 	evntInterval := evntSchedule.GetInterval()
-	fmt.Printf("Scheduled event starting with interval %v\n", evntInterval)
+	e.logger.Infow("Scheduled event starting with interval",
+		"event", event.GetId(),
+		"interval", evntInterval)
 	ticker := time.NewTicker(evntInterval)
 	defer ticker.Stop()
-	fmt.Println("Run infinite cycle")
 	for {
 		select {
-		//case <-ticker.C:
 		case <-ticker.C:
-			//TODO подумоть, нужно ли запускать функцию интервального ивента как горутину
 			go event.RunFunction(ctx)
-		case <-isScheduledEventDone(evntSchedule.GetQuitChannel(), e.stopScheduler, ctx):
-			//fmt.Printf("Scheduled event finished")
+		case <-isScheduledEventDone(evntSchedule.GetQuitChannel(), e.stopScheduler, ctx, e.logger):
 			return
 		}
 	}
 }
 
 // ScheduleEvent добавляет ивент в список ивентов-таймеров. Если шедулер запущен - запускает этот ивент.
-func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- int) {
+func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) {
 
-	if _, e := newEvent.GetSchedule(); e != nil {
-		fmt.Fprintln(os.Stderr, e)
+	if _, err := newEvent.GetSchedule(); err != nil {
+		e.logger.Errorw(err.Error(), "event", newEvent)
 		return
 	}
 
 	if isContextDone(ctx) {
-		fmt.Println("Can't schedule, context closed")
+		e.logger.Warnw("Can't schedule, context done")
 		return
 	}
 
@@ -330,13 +335,12 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 
 func (e *eventLoop) StartScheduler(ctx context.Context) {
 	if isContextDone(ctx) {
-		//TODO выводить в логи пердупреждение, что контекст закрыт
-		fmt.Println("TEST TEST")
+		e.logger.Warnw("Scheduler can't start, context is done")
 		return
 	}
 
 	if e.isSchedulerRunning {
-		fmt.Println("Scheduler is already running")
+		e.logger.Warnw("Scheduler is already running")
 		return
 	}
 
@@ -346,22 +350,22 @@ func (e *eventLoop) StartScheduler(ctx context.Context) {
 	}
 
 	e.isSchedulerRunning = true
-	fmt.Println("Scheduler started")
+	e.logger.Infow("Scheduler started")
 }
 
 func (e *eventLoop) StopScheduler() {
-	fmt.Println("Scheduler stopping...")
+	e.logger.Infow("Scheduler stopping...")
 	e.mx.Lock()
 	defer e.mx.Unlock()
 	if len(e.intervalEvents) > 0 && e.isSchedulerRunning {
-		fmt.Println("Send signal to stop")
+		e.logger.Infow("Send signal to stop")
 		e.stopScheduler <- true
 	}
 	e.isSchedulerRunning = false
-	fmt.Println("Scheduler stopped.")
+	e.logger.Infow("Send signal to stop")
 }
 
-func (e *eventLoop) RemoveEvent(id int) bool {
+func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
@@ -369,6 +373,7 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 		for i := len(events) - 1; i >= 0; i-- {
 			if events[i].GetId() == id {
 				e.events[key] = helpers.RemoveIndex(e.events[key], i)
+				e.logger.Infow("Event removed from regular events", "event", events[i].GetId())
 				return true
 			}
 		}
@@ -378,9 +383,11 @@ func (e *eventLoop) RemoveEvent(id int) bool {
 		if e.intervalEvents[i].GetId() == id {
 			schedEvent, _ := e.intervalEvents[i].GetSchedule()
 			if e.isSchedulerRunning {
+				e.logger.Infow("Event is running, stopping...", "event", e.intervalEvents[i].GetId())
 				schedEvent.GetQuitChannel() <- true
 			}
 			e.intervalEvents = helpers.RemoveIndex(e.intervalEvents, i)
+			e.logger.Infow("Event removed from regular events", "event", e.intervalEvents[i].GetId())
 			return true
 		}
 	}
