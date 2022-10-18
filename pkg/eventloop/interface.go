@@ -2,7 +2,7 @@ package eventloop
 
 import (
 	"context"
-	"eventloop/event"
+	"eventloop/pkg/eventloop/event"
 	"github.com/google/uuid"
 )
 

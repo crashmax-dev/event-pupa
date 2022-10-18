@@ -2,7 +2,7 @@ package eventloop
 
 import (
 	"context"
-	"eventloop/event"
+	"eventloop/pkg/eventloop/event"
 	"go.uber.org/zap/zapcore"
 	"os"
 	"testing"

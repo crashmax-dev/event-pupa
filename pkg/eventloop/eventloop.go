@@ -2,8 +2,8 @@ package eventloop
 
 import (
 	"context"
-	"eventloop/event"
-	"eventloop/helpers"
+	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/internal"
 	"fmt"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -16,13 +16,6 @@ import (
 	"sync"
 	"time"
 )
-
-//type LoggerLevel string
-//
-//const (
-//	DEBUG LoggerLevel = iota
-//	PROD
-//)
 
 // 1. String - EventName, 2. Int - приоритет, 3. String - Event Id
 type eventsList map[string]map[int]map[string]event.Interface
@@ -65,7 +58,7 @@ func initLogger(level zapcore.Level) *zap.SugaredLogger {
 		log.Println(err)
 	}
 
-	filename := helpers.GetOSFilePath(filepath.Join("logs",
+	filename := internal.GetOSFilePath(filepath.Join("logs",
 		fmt.Sprintf("log%s.log",
 			//time.Now().Format("02-01-2006T150405-0700"))))
 			time.Now().Format("02012006"))))
@@ -256,7 +249,9 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 					evTrigger := ev.GetSubscriber()
 					evTrigger.LockMutex()
 					//evTrigger.mx.Lock()
-					e.logger.Debugw("Sending messages...", "listener", listenerChannels, "trigger", ev.GetId())
+					e.logger.Debugw("Sending messages...",
+						"listener", listenerChannels,
+						"trigger", ev.GetId())
 					for _, ch := range listenerChannels {
 						e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetId())
 						ch <- 1
@@ -279,7 +274,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	for _, v := range eventFuncs {
 		if x := slices.Index(e.disabled, v); x != -1 {
 			e.logger.Infof("Enabling functions %+v", eventFuncs)
-			e.disabled = helpers.RemoveIndex(e.disabled, x)
+			e.disabled = internal.RemoveIndex(e.disabled, x)
 		} else {
 			e.logger.Infof("Disabling functions %#v", eventFuncs)
 			e.disabled = append(e.disabled, v)
@@ -419,7 +414,7 @@ func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
 				e.logger.Infow("Event is running, stopping...", "event", e.intervalEvents[i].GetId())
 				schedEvent.GetQuitChannel() <- true
 			}
-			e.intervalEvents = helpers.RemoveIndex(e.intervalEvents, i)
+			e.intervalEvents = internal.RemoveIndex(e.intervalEvents, i)
 			e.logger.Infow("Event removed from regular events")
 			return true
 		}

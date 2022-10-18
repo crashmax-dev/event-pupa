@@ -2,8 +2,8 @@ package event
 
 import (
 	"context"
-	"eventloop/event/schedule"
-	"eventloop/event/subscriber"
+	"eventloop/pkg/eventloop/event/schedule"
+	"eventloop/pkg/eventloop/event/subscriber"
 	"github.com/google/uuid"
 )
 
