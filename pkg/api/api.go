@@ -2,11 +2,14 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"eventloop/pkg/api/internal"
 	"eventloop/pkg/eventloop"
 	"fmt"
 	"go.uber.org/zap/zapcore"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,11 +17,15 @@ import (
 	"time"
 )
 
+type subscribeInfo struct {
+	triggers  []int
+	listeners []int
+}
+
 var (
 	evLoop eventloop.Interface
 	ctx    context.Context
 	cancel context.CancelFunc
-	events []ApiEvents
 )
 
 func StartServer(level zapcore.Level) {
@@ -27,6 +34,7 @@ func StartServer(level zapcore.Level) {
 
 	http.HandleFunc("/events/", eventHandler)
 	http.HandleFunc("/trigger/", triggerHandler)
+	http.HandleFunc("/subscribe/", subscribeHandler)
 
 	servErr := http.ListenAndServe(":8090", nil)
 	if errors.Is(servErr, http.ErrServerClosed) {
@@ -37,11 +45,26 @@ func StartServer(level zapcore.Level) {
 	}
 }
 
+func subscribeHandler(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != "POST" {
+		internal.NoMethodResponse(writer, "POST")
+		return
+	}
+
+	var sInfo subscribeInfo
+	if err := json.NewDecoder(request.Body).Decode(&sInfo); err != nil {
+		log.Fatal("ooopsss! an error occurred, please try again")
+	}
+
+	evLoop.Subscribe(ctx, sInfo.triggers)
+
+}
+
 func triggerHandler(writer http.ResponseWriter, request *http.Request) {
 	triggerCtx, triggerCancel := context.WithTimeout(ctx, time.Second*5)
 	defer triggerCancel()
 	if request.Method != "POST" {
-		NoMethodResponse(writer, "POST")
+		internal.NoMethodResponse(writer, "POST")
 		return
 	}
 
@@ -71,7 +94,7 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 		params := strings.Split(strings.TrimPrefix(request.URL.Path, "/events/"), "/")
 
 		id, err := strconv.Atoi(params[0])
-		if err != nil || id > len(events) {
+		if err != nil || id > len(events) || len(params) != 2 {
 			writer.WriteHeader(404)
 			return
 		}
@@ -79,24 +102,15 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 			fn := events[id-1].eventFunc()
 			events[id-1].evnt = fn()
 		}
-
-		if len(params) > 1 {
-			eventName := params[1]
-			evLoop.On(ctx, eventName, events[id-1].evnt, nil)
-		}
+		eventName := params[1]
+		evLoop.On(ctx, eventName, events[id-1]()(), nil)
 
 		fmt.Println("all good")
 	default:
-		NoMethodResponse(writer, "GET, POST, PUT")
+		internal.NoMethodResponse(writer, "GET, POST, PUT")
 	}
 }
 
 func StopServer() {
 	defer cancel()
-}
-
-func NoMethodResponse(writer http.ResponseWriter, allowed string) {
-	fmt.Println("errorka")
-	writer.Header().Add("Allow", allowed)
-	writer.WriteHeader(405)
 }

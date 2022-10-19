@@ -8,10 +8,7 @@ import (
 
 type EventFunction func() func() event.Interface
 
-type ApiEvents struct {
-	evnt      event.Interface
-	eventFunc EventFunction
-}
+var events = [...]EventFunction{event1}
 
 func event1() func() event.Interface {
 	var number int
@@ -24,5 +21,5 @@ func event1() func() event.Interface {
 }
 
 func init() {
-	events = []ApiEvents{{eventFunc: event1}}
+	//events = []ApiEvents{{eventFunc: event1}}
 }
