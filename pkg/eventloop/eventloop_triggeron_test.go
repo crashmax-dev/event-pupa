@@ -80,8 +80,11 @@ func TriggerOn_Multiple(ctx context.Context, eventName string, farg func(ctx con
 	time.Sleep(time.Millisecond * 10)
 	go evLoop.Trigger(ctx, eventName, ch)
 	time.Sleep(time.Millisecond * 10)
-	<-ch
-	return <-ch
+	var result string
+	for elem := range ch {
+		result = elem
+	}
+	return result
 }
 
 func TriggerOn_Once(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
@@ -95,7 +98,11 @@ func TriggerOn_Once(ctx context.Context, eventName string, farg func(ctx context
 	go evLoop.Trigger(ctx, eventName, ch)
 	time.Sleep(time.Millisecond * 20)
 
-	return <-ch
+	var result string
+	for elem := range ch {
+		result = elem
+	}
+	return result
 }
 
 func TriggerOn_MultipleDefaultAndOnce(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
@@ -118,6 +125,10 @@ func TriggerOn_MultipleDefaultAndOnce(ctx context.Context, eventName string, far
 	time.Sleep(time.Millisecond * 20)
 	go evLoop.Trigger(ctx, eventName, ch)
 	time.Sleep(time.Millisecond * 20)
-	<-ch
-	return <-ch
+
+	var result string
+	for elem := range ch {
+		result = elem
+	}
+	return result
 }

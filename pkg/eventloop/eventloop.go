@@ -232,10 +232,15 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 
 	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
 
+	var wg sync.WaitGroup
+
 	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
 		for key, value := range e.events[eventName][priorIndex] {
+			wg.Add(1)
 
 			go func(ev event.Interface) {
+				defer wg.Done()
+
 				result := ev.RunFunction(ctx)
 				if out != nil {
 					out <- result
@@ -267,6 +272,10 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 			}
 		}
 
+	}
+	if out != nil {
+		wg.Wait()
+		close(out)
 	}
 }
 
