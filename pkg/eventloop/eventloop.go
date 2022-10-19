@@ -21,9 +21,11 @@ import (
 type eventsList map[string]map[int]map[string]event.Interface
 
 type eventLoop struct {
-	events             eventsList
-	intervalEvents     []event.Interface
-	mx                 *sync.RWMutex
+	events         eventsList
+	intervalEvents []event.Interface
+	mx             *sync.RWMutex
+	remMx          *sync.Mutex
+
 	disabled           []EventFunction
 	isSchedulerRunning bool
 	stopScheduler      chan bool
@@ -115,6 +117,7 @@ func NewEventLoop(level zapcore.Level) Interface {
 
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
+		remMx:         &sync.Mutex{},
 		events:        make(eventsList),
 		stopScheduler: make(chan bool),
 		logger:        initLogger(level),
@@ -232,10 +235,14 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 
 	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
 
-	var wg sync.WaitGroup
+	var (
+		wg          sync.WaitGroup
+		isTriggered bool
+	)
 
 	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
-		for key, value := range e.events[eventName][priorIndex] {
+		for _, value := range e.events[eventName][priorIndex] {
+			isTriggered = true
 			wg.Add(1)
 
 			go func(ev event.Interface) {
@@ -268,12 +275,12 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 			}(value)
 
 			if value.IsOnce() {
-				delete(e.events[eventName][priorIndex], key)
+				e.RemoveEvent(value.GetId())
 			}
 		}
-
 	}
-	if out != nil {
+
+	if out != nil && isTriggered {
 		wg.Wait()
 		close(out)
 	}
@@ -392,8 +399,8 @@ func (e *eventLoop) StopScheduler() {
 }
 
 func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
-	e.mx.Lock()
-	defer e.mx.Unlock()
+	e.remMx.Lock()
+	defer e.remMx.Unlock()
 
 	for eventNameKey, eventNameValue := range e.events {
 		for priorKey, priorValue := range eventNameValue {
