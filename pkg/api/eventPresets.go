@@ -6,18 +6,26 @@ import (
 	"strconv"
 )
 
-type EventFunction func() func() event.Interface
+type EventFunc func() event.Interface
 
-var events = [...]EventFunction{event1}
+var events = [...]EventFunc{event1, event2}
 
-func event1() func() event.Interface {
+func event1() event.Interface {
 	var number int
-	return func() event.Interface {
-		return event.NewEvent(func(ctx context.Context) string {
-			number++
-			return strconv.Itoa(number)
-		})
-	}
+	return event.NewEvent(func(ctx context.Context) string {
+		number++
+		return strconv.Itoa(number)
+	})
+
+}
+
+func event2() event.Interface {
+	var number int
+	return event.NewEvent(func(ctx context.Context) string {
+		number--
+		return strconv.Itoa(number)
+	})
+
 }
 
 func init() {

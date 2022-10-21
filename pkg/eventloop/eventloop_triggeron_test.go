@@ -16,7 +16,9 @@ func TestOnAndTrigger(t *testing.T) {
 	tests := []Test{{name: "Simple", f: TriggerOn_Simple, want: 1},
 		{name: "Multiple", f: TriggerOn_Multiple, want: 3},
 		{name: "Once", f: TriggerOn_Once, want: 1},
-		{name: "MultipleDefaultAndOnce", f: TriggerOn_MultipleDefaultAndOnce, want: 7}}
+		{name: "MultipleDefaultAndOnce", f: TriggerOn_MultipleDefaultAndOnce, want: 7},
+		{name: "NoEventsTrigger", f: TriggerOn_NoEventsTrigger, want: 0},
+		{name: "NoEventsTriggerWithChannel", f: TriggerOn_NoEventsTriggerWithChannel, want: 0}}
 
 	var (
 		workFunc = func(ctx context.Context) func(ctx context.Context) string {
@@ -47,6 +49,18 @@ func TestOnAndTrigger(t *testing.T) {
 	cancel()
 }
 
+func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context, name string, _ func(ctx context.Context) string) string {
+	ch := Channel[string]{Ch: make(chan string, 1)}
+	go evLoop.Trigger(ctx, name, &ch)
+	result := <-ch.Ch
+	return result
+}
+
+func TriggerOn_NoEventsTrigger(ctx context.Context, name string, _ func(ctx context.Context) string) string {
+	go evLoop.Trigger(ctx, name, nil)
+	return "0"
+}
+
 func TriggerOn_Simple(ctx context.Context, eventName string, farg func(ctx context.Context) string) string {
 	var (
 		eventDefault = event.NewEvent(farg)
@@ -55,11 +69,11 @@ func TriggerOn_Simple(ctx context.Context, eventName string, farg func(ctx conte
 	go evLoop.On(ctx, eventName, eventDefault, nil)
 	time.Sleep(time.Millisecond * 20)
 
-	ch := make(chan string, 1)
-	go evLoop.Trigger(ctx, eventName, ch)
+	ch := Channel[string]{Ch: make(chan string, 1)}
+	go evLoop.Trigger(ctx, eventName, &ch)
 	time.Sleep(time.Millisecond * 20)
 
-	result := <-ch
+	result := <-ch.Ch
 	return result
 }
 
@@ -70,7 +84,7 @@ func TriggerOn_Multiple(ctx context.Context, eventName string, farg func(ctx con
 		eventDefault2 = event.NewEvent(farg)
 	)
 
-	ch := make(chan string, 1)
+	ch := Channel[string]{Ch: make(chan string, 1)}
 	go evLoop.On(ctx, eventName, eventDefault, nil)
 	time.Sleep(time.Millisecond * 10)
 	go evLoop.Trigger(ctx, eventName, nil)
@@ -78,10 +92,10 @@ func TriggerOn_Multiple(ctx context.Context, eventName string, farg func(ctx con
 
 	go evLoop.On(ctx, eventName, eventDefault2, nil)
 	time.Sleep(time.Millisecond * 10)
-	go evLoop.Trigger(ctx, eventName, ch)
+	go evLoop.Trigger(ctx, eventName, &ch)
 	time.Sleep(time.Millisecond * 10)
 	var result string
-	for elem := range ch {
+	for elem := range ch.Ch {
 		result = elem
 	}
 	return result
@@ -91,15 +105,15 @@ func TriggerOn_Once(ctx context.Context, eventName string, farg func(ctx context
 
 	eventSingle := event.NewOnceEvent(farg)
 	go evLoop.On(ctx, eventName, eventSingle, nil)
-	ch := make(chan string, 1)
+	ch := Channel[string]{Ch: make(chan string, 1)}
 	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, eventName, ch)
+	go evLoop.Trigger(ctx, eventName, &ch)
 	time.Sleep(time.Millisecond * 10)
-	go evLoop.Trigger(ctx, eventName, ch)
+	go evLoop.Trigger(ctx, eventName, &ch)
 	time.Sleep(time.Millisecond * 20)
 
 	var result string
-	for elem := range ch {
+	for elem := range ch.Ch {
 		result = elem
 	}
 	return result
@@ -111,7 +125,7 @@ func TriggerOn_MultipleDefaultAndOnce(ctx context.Context, eventName string, far
 		eventFirst  = event.NewEvent(farg)
 		eventSecond = event.NewEvent(farg)
 		eventOnce   = event.NewOnceEvent(farg)
-		ch          = make(chan string, 1)
+		ch          = Channel[string]{Ch: make(chan string, 1)}
 	)
 
 	go evLoop.On(ctx, eventName, eventFirst, nil)
@@ -123,11 +137,11 @@ func TriggerOn_MultipleDefaultAndOnce(ctx context.Context, eventName string, far
 	time.Sleep(time.Millisecond * 20)
 	go evLoop.Trigger(ctx, eventName, nil)
 	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, eventName, ch)
+	go evLoop.Trigger(ctx, eventName, &ch)
 	time.Sleep(time.Millisecond * 20)
 
 	var result string
-	for elem := range ch {
+	for elem := range ch.Ch {
 		result = elem
 	}
 	return result

@@ -5,6 +5,7 @@ import (
 	"eventloop/pkg/eventloop/event"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -257,7 +258,7 @@ func TestRemoveEvent(t *testing.T) {
 	go evLoop.Trigger(ctx, EVENTNAME, nil)
 	time.Sleep(time.Millisecond * 10)
 
-	if number != WANT {
+	if number < WANT || number > WANT+1 {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
 	} else {
 		t.Logf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
@@ -267,11 +268,12 @@ func TestRemoveEvent(t *testing.T) {
 func TestSubevent(t *testing.T) {
 	const WANT = 10
 	var (
+		mx          sync.Mutex
 		number      int
 		numIncMutex = func(ctx context.Context) string {
-			evLoop.LockMutex()
+			mx.Lock()
 			number++
-			evLoop.UnlockMutex()
+			mx.Unlock()
 			return ""
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)

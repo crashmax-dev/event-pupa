@@ -8,7 +8,7 @@ import (
 
 type Interface interface {
 	On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID)
-	Trigger(ctx context.Context, eventName string, out chan<- string)
+	Trigger(ctx context.Context, eventName string, ch *Channel[string])
 	Toggle(eventFunc ...EventFunction)
 	ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID)
 	StartScheduler(ctx context.Context)

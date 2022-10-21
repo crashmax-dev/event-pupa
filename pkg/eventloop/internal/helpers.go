@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"runtime"
 	"sync"
 )
 
@@ -23,12 +22,3 @@ func RemoveIndex[T any](s []T, index int) []T {
 //	id := strings.Replace(t.Format("20060102150405.00000000000000000"), ".", "", -1)
 //	return id
 //}
-
-func GetOSFilePath(filePath string) string {
-	os := runtime.GOOS
-	if os == "windows" {
-		return "winfile:///" + filePath
-	} else {
-		return filePath
-	}
-}

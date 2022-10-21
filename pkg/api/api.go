@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	loggerInternal "eventloop/internal/logger"
 	"eventloop/pkg/api/internal"
 	"eventloop/pkg/eventloop"
+	"eventloop/pkg/eventloop/event"
 	"fmt"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -18,14 +20,16 @@ import (
 )
 
 type subscribeInfo struct {
-	triggers  []int
-	listeners []int
+	Listeners []int `json:"listeners"`
+	Triggers  []int `json:"triggers"`
 }
 
 var (
-	evLoop eventloop.Interface
-	ctx    context.Context
-	cancel context.CancelFunc
+	evLoop    eventloop.Interface
+	ctx       context.Context
+	cancel    context.CancelFunc
+	srvLogger *zap.SugaredLogger
+	atom      *zap.AtomicLevel
 )
 
 func StartServer(level zapcore.Level) {
@@ -35,13 +39,38 @@ func StartServer(level zapcore.Level) {
 	http.HandleFunc("/events/", eventHandler)
 	http.HandleFunc("/trigger/", triggerHandler)
 	http.HandleFunc("/subscribe/", subscribeHandler)
+	http.HandleFunc("/toggle/", toggleHandler)
+
+	atom.SetLevel(loggerInternal.NormalizeLevel(level))
 
 	servErr := http.ListenAndServe(":8090", nil)
 	if errors.Is(servErr, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
+		srvLogger.Warn("Server closed")
 	} else if servErr != nil {
-		fmt.Printf("error starting server: %s\n", servErr)
+		srvLogger.Errorf("Error starting server: %s\n", servErr)
 		os.Exit(1)
+	}
+}
+
+func toggleHandler(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != "POST" {
+		internal.NoMethodResponse(writer, "POST")
+		srvLogger.Infof("[Toggle] No such method: %s", request.Method)
+		return
+	}
+
+	b, err := io.ReadAll(request.Body)
+	if err != nil {
+		srvLogger.Errorf("Bad request: %v", err)
+	}
+
+	s := strings.Split(string(b), ",")
+	srvLogger.Infof("Toggle: %v", s)
+	for _, v := range s {
+		elem := eventloop.EventFunctionMapping[v]
+		if elem > 0 {
+			evLoop.Toggle(elem)
+		}
 	}
 }
 
@@ -51,13 +80,30 @@ func subscribeHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	var sInfo subscribeInfo
+	sInfo := subscribeInfo{}
 	if err := json.NewDecoder(request.Body).Decode(&sInfo); err != nil {
-		log.Fatal("ooopsss! an error occurred, please try again")
+		fmt.Println("ooopsss! an error occurred, please try again ", err)
 	}
 
-	evLoop.Subscribe(ctx, sInfo.triggers)
+	param := strings.TrimPrefix(request.URL.Path, "/subscribe/")
+	if len(strings.SplitAfter(param, "/")) > 1 {
+		writer.WriteHeader(404)
+		return
+	}
 
+	var (
+		triggers, listeners []event.Interface
+	)
+	for _, v := range sInfo.Triggers {
+		newEvent := events[v-1]()
+		triggers = append(triggers, newEvent)
+		evLoop.On(ctx, param, newEvent, nil)
+	}
+	for _, v := range sInfo.Listeners {
+		listeners = append(listeners, events[v-1]())
+	}
+
+	evLoop.Subscribe(ctx, triggers, listeners)
 }
 
 func triggerHandler(writer http.ResponseWriter, request *http.Request) {
@@ -74,15 +120,18 @@ func triggerHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	ch := make(chan string)
-	evLoop.Trigger(triggerCtx, param, ch)
+	ch := eventloop.Channel[string]{Ch: make(chan string, 1)}
+	go evLoop.Trigger(triggerCtx, param, &ch)
 
 	var output []string
-	for elem := range ch {
+	for elem := range ch.Ch {
 		output = append(output, elem)
 	}
-	io.WriteString(writer, strings.Join(output, ","))
-
+	_, err := io.WriteString(writer, strings.Join(output, ","))
+	if err != nil {
+		writer.WriteHeader(500)
+		srvLogger.Errorf("error while sending trigger results: %v", err)
+	}
 }
 
 func eventHandler(writer http.ResponseWriter, request *http.Request) {
@@ -98,12 +147,12 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(404)
 			return
 		}
-		if events[id-1].evnt == nil {
-			fn := events[id-1].eventFunc()
-			events[id-1].evnt = fn()
-		}
+		//if events[id-1].evnt == nil {
+		//	fn := events[id-1].eventFunc()
+		//	events[id-1].evnt = fn()
+		//}
 		eventName := params[1]
-		evLoop.On(ctx, eventName, events[id-1]()(), nil)
+		evLoop.On(ctx, eventName, events[id-1](), nil)
 
 		fmt.Println("all good")
 	default:
@@ -113,4 +162,8 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 
 func StopServer() {
 	defer cancel()
+}
+
+func init() {
+	srvLogger, atom = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
 }

@@ -63,7 +63,7 @@ func (ev *event) GetSubscriber() subscriber2.Interface {
 
 func (ev *event) GetSchedule() (schedule2.Interface, error) {
 	if ev.schedule == nil {
-		return nil, errors.New("It is not an interval event")
+		return nil, errors.New("it is not an interval event")
 	}
 	return ev.schedule, nil
 }

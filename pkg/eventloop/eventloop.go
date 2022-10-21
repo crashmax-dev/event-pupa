@@ -2,23 +2,24 @@ package eventloop
 
 import (
 	"context"
+	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
-	"fmt"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/slices"
-	"log"
-	"net/url"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
 
 // 1. String - EventName, 2. Int - приоритет, 3. String - Event Id
 type eventsList map[string]map[int]map[string]event.Interface
+
+type Channel[T any] struct {
+	Ch       chan T
+	isClosed bool
+}
 
 type eventLoop struct {
 	events         eventsList
@@ -33,79 +34,6 @@ type eventLoop struct {
 	logger *zap.SugaredLogger
 }
 
-func syncLogger(logger *zap.Logger) {
-	err := logger.Sync()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func initLogger(level zapcore.Level) *zap.SugaredLogger {
-
-	const LOGPATH = "logs"
-
-	var (
-		levelSelected zapcore.Level
-	)
-
-	if level == zap.DebugLevel {
-		levelSelected = zapcore.DebugLevel
-	} else {
-		levelSelected = zapcore.ErrorLevel
-	}
-	atom := zap.NewAtomicLevelAt(levelSelected)
-
-	err := os.MkdirAll(LOGPATH, os.ModePerm)
-	if err != nil {
-		log.Println(err)
-	}
-
-	filename := internal.GetOSFilePath(filepath.Join("logs",
-		fmt.Sprintf("log%s.log",
-			//time.Now().Format("02-01-2006T150405-0700"))))
-			time.Now().Format("02012006"))))
-
-	config := zap.Config{
-		Level:    atom,
-		Encoding: "json",
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:     "time",
-			MessageKey:  "message",
-			LevelKey:    "level",
-			NameKey:     "namekey",
-			EncodeLevel: zapcore.LowercaseLevelEncoder,
-			EncodeTime:  zapcore.ISO8601TimeEncoder},
-		OutputPaths:      []string{filename},
-		ErrorOutputPaths: []string{filename},
-	}
-	newWinFileSink := func(u *url.URL) (zap.Sink, error) {
-		// Remove leading slash left by url.Parse()
-		return os.OpenFile(u.Path[1:], os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-	}
-
-	//rawJSON := []byte(`{
-	//  "level": "debug",
-	//  "encoding": "json",
-	//  "encoderConfig": {
-	//    "messageKey": "message",
-	//    "levelKey": "level",
-	//    "levelEncoder": "lowercase"
-	//  }
-	//}`)
-
-	err = zap.RegisterSink("winfile", newWinFileSink)
-	if err != nil {
-		panic(err)
-	}
-	logger := zap.Must(config.Build())
-
-	defer syncLogger(logger)
-
-	logger.Info("logger construction succeeded")
-
-	return logger.Sugar()
-}
-
 func NewEventLoop(level zapcore.Level) Interface {
 	//var evLoop eventloop = &eventLoop{
 	//	events:         make(map[string][]*event, 0),
@@ -114,19 +42,22 @@ func NewEventLoop(level zapcore.Level) Interface {
 	//	intervalEvents: make([]*eventSchedule, 0),
 	//	stopScheduler:  make(chan bool),
 	//}
+	elLogger, _ := logger.Initialize(level, "logs", "")
 
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
 		remMx:         &sync.Mutex{},
 		events:        make(eventsList),
 		stopScheduler: make(chan bool),
-		logger:        initLogger(level),
+		logger:        elLogger,
 	}
 }
 
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) {
 	if isContextDone(ctx) {
-		e.logger.Warnw("Can't subscribe, context is done", "triggers", triggers, "listeners", listeners)
+		e.logger.Warnw("Can't subscribe, context is done",
+			"triggers", triggers,
+			"listeners", listeners)
 		return
 	}
 	for _, v := range listeners {
@@ -152,7 +83,7 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 					channels := trigger.GetChannels()
 					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetId())
 					for _, ch := range channels {
-						e.logger.Debugw("Waiting for channel", "ch", ch, "event", v.GetId())
+						e.logger.Debugw("Waiting for channel", "Ch", ch, "event", v.GetId())
 						<-ch
 					}
 					e.logger.Infow("Subscriber event fired", "event", v.GetId())
@@ -217,7 +148,10 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	}
 }
 
-func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- string) {
+// Trigger must be executed as goroutine, or it will be blocked!!!
+func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[string]) {
+
+	defer closechannel(ch)
 
 	if isContextDone(ctx) {
 		e.logger.Warnw("Can't trigger event, context is done",
@@ -235,22 +169,28 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 
 	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
 
+	//if len(e.events[eventName]) == 0 && out != nil {
+	//	out <- "NO_EVENTS"
+	//	close(out)
+	//	return
+	//}
+
 	var (
-		wg          sync.WaitGroup
-		isTriggered bool
+		wg sync.WaitGroup
+		//isTriggered bool
 	)
 
 	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
 		for _, value := range e.events[eventName][priorIndex] {
-			isTriggered = true
+			//isTriggered = true
 			wg.Add(1)
 
 			go func(ev event.Interface) {
 				defer wg.Done()
 
 				result := ev.RunFunction(ctx)
-				if out != nil {
-					out <- result
+				if ch != nil {
+					ch.Ch <- result
 				}
 
 				listener := ev.GetSubscriber()
@@ -260,17 +200,15 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 				if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
 					evTrigger := ev.GetSubscriber()
 					evTrigger.LockMutex()
-					//evTrigger.mx.Lock()
 					e.logger.Debugw("Sending messages...",
 						"listener", listenerChannels,
 						"trigger", ev.GetId())
-					for _, ch := range listenerChannels {
+					for _, chnl := range listenerChannels {
 						e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetId())
-						ch <- 1
+						chnl <- 1
 					}
 					e.logger.Infow("All messages send", "trigger", ev.GetId())
 					evTrigger.UnlockMutex()
-					//ev.subscriber.mx.Unlock()
 				}
 			}(value)
 
@@ -279,20 +217,23 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, out chan<- st
 			}
 		}
 	}
+	wg.Wait()
+}
 
-	if out != nil && isTriggered {
-		wg.Wait()
-		close(out)
+func closechannel(ch *Channel[string]) {
+	if ch != nil && !ch.isClosed {
+		close(ch.Ch)
+		ch.isClosed = true
 	}
 }
 
 func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	for _, v := range eventFuncs {
 		if x := slices.Index(e.disabled, v); x != -1 {
-			e.logger.Infof("Enabling functions %+v", eventFuncs)
+			e.logger.Infof("Enabling function %v", v)
 			e.disabled = internal.RemoveIndex(e.disabled, x)
 		} else {
-			e.logger.Infof("Disabling functions %#v", eventFuncs)
+			e.logger.Infof("Disabling function %v", v)
 			e.disabled = append(e.disabled, v)
 		}
 	}
