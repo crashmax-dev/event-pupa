@@ -2,9 +2,11 @@ package eventloop
 
 import (
 	"context"
+	"errors"
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
+	"fmt"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -377,6 +379,18 @@ func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+func (e *eventLoop) GetEventsByName(eventName string) (result []uuid.UUID, err error) {
+	if e.events[eventName] == nil {
+		return nil, errors.New(fmt.Sprintf("no such event name: %v", eventName))
+	}
+	for _, priors := range e.events[eventName] {
+		for _, evnt := range priors {
+			result = append(result, evnt.GetId())
+		}
+	}
+	return result, nil
 }
 
 func (e *eventLoop) LockMutex() {

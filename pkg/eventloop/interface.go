@@ -15,6 +15,7 @@ type Interface interface {
 	StopScheduler()
 	RemoveEvent(id uuid.UUID) bool
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface)
+	GetEventsByName(eventName string) (result []uuid.UUID, err error)
 	LockMutex()
 	UnlockMutex()
 }

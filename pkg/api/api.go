@@ -9,6 +9,7 @@ import (
 	"eventloop/pkg/eventloop"
 	"eventloop/pkg/eventloop/event"
 	"fmt"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io"
@@ -40,6 +41,7 @@ func StartServer(level zapcore.Level) {
 	http.HandleFunc("/trigger/", triggerHandler)
 	http.HandleFunc("/subscribe/", subscribeHandler)
 	http.HandleFunc("/toggle/", toggleHandler)
+	http.HandleFunc("/scheduler/", schedulerHandler)
 
 	atom.SetLevel(loggerInternal.NormalizeLevel(level))
 
@@ -50,6 +52,51 @@ func StartServer(level zapcore.Level) {
 		srvLogger.Errorf("Error starting server: %s\n", servErr)
 		os.Exit(1)
 	}
+}
+
+func serverlogErr(writer http.ResponseWriter, format string, a ...any) {
+	errs := fmt.Sprintf(format, a...)
+	srvLogger.Error(errs)
+	_, err := io.WriteString(writer, errs)
+	if err != nil {
+		srvLogger.Errorf("error while responsing: %v", err)
+	}
+}
+
+func schedulerHandler(writer http.ResponseWriter, request *http.Request) {
+
+	if request.Method != "POST" {
+		internal.NoMethodResponse(writer, "POST")
+		srvLogger.Infof("[Toggle] No such method: %s", request.Method)
+		return
+	}
+
+	param := strings.TrimPrefix(request.URL.Path, "/scheduler/")
+
+	//Получаем ID ивента из URL, и создаём
+	if id, err := strconv.Atoi(param); err != nil {
+		serverlogErr(writer, "no such event: %v", err)
+	} else {
+		if newEvent, errС := CreateEvent(id, INTERVALED); errС != nil {
+			serverlogErr(writer, "error while creating event: %v", errС)
+		} else {
+			evLoop.ScheduleEvent(ctx, newEvent, nil)
+		}
+	}
+
+	if b, err := io.ReadAll(request.Body); err != nil {
+		serverlogErr(writer, "bad request: %v", err)
+	} else {
+		switch sm := strings.ToLower(string(b)); sm {
+		case "start":
+			evLoop.StartScheduler(ctx)
+		case "stop":
+			evLoop.StopScheduler()
+		default:
+			srvLogger.Errorf("No known method: %v", sm)
+		}
+	}
+
 }
 
 func toggleHandler(writer http.ResponseWriter, request *http.Request) {
@@ -82,7 +129,7 @@ func subscribeHandler(writer http.ResponseWriter, request *http.Request) {
 
 	sInfo := subscribeInfo{}
 	if err := json.NewDecoder(request.Body).Decode(&sInfo); err != nil {
-		fmt.Println("ooopsss! an error occurred, please try again ", err)
+		srvLogger.Errorf("JSON decode error: %v", err)
 	}
 
 	param := strings.TrimPrefix(request.URL.Path, "/subscribe/")
@@ -95,12 +142,22 @@ func subscribeHandler(writer http.ResponseWriter, request *http.Request) {
 		triggers, listeners []event.Interface
 	)
 	for _, v := range sInfo.Triggers {
-		newEvent := events[v-1]()
-		triggers = append(triggers, newEvent)
-		evLoop.On(ctx, param, newEvent, nil)
+		newEvent, err := CreateEvent(v, REGULAR)
+		if err != nil {
+			srvLogger.Errorf("Error while creating trigger event: %v", err)
+		} else {
+			triggers = append(triggers, newEvent)
+			evLoop.On(ctx, param, newEvent, nil)
+		}
+
 	}
 	for _, v := range sInfo.Listeners {
-		listeners = append(listeners, events[v-1]())
+		newEvent, err := CreateEvent(v, REGULAR)
+		if err != nil {
+			srvLogger.Errorf("Error while creating listener event: %v", err)
+		} else {
+			listeners = append(listeners, newEvent)
+		}
 	}
 
 	evLoop.Subscribe(ctx, triggers, listeners)
@@ -135,13 +192,24 @@ func triggerHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func eventHandler(writer http.ResponseWriter, request *http.Request) {
+	params := strings.Split(strings.TrimPrefix(request.URL.Path, "/events/"), "/")
+
 	switch request.Method {
 	case "GET":
-		//io.WriteString(writer, strconv.Itoa(number))
-		fmt.Println("get good")
+		srvLogger.Infof("GET request")
+		if evnts, err := evLoop.GetEventsByName(params[0]); err == nil {
+			if codedMessage, errJson := json.Marshal(evnts); err == nil {
+				_, errW := writer.Write(codedMessage)
+				if errW != nil {
+					srvLogger.Errorf("error responding: %v", errW)
+				}
+			} else {
+				serverlogErr(writer, errJson.Error(), nil)
+			}
+		} else {
+			serverlogErr(writer, err.Error(), nil)
+		}
 	case "POST", "PUT":
-		params := strings.Split(strings.TrimPrefix(request.URL.Path, "/events/"), "/")
-
 		id, err := strconv.Atoi(params[0])
 		if err != nil || id > len(events) || len(params) != 2 {
 			writer.WriteHeader(404)
@@ -152,11 +220,41 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 		//	events[id-1].evnt = fn()
 		//}
 		eventName := params[1]
-		evLoop.On(ctx, eventName, events[id-1](), nil)
+		newEvent, err := CreateEvent(id, REGULAR)
+		if err != nil {
+			srvLogger.Errorf("Error while creating event: %v", err)
+			return
+		}
+		evLoop.On(ctx, eventName, newEvent, nil)
 
-		fmt.Println("all good")
+		srvLogger.Infof("Event type %v created for %v", id, eventName)
+		_, err = io.WriteString(writer, "OK")
+		if err != nil {
+			srvLogger.Errorf("error responding: %v", err)
+		}
+
+	case "PATCH":
+		if b, err := io.ReadAll(request.Body); err == nil {
+			var sl []uuid.UUID
+			errJson := json.Unmarshal(b, &sl)
+			if errJson != nil {
+				serverlogErr(writer, "wrong json: %v", errJson)
+				return
+			}
+			srvLogger.Infof("Removing events %v", sl)
+			for _, v := range sl {
+				evLoop.RemoveEvent(v)
+			}
+			_, errRespond := io.WriteString(writer, "OK")
+			if errRespond != nil {
+				srvLogger.Errorf("error responding: %v", errRespond)
+			}
+
+		} else {
+			serverlogErr(writer, "Error reading request: %v", err.Error())
+		}
 	default:
-		internal.NoMethodResponse(writer, "GET, POST, PUT")
+		internal.NoMethodResponse(writer, "GET, POST, PUT, PATCH")
 	}
 }
 

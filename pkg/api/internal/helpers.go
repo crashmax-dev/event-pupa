@@ -6,7 +6,7 @@ import (
 )
 
 func NoMethodResponse(writer http.ResponseWriter, allowed string) {
-	fmt.Println("errorka")
+	fmt.Println("server respond 405")
 	writer.Header().Add("Allow", allowed)
 	writer.WriteHeader(405)
 }
