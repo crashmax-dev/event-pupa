@@ -3,8 +3,7 @@ package logger
 import "runtime"
 
 func getOSFilePath(filePath string) string {
-	os := runtime.GOOS
-	if os == "windows" {
+	if runtime.GOOS == "windows" {
 		return "winfile:///" + filePath
 	} else {
 		return filePath
