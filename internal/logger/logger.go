@@ -56,16 +56,6 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 		return os.OpenFile(u.Path[1:], os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	}
 
-	//rawJSON := []byte(`{
-	//  "level": "debug",
-	//  "encoding": "json",
-	//  "encoderConfig": {
-	//    "messageKey": "message",
-	//    "levelKey": "level",
-	//    "levelEncoder": "lowercase"
-	//  }
-	//}`)
-
 	if isSinkRegistered == false {
 		err = zap.RegisterSink("winfile", newWinFileSink)
 		if err != nil {

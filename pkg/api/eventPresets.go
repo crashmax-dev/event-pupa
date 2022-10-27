@@ -54,5 +54,5 @@ func event2() func(ctx context.Context) string {
 }
 
 func init() {
-	//events = []ApiEvents{{eventFunc: event1}}
+
 }

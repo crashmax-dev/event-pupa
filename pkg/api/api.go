@@ -215,10 +215,7 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(404)
 			return
 		}
-		//if events[id-1].evnt == nil {
-		//	fn := events[id-1].eventFunc()
-		//	events[id-1].evnt = fn()
-		//}
+
 		eventName := params[1]
 		newEvent, err := CreateEvent(id, REGULAR)
 		if err != nil {

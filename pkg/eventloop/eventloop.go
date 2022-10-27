@@ -37,18 +37,10 @@ type eventLoop struct {
 }
 
 func NewEventLoop(level zapcore.Level) Interface {
-	//var evLoop eventloop = &eventLoop{
-	//	events:         make(map[string][]*event, 0),
-	//	mx:             &sync.RWMutex{},
-	//	disabled:       []EventFunc{},
-	//	intervalEvents: make([]*eventSchedule, 0),
-	//	stopScheduler:  make(chan bool),
-	//}
 	elLogger, _ := logger.Initialize(level, "logs", "")
 
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
-		remMx:         &sync.Mutex{},
 		events:        make(eventsList),
 		stopScheduler: make(chan bool),
 		logger:        elLogger,
@@ -80,7 +72,6 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 					return
 				default:
 					trigger.LockMutex()
-					//v.mx.Lock()
 					e.logger.Debugw("Waiting for triggers...", "event", v.GetId())
 					channels := trigger.GetChannels()
 					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetId())
@@ -342,9 +333,6 @@ func (e *eventLoop) StopScheduler() {
 }
 
 func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
-	e.remMx.Lock()
-	defer e.remMx.Unlock()
-
 	for eventNameKey, eventNameValue := range e.events {
 		for priorKey, priorValue := range eventNameValue {
 			for eventIdKey, eventIdValue := range priorValue {
