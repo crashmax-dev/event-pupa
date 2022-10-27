@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"go.uber.org/zap/zapcore"
 	"net/http"
 	"testing"
@@ -8,7 +9,9 @@ import (
 )
 
 func Test_Test(t *testing.T) {
-	StartServer(zapcore.DebugLevel)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	StartServer(ctx, zapcore.DebugLevel)
 
 	time.Sleep(time.Second)
 	resp, err := http.Post("https://localhost:8090/events/2", "", nil)

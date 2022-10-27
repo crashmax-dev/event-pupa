@@ -26,15 +26,15 @@ type subscribeInfo struct {
 }
 
 var (
-	evLoop    eventloop.Interface
-	ctx       context.Context
-	cancel    context.CancelFunc
-	srvLogger *zap.SugaredLogger
-	atom      *zap.AtomicLevel
+	evLoop     eventloop.Interface
+	servCtx    context.Context
+	servCancel context.CancelFunc
+	srvLogger  *zap.SugaredLogger
+	atom       *zap.AtomicLevel
 )
 
-func StartServer(level zapcore.Level) {
-	ctx, cancel = context.WithCancel(context.Background())
+func StartServer(outerContext context.Context, level zapcore.Level) {
+	servCtx, servCancel = context.WithCancel(outerContext)
 	evLoop = eventloop.NewEventLoop(level)
 
 	http.HandleFunc("/events/", eventHandler)
@@ -80,7 +80,7 @@ func schedulerHandler(writer http.ResponseWriter, request *http.Request) {
 		if newEvent, errС := CreateEvent(id, INTERVALED); errС != nil {
 			serverlogErr(writer, "error while creating event: %v", errС)
 		} else {
-			evLoop.ScheduleEvent(ctx, newEvent, nil)
+			evLoop.ScheduleEvent(servCtx, newEvent, nil)
 		}
 	}
 
@@ -89,7 +89,7 @@ func schedulerHandler(writer http.ResponseWriter, request *http.Request) {
 	} else {
 		switch sm := strings.ToLower(string(b)); sm {
 		case "start":
-			evLoop.StartScheduler(ctx)
+			evLoop.StartScheduler(servCtx)
 		case "stop":
 			evLoop.StopScheduler()
 		default:
@@ -147,7 +147,7 @@ func subscribeHandler(writer http.ResponseWriter, request *http.Request) {
 			srvLogger.Errorf("Error while creating trigger event: %v", err)
 		} else {
 			triggers = append(triggers, newEvent)
-			evLoop.On(ctx, param, newEvent, nil)
+			evLoop.On(servCtx, param, newEvent, nil)
 		}
 
 	}
@@ -160,11 +160,11 @@ func subscribeHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	evLoop.Subscribe(ctx, triggers, listeners)
+	evLoop.Subscribe(servCtx, triggers, listeners)
 }
 
 func triggerHandler(writer http.ResponseWriter, request *http.Request) {
-	triggerCtx, triggerCancel := context.WithTimeout(ctx, time.Second*5)
+	triggerCtx, triggerCancel := context.WithTimeout(servCtx, time.Second*5)
 	defer triggerCancel()
 	if request.Method != "POST" {
 		internal.NoMethodResponse(writer, "POST")
@@ -222,7 +222,7 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 			srvLogger.Errorf("Error while creating event: %v", err)
 			return
 		}
-		evLoop.On(ctx, eventName, newEvent, nil)
+		evLoop.On(servCtx, eventName, newEvent, nil)
 
 		srvLogger.Infof("Event type %v created for %v", id, eventName)
 		_, err = io.WriteString(writer, "OK")
@@ -256,7 +256,7 @@ func eventHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func StopServer() {
-	defer cancel()
+	defer servCancel()
 }
 
 func init() {
