@@ -41,6 +41,7 @@ func NewEventLoop(level zapcore.Level) Interface {
 
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
+		remMx:         &sync.Mutex{},
 		events:        make(eventsList),
 		stopScheduler: make(chan bool),
 		logger:        elLogger,
@@ -162,20 +163,12 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[s
 
 	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
 
-	//if len(e.events[eventName]) == 0 && out != nil {
-	//	out <- "NO_EVENTS"
-	//	close(out)
-	//	return
-	//}
-
 	var (
 		wg sync.WaitGroup
-		//isTriggered bool
 	)
 
 	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
 		for _, value := range e.events[eventName][priorIndex] {
-			//isTriggered = true
 			wg.Add(1)
 
 			go func(ev event.Interface) {
@@ -333,6 +326,9 @@ func (e *eventLoop) StopScheduler() {
 }
 
 func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
+	e.remMx.Lock()
+	defer e.remMx.Unlock()
+
 	for eventNameKey, eventNameValue := range e.events {
 		for priorKey, priorValue := range eventNameValue {
 			for eventIdKey, eventIdValue := range priorValue {
