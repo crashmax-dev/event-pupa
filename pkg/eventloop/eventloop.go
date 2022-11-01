@@ -128,12 +128,6 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	}
 
 	e.events[eventName][newEvent.GetPriority()][newEvent.GetId().String()] = newEvent
-	//append(e.events[eventName], newEvent)
-	//if newEvent.GetPriority() > 0 {
-	//	sort.Slice(e.events[eventName], func(i, j int) bool {
-	//		return e.events[eventName][i].GetPriority() < e.events[eventName][j].GetPriority()
-	//	})
-	//}
 
 	e.logger.Debugw("Event added", "eventname", eventName, "eventlist", e.events[eventName])
 
