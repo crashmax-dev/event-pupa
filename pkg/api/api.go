@@ -18,7 +18,11 @@ var (
 	srvLogger *zap.SugaredLogger
 )
 
-func StartServer(level zapcore.Level) {
+func StartServer(level zapcore.Level, quit chan<- struct{}) {
+
+	quit = make(chan struct{})
+	defer close(quit)
+
 	handlersMap := map[string]handlers.HandlerType{"/events/": handlers.EVENT,
 		"/trigger/":   handlers.TRIGGER,
 		"/subscribe/": handlers.SUBSCRIBE,
@@ -27,6 +31,7 @@ func StartServer(level zapcore.Level) {
 
 	var atom *zap.AtomicLevel
 	srvLogger, atom = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
+	srvLogger.Infof("Server starting...")
 	evLoop := eventloop.NewEventLoop(level)
 
 	mux := http.NewServeMux()
