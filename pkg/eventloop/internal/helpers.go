@@ -15,10 +15,3 @@ func RemoveIndex[T any](s []T, index int) []T {
 		return nil
 	}
 }
-
-//func GenerateIdFromNow() string {
-//	t := time.Now()
-//	//t = t.Add(time.Millisecond)
-//	id := strings.Replace(t.Format("20060102150405.00000000000000000"), ".", "", -1)
-//	return id
-//}

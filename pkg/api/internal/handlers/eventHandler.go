@@ -23,7 +23,7 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	switch request.Method {
 	case "GET":
-		eh.baseHandler.logger.Infof("GET request")
+		eh.baseHandler.logger.Debugf("GET request")
 		if evnts, err := eh.baseHandler.evLoop.GetEventsByName(params[0]); err == nil {
 			if codedMessage, errJson := json.Marshal(evnts); err == nil {
 				_, errW := writer.Write(codedMessage)

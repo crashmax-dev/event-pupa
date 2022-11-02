@@ -25,7 +25,6 @@ func StartServer(level zapcore.Level) {
 		"/toggle/":    handlers.TOGGLE,
 		"/scheduler/": handlers.SCHEDULER}
 
-	//servCtx, servCancel := context.WithCancel(outerContext)
 	var atom *zap.AtomicLevel
 	srvLogger, atom = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
 	evLoop := eventloop.NewEventLoop(level)
@@ -45,7 +44,6 @@ func StartServer(level zapcore.Level) {
 	atom.SetLevel(loggerInternal.NormalizeLevel(level))
 
 	servErr := serv.ListenAndServe()
-	//servErr := http.ListenAndServe(":8090", nil)
 	if errors.Is(servErr, http.ErrServerClosed) {
 		srvLogger.Warn("Server closed")
 	} else if servErr != nil {

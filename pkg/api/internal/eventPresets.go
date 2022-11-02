@@ -51,7 +51,3 @@ func event2() func(ctx context.Context) string {
 	}
 	return fn
 }
-
-func init() {
-
-}
