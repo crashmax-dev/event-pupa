@@ -224,7 +224,6 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context, logger *zap.SugaredLogger) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
-	//fmt.Println("Bobs")
 	select {
 	case <-ctx.Done():
 		if logger != nil {

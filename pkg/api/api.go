@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	loggerInternal "eventloop/internal/logger"
-	"eventloop/pkg/api/internal"
+	"eventloop/pkg/api/internal/handlers"
 	"eventloop/pkg/eventloop"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"net/http"
 	"os"
@@ -13,48 +14,37 @@ import (
 )
 
 var (
-	servCancel context.CancelFunc
+	serv      http.Server
+	srvLogger *zap.SugaredLogger
 )
 
-func StartServer(outerContext context.Context, level zapcore.Level) {
+func StartServer(level zapcore.Level) {
+	handlersMap := map[string]handlers.HandlerType{"/events/": handlers.EVENT,
+		"/trigger/":   handlers.TRIGGER,
+		"/subscribe/": handlers.SUBSCRIBE,
+		"/toggle/":    handlers.TOGGLE,
+		"/scheduler/": handlers.SCHEDULER}
+
 	//servCtx, servCancel := context.WithCancel(outerContext)
-	srvLogger, atom := loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
+	var atom *zap.AtomicLevel
+	srvLogger, atom = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
 	evLoop := eventloop.NewEventLoop(level)
 
-	eh := new(internal.EventHandler)
-	eh.Base = internal.NewBaseHandler(srvLogger, evLoop)
-	th := new(internal.TriggerHandler)
-	th.Base = internal.NewBaseHandler(srvLogger, evLoop)
-	sh := new(internal.SubscribeHandler)
-	sh.Base = internal.NewBaseHandler(srvLogger, evLoop)
-	tgh := new(internal.ToggleHandler)
-	tgh.Base = internal.NewBaseHandler(srvLogger, evLoop)
-	sch := new(internal.SchedulerHandler)
-	sch.Base = internal.NewBaseHandler(srvLogger, evLoop)
-
 	mux := http.NewServeMux()
-	mux.Handle("/events/", eh)
-	mux.Handle("/trigger/", th)
-	mux.Handle("/subscribe/", sh)
-	mux.Handle("/toggle/", tgh)
-	mux.Handle("/scheduler/", sch)
+	for k, v := range handlersMap {
+		mux.Handle(k, handlers.NewHandler(v, srvLogger, evLoop))
+	}
 
-	s := &http.Server{
+	serv = http.Server{
 		Addr:         ":8090",
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	http.Handle("/events/", eh)
-	http.Handle("/trigger/", new(internal.TriggerHandler))
-	http.Handle("/subscribe/", new(internal.SubscribeHandler))
-	http.Handle("/toggle/", new(internal.ToggleHandler))
-	http.Handle("/scheduler/", new(internal.SchedulerHandler))
-
 	atom.SetLevel(loggerInternal.NormalizeLevel(level))
 
-	servErr := s.ListenAndServe()
+	servErr := serv.ListenAndServe()
 	//servErr := http.ListenAndServe(":8090", nil)
 	if errors.Is(servErr, http.ErrServerClosed) {
 		srvLogger.Warn("Server closed")
@@ -64,6 +54,10 @@ func StartServer(outerContext context.Context, level zapcore.Level) {
 	}
 }
 
-func StopServer() {
-	defer servCancel()
+func StopServer(ctx context.Context) {
+	if err := serv.Shutdown(ctx); err != nil {
+		srvLogger.Errorf("Server shutdown error: %v", err)
+	} else {
+		srvLogger.Infof("Server stopped.")
+	}
 }
