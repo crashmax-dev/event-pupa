@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -18,10 +17,13 @@ var (
 	srvLogger *zap.SugaredLogger
 )
 
-func StartServer(level zapcore.Level, quit chan<- struct{}) {
+func StartServer(level zapcore.Level, quit *chan struct{}) {
 
-	quit = make(chan struct{})
-	defer close(quit)
+	if quit != nil {
+		newChan := make(chan struct{})
+		*quit = newChan
+		defer close(*quit)
+	}
 
 	handlersMap := map[string]handlers.HandlerType{"/events/": handlers.EVENT,
 		"/trigger/":   handlers.TRIGGER,
@@ -53,7 +55,6 @@ func StartServer(level zapcore.Level, quit chan<- struct{}) {
 		srvLogger.Warn("Server closed")
 	} else if servErr != nil {
 		srvLogger.Errorf("Error starting server: %s\n", servErr)
-		os.Exit(1)
 	}
 }
 
