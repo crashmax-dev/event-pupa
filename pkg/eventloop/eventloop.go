@@ -27,7 +27,6 @@ type eventLoop struct {
 	events         eventsList
 	intervalEvents []event.Interface
 	mx             *sync.RWMutex
-	remMx          *sync.Mutex
 
 	disabled           []EventFunction
 	isSchedulerRunning bool
@@ -41,7 +40,6 @@ func NewEventLoop(level zapcore.Level) Interface {
 
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
-		remMx:         &sync.Mutex{},
 		events:        make(eventsList),
 		stopScheduler: make(chan bool),
 		logger:        elLogger,
@@ -162,7 +160,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[s
 	)
 
 	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
-		for _, value := range e.events[eventName][priorIndex] {
+		for _, loopevent := range e.events[eventName][priorIndex] {
 			wg.Add(1)
 
 			go func(ev event.Interface) {
@@ -190,10 +188,12 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[s
 					e.logger.Infow("All messages send", "trigger", ev.GetId())
 					evTrigger.UnlockMutex()
 				}
-			}(value)
+			}(loopevent)
 
-			if value.IsOnce() {
-				e.RemoveEvent(value.GetId())
+			if loopevent.IsOnce() {
+				loopevent.GetOnce().Do(func() {
+					e.RemoveEvent(loopevent.GetId())
+				})
 			}
 		}
 	}
@@ -319,8 +319,6 @@ func (e *eventLoop) StopScheduler() {
 }
 
 func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
-	e.remMx.Lock()
-	defer e.remMx.Unlock()
 
 	for eventNameKey, eventNameValue := range e.events {
 		for priorKey, priorValue := range eventNameValue {

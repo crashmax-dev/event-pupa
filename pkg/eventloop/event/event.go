@@ -14,8 +14,11 @@ type event struct {
 	id       uuid.UUID
 	priority int
 	fun      func(ctx context.Context) string
-	isOnce   bool
-	mx       sync.Mutex
+
+	isOnce bool
+	sync.Once
+
+	mx sync.Mutex
 
 	subscriber subscriber.Interface
 	schedule   schedule.Interface
@@ -69,4 +72,8 @@ func (ev *event) GetSchedule() (schedule.Interface, error) {
 
 func (ev *event) IsOnce() bool {
 	return ev.isOnce
+}
+
+func (ev *event) GetOnce() *sync.Once {
+	return &ev.Once
 }

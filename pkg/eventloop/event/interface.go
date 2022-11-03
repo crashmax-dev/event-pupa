@@ -5,6 +5,7 @@ import (
 	"eventloop/pkg/eventloop/event/schedule"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"github.com/google/uuid"
+	"sync"
 )
 
 type Interface interface {
@@ -15,4 +16,5 @@ type Interface interface {
 	GetSubscriber() subscriber.Interface
 	GetSchedule() (schedule.Interface, error)
 	IsOnce() bool
+	GetOnce() *sync.Once
 }
