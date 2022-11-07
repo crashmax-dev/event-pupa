@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const INTERVALED = "@INTERVALED"
+
 // 1. String - EventName, 2. Int - приоритет, 3. String - Event Id
 type eventsList map[string]map[int]map[string]event.Interface
 
@@ -24,9 +26,8 @@ type Channel[T any] struct {
 }
 
 type eventLoop struct {
-	events         eventsList
-	intervalEvents []event.Interface
-	mx             *sync.RWMutex
+	events eventsList
+	mx     *sync.RWMutex
 
 	disabled           []EventFunction
 	isSchedulerRunning bool
@@ -96,6 +97,18 @@ func isContextDone(ctx context.Context) bool {
 	}
 }
 
+func (e *eventLoop) addEvent(eventName string, newEvent event.Interface) {
+	if e.events[eventName] == nil {
+		e.events[eventName] = make(map[int]map[string]event.Interface)
+	}
+
+	if e.events[eventName][newEvent.GetPriority()] == nil {
+		e.events[eventName][newEvent.GetPriority()] = make(map[string]event.Interface)
+	}
+
+	e.events[eventName][newEvent.GetPriority()][newEvent.GetId().String()] = newEvent
+}
+
 func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) {
 	if isContextDone(ctx) {
 		e.logger.Warnw("Can't add listener to event, context is done",
@@ -114,18 +127,16 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 			"eventname", eventName)
 		return
 	}
+
+	if eventName == INTERVALED {
+		e.logger.Warnf("Event name %v is reserved", INTERVALED)
+		return
+	}
+
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	if e.events[eventName] == nil {
-		e.events[eventName] = make(map[int]map[string]event.Interface)
-	}
-
-	if e.events[eventName][newEvent.GetPriority()] == nil {
-		e.events[eventName][newEvent.GetPriority()] = make(map[string]event.Interface)
-	}
-
-	e.events[eventName][newEvent.GetPriority()][newEvent.GetId().String()] = newEvent
+	e.addEvent(eventName, newEvent)
 
 	e.logger.Debugw("Event added", "eventname", eventName, "eventlist", e.events[eventName])
 
@@ -147,6 +158,11 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[s
 	if slices.Contains(e.disabled, TRIGGER) {
 		e.logger.Warnw("Can't trigger event, trigger is disabled",
 			"eventname", eventName)
+		return
+	}
+
+	if eventName == INTERVALED {
+		e.logger.Warnf("Event name %v is reserved", INTERVALED)
 		return
 	}
 
@@ -276,7 +292,7 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 		return
 	}
 
-	e.intervalEvents = append(e.intervalEvents, newEvent)
+	e.addEvent(INTERVALED, newEvent)
 
 	if e.isSchedulerRunning {
 		go e.runScheduledEvent(ctx, newEvent)
@@ -297,7 +313,7 @@ func (e *eventLoop) StartScheduler(ctx context.Context) {
 		return
 	}
 
-	for _, evts := range e.intervalEvents {
+	for _, evts := range e.events[INTERVALED][0] {
 		curEvts := evts
 		go e.runScheduledEvent(ctx, curEvts)
 	}
@@ -310,7 +326,7 @@ func (e *eventLoop) StopScheduler() {
 	e.logger.Infow("Scheduler stopping...")
 	e.mx.Lock()
 	defer e.mx.Unlock()
-	if len(e.intervalEvents) > 0 && e.isSchedulerRunning {
+	if len(e.events[INTERVALED][0]) > 0 && e.isSchedulerRunning {
 		e.logger.Infow("Send signal to stop")
 		e.stopScheduler <- true
 	}
@@ -337,20 +353,6 @@ func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
 					return true
 				}
 			}
-		}
-	}
-
-	for i := len(e.intervalEvents) - 1; i >= 0; i-- {
-		if e.intervalEvents[i].GetId() == id {
-			e.logger.Infow("Removing scheduled event", "event", e.intervalEvents[i].GetId())
-			schedEvent, _ := e.intervalEvents[i].GetSchedule()
-			if e.isSchedulerRunning {
-				e.logger.Infow("Event is running, stopping...", "event", e.intervalEvents[i].GetId())
-				schedEvent.GetQuitChannel() <- true
-			}
-			e.intervalEvents = internal.RemoveIndex(e.intervalEvents, i)
-			e.logger.Infow("Event removed from regular events")
-			return true
 		}
 	}
 	return false

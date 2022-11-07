@@ -7,6 +7,7 @@ import (
 )
 
 type Interface interface {
+	addEvent(eventName string, newEvent event.Interface)
 	On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID)
 	Trigger(ctx context.Context, eventName string, ch *Channel[string])
 	Toggle(eventFunc ...EventFunction)
