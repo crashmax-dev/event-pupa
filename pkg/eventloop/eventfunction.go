@@ -1,5 +1,7 @@
 package eventloop
 
+import "errors"
+
 type EventFunction uint8
 
 const (
@@ -7,15 +9,13 @@ const (
 	TRIGGER
 )
 
-func (ef EventFunction) String() string {
-	switch ef {
-	case ON:
-		return "ON"
-	case TRIGGER:
-		return "TRIGGER"
-	default:
-		panic("EventFunction is not added!")
+func (ef EventFunction) String() (string, error) {
+	for k, v := range EventFunctionMapping {
+		if v == ef {
+			return k, nil
+		}
 	}
+	return "", errors.New("no such Event Function")
 }
 
 var EventFunctionMapping = map[string]EventFunction{

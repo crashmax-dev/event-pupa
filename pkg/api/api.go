@@ -35,7 +35,6 @@ func StartServer(level zapcore.Level, quit *chan struct{}) {
 	srvLogger, atom = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
 	srvLogger.Infof("Server starting...")
 	evLoop := eventloop.NewEventLoop(level)
-
 	mux := http.NewServeMux()
 	for k, v := range handlersMap {
 		mux.Handle(k, handlers.NewHandler(v, srvLogger, evLoop))
