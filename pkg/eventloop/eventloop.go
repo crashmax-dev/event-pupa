@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"eventloop/internal/logger"
+	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
 	"fmt"
@@ -20,14 +21,10 @@ const INTERVALED = "@INTERVALED"
 // 1. String - EventName, 2. Int - приоритет, 3. String - Event Id
 type eventsList map[string]map[int]map[string]event.Interface
 
-type Channel[T any] struct {
-	Ch       chan T
-	isClosed bool
-}
-
 type eventLoop struct {
 	events eventsList
 	mx     *sync.RWMutex
+	remMx  sync.Mutex
 
 	disabled           []EventFunction
 	isSchedulerRunning bool
@@ -76,7 +73,7 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 					channels := trigger.GetChannels()
 					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetId())
 					for _, ch := range channels {
-						e.logger.Debugw("Waiting for channel", "Ch", ch, "event", v.GetId())
+						e.logger.Debugw("Waiting for channel", "ch", ch, "event", v.GetId())
 						<-ch
 					}
 					e.logger.Infow("Subscriber event fired", "event", v.GetId())
@@ -146,9 +143,11 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 }
 
 // Trigger must be executed as goroutine, or it will be blocked!!!
-func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[string]) {
+func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) {
 
-	defer closechannel(ch)
+	if ch != nil && !ch.IsClosed() {
+		defer ch.Close()
+	}
 
 	if isContextDone(ctx) {
 		e.logger.Warnw("Can't trigger event, context is done",
@@ -184,7 +183,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[s
 
 				result := ev.RunFunction(ctx)
 				if ch != nil {
-					ch.Ch <- result
+					ch.Channel() <- result
 				}
 
 				listener := ev.GetSubscriber()
@@ -214,13 +213,6 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch *Channel[s
 		}
 	}
 	wg.Wait()
-}
-
-func closechannel(ch *Channel[string]) {
-	if ch != nil && !ch.isClosed {
-		close(ch.Ch)
-		ch.isClosed = true
-	}
 }
 
 func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
@@ -335,7 +327,8 @@ func (e *eventLoop) StopScheduler() {
 }
 
 func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
-
+	e.remMx.Lock()
+	defer e.remMx.Unlock()
 	for eventNameKey, eventNameValue := range e.events {
 		for priorKey, priorValue := range eventNameValue {
 			for eventIdKey, eventIdValue := range priorValue {
