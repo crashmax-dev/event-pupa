@@ -66,9 +66,9 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 
 	logger := zap.Must(config.Build())
 
-	defer syncLogger(logger)
-
 	logger.Info("logger construction succeeded")
+
+	syncLogger(logger)
 
 	return logger.Sugar(), &atom
 }
