@@ -49,15 +49,13 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 			eh.baseHandler.logger.Errorf("Error while creating event: %v", err)
 			return
 		}
-		ch := make(chan uuid.UUID)
-		go eh.baseHandler.evLoop.On(ctx, eventName, newEvent, ch)
+		go eh.baseHandler.evLoop.On(ctx, eventName, newEvent, nil)
 
 		eh.baseHandler.logger.Infof("Event type %v created for %v", id, eventName)
 		_, err = io.WriteString(writer, "OK")
 		if err != nil {
 			eh.baseHandler.logger.Errorf("error responding: %v", err)
 		}
-		<-ch
 	case "PATCH":
 		if b, err := io.ReadAll(request.Body); err == nil {
 			var sl []uuid.UUID
