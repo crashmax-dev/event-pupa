@@ -7,6 +7,7 @@ import (
 	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
+	"eventloop/pkg/eventloop/internal/eventsList"
 	"fmt"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -16,15 +17,15 @@ import (
 	"time"
 )
 
+// INTERVALED - зарезервированное название события для интервальных событий
 const INTERVALED = "@INTERVALED"
 
-// 1. String - EventName, 2. Int - приоритет, 3. String - Event Id
-type eventsList map[string]map[int]map[string]event.Interface
-
+// eventLoop представляет собой менеджер событий. Позволяет использовать как классические события с названиями для
+// каждого, так и одноразовые, выполняющиеся с определённым интервалом. Также можно задавать приоритет обычным событиям.
+// Для использования нужно создавать event.
 type eventLoop struct {
-	events eventsList
+	events eventsList.Interface
 	mx     *sync.RWMutex
-	remMx  sync.Mutex
 
 	disabled           []EventFunction
 	isSchedulerRunning bool
@@ -33,23 +34,33 @@ type eventLoop struct {
 	logger *zap.SugaredLogger
 }
 
+// NewEventLoop - конструктор для менеджера событий.
+// Для level рекомендуются DebugLevel для Dev, и ErrorLevel для Prod. Можно указать любой уровень, он нормализуется в
+// Debug и Error, в зависимости от велчины уровня.
 func NewEventLoop(level zapcore.Level) Interface {
-	elLogger, _ := logger.Initialize(level, "logs", "")
+	elLogger, _, err := logger.Initialize(level, "logs", "")
+	if err != nil {
+		fmt.Printf("logger init error: %v", err)
+	}
 
 	return &eventLoop{
 		mx:            &sync.RWMutex{},
-		events:        make(eventsList),
+		events:        eventsList.New(),
 		stopScheduler: make(chan bool),
 		logger:        elLogger,
 	}
 }
 
-func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) {
+// Subscribe подписывает список событий listeners на список событий triggers. Само событие триггерится с помощью Trigger/
+// В случае передачи контекста с дедлайном или таймаутом, если контекст ещё живой, подписанные события всё равно
+// выполнятся один раз в случае триггера.
+func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error {
 	if isContextDone(ctx) {
-		e.logger.Warnw("Can't subscribe, context is done",
+		errStr := "Can't subscribe, context is done"
+		e.logger.Warnw(errStr,
 			"triggers", triggers,
 			"listeners", listeners)
-		return
+		return errors.New(errStr)
 	}
 	for _, v := range listeners {
 		trigger := v.GetSubscriber()
@@ -83,6 +94,7 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 			}
 		}(ctx, v)
 	}
+	return nil
 }
 
 func isContextDone(ctx context.Context) bool {
@@ -95,23 +107,19 @@ func isContextDone(ctx context.Context) bool {
 }
 
 func (e *eventLoop) addEvent(eventName string, newEvent event.Interface) {
-	if e.events[eventName] == nil {
-		e.events[eventName] = make(map[int]map[string]event.Interface)
-	}
-
-	if e.events[eventName][newEvent.GetPriority()] == nil {
-		e.events[eventName][newEvent.GetPriority()] = make(map[string]event.Interface)
-	}
-
-	e.events[eventName][newEvent.GetPriority()][newEvent.GetId().String()] = newEvent
+	e.events.EventName(eventName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
 }
 
-func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) {
+// On вешает newEvent на событие eventName. Событие затем срабатывает по вызову Trigger с тем же eventName,
+// с которым было добавлено.
+// out возвращает UUID события в хранилище событий
+func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) error {
 	if isContextDone(ctx) {
-		e.logger.Warnw("Can't add listener to event, context is done",
+		errStr := "Can't add listener to event, context is done"
+		e.logger.Warnw(errStr,
 			"event", newEvent.GetId(),
 			"eventname", eventName)
-		return
+		return errors.New(errStr)
 	}
 
 	//Если выключено добавление - не добавляем
@@ -119,15 +127,17 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		if out != nil {
 			out <- newEvent.GetId()
 		}
-		e.logger.Warnw("Can't attach listener, On disabled",
+		errStr := "Can't attach listener, On disabled"
+		e.logger.Warnw(errStr,
 			"event", newEvent.GetId(),
 			"eventname", eventName)
-		return
+		return errors.New(errStr)
 	}
 
 	if eventName == INTERVALED {
+		errStr := fmt.Sprintf("Event name %v is reserved", INTERVALED)
 		e.logger.Warnf("Event name %v is reserved", INTERVALED)
-		return
+		return errors.New(errStr)
 	}
 
 	e.mx.Lock()
@@ -135,47 +145,54 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 
 	e.addEvent(eventName, newEvent)
 
-	e.logger.Debugw("Event added", "eventname", eventName, "eventlist", e.events[eventName])
+	e.logger.Debugw("Event added", "eventname", eventName)
 
 	if out != nil {
 		out <- newEvent.GetId()
 	}
+	return nil
 }
 
-// Trigger must be executed as goroutine, or it will be blocked!!!
-func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) {
+// Trigger вызывает событие с определённым eventName. Функция ждёт выполнения всех добавленных на событие функций,
+// поэтому синхронный вызов заблокирует родительский цикл выполнения программы.
+// В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова
+// нужно создавать новый channelEx
+func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error {
 
 	if ch != nil && !ch.IsClosed() {
 		defer ch.Close()
 	}
 
 	if isContextDone(ctx) {
-		e.logger.Warnw("Can't trigger event, context is done",
+		str := "Can't trigger event, context is done"
+		e.logger.Warnw(str,
 			"eventname", eventName)
-		return
+		return errors.New(str)
 	}
 	if slices.Contains(e.disabled, TRIGGER) {
-		e.logger.Warnw("Can't trigger event, trigger is disabled",
+		str := "Can't trigger event, trigger is disabled"
+		e.logger.Warnw(str,
 			"eventname", eventName)
-		return
+		return errors.New(str)
 	}
 
 	if eventName == INTERVALED {
-		e.logger.Warnf("Event name %v is reserved", INTERVALED)
-		return
+		str := fmt.Sprintf("Event name %v is reserved", INTERVALED)
+		e.logger.Warnf(str)
+		return errors.New(str)
 	}
 
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	e.logger.Infow("Events triggered", "eventname", eventName, "eventscount", len(e.events[eventName]))
+	e.logger.Infow("Events triggered", "eventname", eventName)
 
 	var (
 		wg sync.WaitGroup
 	)
 
-	for priorIndex := len(e.events[eventName]) - 1; priorIndex >= 0; priorIndex-- {
-		for _, loopevent := range e.events[eventName][priorIndex] {
+	for priorIndex := e.events.EventName(eventName).Len() - 1; priorIndex >= 0; priorIndex-- {
+		for _, loopevent := range e.events.EventName(eventName).Priority(priorIndex).List() {
 			wg.Add(1)
 
 			go func(ev event.Interface) {
@@ -213,14 +230,18 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		}
 	}
 	wg.Wait()
+	return nil
 }
 
+// Toggle выключает функции менеджера событий, ON и TRIGGER. При попытке использования этих функций выводится ошибка.
+// Функции можно включить обратно простым прокидыванием тех же параметров, в зависимости от того что надо включить.
 func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 	for _, v := range eventFuncs {
+		//Включение
 		if x := slices.Index(e.disabled, v); x != -1 {
 			e.logger.Infof("Enabling function %v", v)
 			e.disabled = internal.RemoveIndex(e.disabled, x)
-		} else {
+		} else { //Выключение
 			e.logger.Infof("Disabling function %v", v)
 			e.disabled = append(e.disabled, v)
 		}
@@ -228,7 +249,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 }
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
-// Чекает разные каналы, и если с любого пришёл сигнал - гг (канал самого ивента, канал ивентлупа и context.Done()
+// Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
 func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context, logger *zap.SugaredLogger) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
@@ -271,17 +292,20 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 	}
 }
 
-// ScheduleEvent добавляет ивент в список ивентов-таймеров. Если шедулер запущен - запускает этот ивент.
-func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) {
+// ScheduleEvent добавляет событие в список интервальных событий. Если шедулер уже запущен до добавления - запускает
+// это событие сразу.
+// out возвращает UUID события в хранилище событий
+func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error {
 
 	if _, err := newEvent.GetSchedule(); err != nil {
 		e.logger.Errorw(err.Error(), "event", newEvent)
-		return
+		return err
 	}
 
 	if isContextDone(ctx) {
-		e.logger.Warnw("Can't schedule, context done")
-		return
+		errStr := "Can't schedule, context done"
+		e.logger.Warnw(errStr)
+		return errors.New(errStr)
 	}
 
 	e.addEvent(INTERVALED, newEvent)
@@ -292,33 +316,40 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 	if out != nil {
 		out <- newEvent.GetId()
 	}
+	return nil
 }
 
-func (e *eventLoop) StartScheduler(ctx context.Context) {
+// StartScheduler запускает выполнение ранее добавленных интервальных событий. Если вызвать ScheduleEvent после
+// StartScheduler (т.е. планировщик уже запущен), свежедобавленное событие начнёт выполняться сразу.
+func (e *eventLoop) StartScheduler(ctx context.Context) error {
 	if isContextDone(ctx) {
-		e.logger.Warnw("Scheduler can't start, context is done")
-		return
+		errStr := "Scheduler can't start, context is done"
+		e.logger.Warnw(errStr)
+		return errors.New(errStr)
 	}
 
 	if e.isSchedulerRunning {
-		e.logger.Warnw("Scheduler is already running")
-		return
+		errStr := "Scheduler is already running"
+		e.logger.Warnw(errStr)
+		return errors.New(errStr)
 	}
 
-	for _, evts := range e.events[INTERVALED][0] {
+	for _, evts := range e.events.EventName(INTERVALED).Priority(0).List() {
 		curEvts := evts
 		go e.runScheduledEvent(ctx, curEvts)
 	}
 
 	e.isSchedulerRunning = true
 	e.logger.Infow("Scheduler started")
+	return nil
 }
 
+// StopScheduler останавливает выполнение ранее добавленных интервальных событий.
 func (e *eventLoop) StopScheduler() {
 	e.logger.Infow("Scheduler stopping...")
 	e.mx.Lock()
 	defer e.mx.Unlock()
-	if len(e.events[INTERVALED][0]) > 0 && e.isSchedulerRunning {
+	if len(e.events.EventName(INTERVALED).Priority(0).List()) > 0 && e.isSchedulerRunning {
 		e.logger.Infow("Send signal to stop")
 		e.stopScheduler <- true
 	}
@@ -326,47 +357,12 @@ func (e *eventLoop) StopScheduler() {
 	e.logger.Infow("Send signal to stop")
 }
 
+// RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было
 func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
-	e.remMx.Lock()
-	defer e.remMx.Unlock()
-	for eventNameKey, eventNameValue := range e.events {
-		for priorKey, priorValue := range eventNameValue {
-			for eventIdKey, eventIdValue := range priorValue {
-				if eventIdValue.GetId() == id {
-
-					delete(priorValue, eventIdKey)
-					if len(priorValue) == 0 {
-						delete(eventNameValue, priorKey)
-						if len(eventNameValue) == 0 {
-							delete(e.events, eventNameKey)
-						}
-					}
-
-					e.logger.Infow("Event removed from regular events", "event", eventIdValue.GetId())
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return e.events.RemoveEvent(id)
 }
 
-func (e *eventLoop) GetEventsByName(eventName string) (result []uuid.UUID, err error) {
-	if e.events[eventName] == nil {
-		return nil, errors.New(fmt.Sprintf("no such event name: %v", eventName))
-	}
-	for _, priors := range e.events[eventName] {
-		for _, evnt := range priors {
-			result = append(result, evnt.GetId())
-		}
-	}
-	return result, nil
-}
-
-func (e *eventLoop) LockMutex() {
-	e.mx.Lock()
-}
-
-func (e *eventLoop) UnlockMutex() {
-	e.mx.Unlock()
+// GetAttachedEvents возвращает все события, прикреплённые к eventName
+func (e *eventLoop) GetAttachedEvents(eventName string) (result []uuid.UUID, err error) {
+	return e.events.GetEventIdsByName(eventName)
 }
