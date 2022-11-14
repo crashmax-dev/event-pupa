@@ -14,7 +14,7 @@ import (
 func inputMonitor(sc chan<- os.Signal) {
 	var input string
 	for strings.ToLower(input) != "stop" {
-		fmt.Scanln(&input)
+		_, _ = fmt.Scanln(&input)
 	}
 	sc <- syscall.SIGTERM
 }
@@ -26,12 +26,19 @@ func main() {
 	quit := make(chan struct{})
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
-	go api.StartServer(zapcore.InfoLevel, &quit)
+	go func() {
+		err := api.StartServer(zapcore.InfoLevel, &quit)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 	fmt.Println("Server started...")
 	go inputMonitor(sc)
 	<-sc
 	fmt.Println("Server stopping...")
-	api.StopServer(ctx)
+	if err := api.StopServer(ctx); err != nil {
+		fmt.Println(err)
+	}
 	<-quit
 	fmt.Println("Server stopped.")
 }
