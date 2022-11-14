@@ -21,6 +21,7 @@ const (
 
 var Events = [...]EventFunc{event1, event2}
 
+// CreateEvent создаёт событие из пресета id с типом eventType (типы REGULAR, INTERVALED)
 func CreateEvent(id int, eventType EventType) (event.Interface, error) {
 	switch eventType {
 	case REGULAR:
