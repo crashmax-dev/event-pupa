@@ -397,8 +397,58 @@ func TestSubevent(t *testing.T) {
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
 	}
+}
 
-	cancel()
+func TestPrioritySync(t *testing.T) {
+	const WANT = 4
+	var (
+		r                = 'A'
+		defaultEventFunc = func(ctx context.Context) string {
+			r++
+			return string(r)
+		}
+		priorityFunc = func(ctx context.Context) string {
+			return "DP"
+		}
+		highPriorityFunc = func(ctx context.Context) string {
+			return "HP"
+		}
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		errG        = new(errgroup.Group)
+	)
+
+	defer cancel()
+
+	var (
+		evNormal1   = event.NewEvent(defaultEventFunc)
+		evNormal2   = event.NewEvent(defaultEventFunc)
+		evPrior     = event.NewPriorityEvent(priorityFunc, 1)
+		evHighPrior = event.NewPriorityEvent(highPriorityFunc, 2)
+	)
+
+	handleError(t, evLoop.On(ctx, "TestPriorSync", evNormal1, nil))
+	handleError(t, evLoop.On(ctx, "TestPriorSync", evNormal2, nil))
+	handleError(t, evLoop.On(ctx, "TestPriorSync", evHighPrior, nil))
+	handleError(t, evLoop.On(ctx, "TestPriorSync", evPrior, nil))
+
+	ch := channelEx.NewChannel(0)
+	var numExecs int
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, "TestPriorSync", ch)
+	})
+	for data := range ch.Channel() {
+		fmt.Println(data)
+		numExecs++
+	}
+
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
+
+	if numExecs != WANT {
+		t.Errorf("Number = %d; WANT %d", numExecs, WANT)
+	}
+
 }
 
 func TestMain(m *testing.M) {
