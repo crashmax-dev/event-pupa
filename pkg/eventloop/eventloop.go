@@ -159,8 +159,20 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 // нужно создавать новый channelEx
 func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error {
 
+	var deferErr error
+
 	if ch != nil && !ch.IsClosed() {
-		defer ch.Close()
+		if ch.IsClosed() {
+			deferErr = errors.New("trigger accept only new channels")
+		} else {
+			defer func(ch channelEx.Interface[string]) {
+				err := ch.Close()
+				if err != nil {
+					e.logger.Warn(err)
+				}
+			}(ch)
+		}
+
 	}
 
 	if isContextDone(ctx) {
