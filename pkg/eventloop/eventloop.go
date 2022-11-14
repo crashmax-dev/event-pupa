@@ -56,7 +56,7 @@ func NewEventLoop(level zapcore.Level) Interface {
 // выполнятся один раз в случае триггера.
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error {
 	if isContextDone(ctx) {
-		errStr := "Can't subscribe, context is done"
+		errStr := "can't subscribe, context is done"
 		e.logger.Warnw(errStr,
 			"triggers", triggers,
 			"listeners", listeners)
@@ -115,7 +115,7 @@ func (e *eventLoop) addEvent(eventName string, newEvent event.Interface) {
 // out возвращает UUID события в хранилище событий
 func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) error {
 	if isContextDone(ctx) {
-		errStr := "Can't add listener to event, context is done"
+		errStr := "can't add listener to event, context is done"
 		e.logger.Warnw(errStr,
 			"event", newEvent.GetId(),
 			"eventname", eventName)
@@ -127,7 +127,7 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		if out != nil {
 			out <- newEvent.GetId()
 		}
-		errStr := "Can't attach listener, On disabled"
+		errStr := "can't attach listener, On disabled"
 		e.logger.Warnw(errStr,
 			"event", newEvent.GetId(),
 			"eventname", eventName)
@@ -176,13 +176,13 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 	}
 
 	if isContextDone(ctx) {
-		str := "Can't trigger event, context is done"
+		str := "can't trigger event, context is done"
 		e.logger.Warnw(str,
 			"eventname", eventName)
 		return errors.New(str)
 	}
 	if slices.Contains(e.disabled, TRIGGER) {
-		str := "Can't trigger event, trigger is disabled"
+		str := "can't trigger event, trigger is disabled"
 		e.logger.Warnw(str,
 			"eventname", eventName)
 		return errors.New(str)
@@ -211,7 +211,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 				defer wg.Done()
 
 				result := ev.RunFunction(ctx)
-				if ch != nil {
+				if ch != nil && !ch.IsClosed() {
 					ch.Channel() <- result
 				}
 
@@ -242,7 +242,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		}
 	}
 	wg.Wait()
-	return nil
+	return deferErr
 }
 
 // Toggle выключает функции менеджера событий, ON и TRIGGER. При попытке использования этих функций выводится ошибка.
@@ -252,7 +252,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 		//Включение
 		if x := slices.Index(e.disabled, v); x != -1 {
 			e.logger.Infof("Enabling function %v", v)
-			e.disabled = internal.RemoveIndex(e.disabled, x)
+			e.disabled = internal.RemoveSliceItemByIndex(e.disabled, x)
 		} else { //Выключение
 			e.logger.Infof("Disabling function %v", v)
 			e.disabled = append(e.disabled, v)
@@ -315,7 +315,7 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 	}
 
 	if isContextDone(ctx) {
-		errStr := "Can't schedule, context done"
+		errStr := "can't schedule, context done"
 		e.logger.Warnw(errStr)
 		return errors.New(errStr)
 	}
@@ -335,13 +335,13 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 // StartScheduler (т.е. планировщик уже запущен), свежедобавленное событие начнёт выполняться сразу.
 func (e *eventLoop) StartScheduler(ctx context.Context) error {
 	if isContextDone(ctx) {
-		errStr := "Scheduler can't start, context is done"
+		errStr := "scheduler can't start, context is done"
 		e.logger.Warnw(errStr)
 		return errors.New(errStr)
 	}
 
 	if e.isSchedulerRunning {
-		errStr := "Scheduler is already running"
+		errStr := "scheduler is already running"
 		e.logger.Warnw(errStr)
 		return errors.New(errStr)
 	}
