@@ -8,7 +8,11 @@ import (
 )
 
 func Test_Test(t *testing.T) {
-	StartServer(zapcore.DebugLevel, nil)
+	err := StartServer(zapcore.DebugLevel, nil)
+	if err != nil {
+		t.Log(err)
+		return
+	}
 
 	time.Sleep(time.Second)
 	resp, err := http.Post("https://localhost:8090/events/2", "", nil)
