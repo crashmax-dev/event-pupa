@@ -2,8 +2,11 @@ package eventloop
 
 import (
 	"context"
+	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
+	"fmt"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"sync"
 	"testing"
@@ -14,10 +17,16 @@ var (
 	evLoop Interface
 )
 
-type Test struct {
+type test struct {
 	name string
-	f    func(ctx context.Context, eventName string, farg func(ctx context.Context) string) string
+	f    func(ctx context.Context, t *testing.T, eventName string, farg func(ctx context.Context) string) string
 	want int
+}
+
+func handleError(t *testing.T, err error) {
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestToggleOn(t *testing.T) {
@@ -35,27 +44,39 @@ func TestToggleOn(t *testing.T) {
 		eventDefault  = event.NewEvent(numInc)
 		eventDefault2 = event.NewEvent(numInc)
 		ctx, cancel   = context.WithTimeout(context.Background(), time.Second)
+		errG          = new(errgroup.Group)
 	)
 
 	defer cancel()
 
-	go evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+	errG.Go(func() error {
+		return evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+	})
 	time.Sleep(time.Millisecond * 10)
 
 	go evLoop.Toggle(ON)
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	errG.Go(func() error {
+		return evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	})
 	time.Sleep(time.Millisecond * 10)
 
 	go evLoop.Toggle(ON)
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	errG.Go(func() error {
+		return evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+	})
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.Trigger(ctx, EVENTNAME, nil)
-	time.Sleep(time.Millisecond * 10)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME, nil)
+	})
+
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
 
 	if number != WANT {
 		t.Errorf("Number: %v; Want: %v", number, WANT)
@@ -76,24 +97,34 @@ func TestToggleTrigger(t *testing.T) {
 		}
 		eventDefault = event.NewEvent(numInc)
 		ctx, cancel  = context.WithTimeout(context.Background(), time.Second)
+		errG         = new(errgroup.Group)
 	)
 
 	defer cancel()
 
-	go evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+	errG.Go(func() error {
+		return evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+	})
 	time.Sleep(time.Millisecond * 20)
 
 	go evLoop.Toggle(TRIGGER)
 	time.Sleep(time.Millisecond * 20)
 
-	go evLoop.Trigger(ctx, EVENTNAME, nil)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME, nil)
+	})
 	time.Sleep(time.Millisecond * 20)
 
 	go evLoop.Toggle(TRIGGER)
 	time.Sleep(time.Millisecond * 20)
 
-	go evLoop.Trigger(ctx, EVENTNAME, nil)
-	time.Sleep(time.Millisecond * 20)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME, nil)
+	})
+
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
 
 	if number != WANT {
 		t.Errorf("Number: %v; Want: %v", number, WANT)
@@ -167,7 +198,11 @@ func TestIsScheduledEventDone(t *testing.T) {
 }
 
 func TestStartScheduler(t *testing.T) {
-	const WANT = 4
+	const (
+		WANT        = 3
+		INTERVAL_MS = time.Millisecond * 20
+		EXECUTIONS  = 4
+	)
 	var (
 		number int
 		numInc = func(ctx context.Context) string {
@@ -175,14 +210,23 @@ func TestStartScheduler(t *testing.T) {
 			return ""
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		errG        = new(errgroup.Group)
 	)
 
-	evSched := event.NewIntervalEvent(numInc, time.Millisecond*20)
-	go evLoop.ScheduleEvent(ctx, evSched, nil)
+	defer cancel()
+
+	evSched := event.NewIntervalEvent(numInc, INTERVAL_MS)
+	errG.Go(func() error {
+		return evLoop.ScheduleEvent(ctx, evSched, nil)
+	})
 	time.Sleep(time.Millisecond * 20)
-	go evLoop.StartScheduler(ctx)
-	time.Sleep(time.Millisecond * 100)
-	cancel()
+	errG.Go(func() error {
+		return evLoop.StartScheduler(ctx)
+	})
+	time.Sleep(INTERVAL_MS * EXECUTIONS)
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
 
 	if number != WANT && number != WANT+1 {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
@@ -190,7 +234,11 @@ func TestStartScheduler(t *testing.T) {
 }
 
 func TestScheduleEventAfterStartAndStop(t *testing.T) {
-	const WANT = 5
+	const (
+		WANT        = 4
+		INTERVAL_MS = time.Millisecond * 20
+		EXECUTIONS  = 4
+	)
 	var (
 		number int
 		numInc = func(ctx context.Context) string {
@@ -198,26 +246,41 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 			return ""
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		errG        = new(errgroup.Group)
 	)
 	defer cancel()
 
-	evSched := event.NewIntervalEvent(numInc, time.Millisecond*20)
-	go evLoop.StartScheduler(ctx)
+	evSched := event.NewIntervalEvent(numInc, INTERVAL_MS)
+	errG.Go(func() error {
+		return evLoop.StartScheduler(ctx)
+	})
 	time.Sleep(time.Millisecond * 10)
-	go evLoop.ScheduleEvent(ctx, evSched, nil)
-	time.Sleep(time.Millisecond * 100)
-	go evLoop.StopScheduler()
-	time.Sleep(time.Millisecond * 500)
+	errG.Go(func() error {
+		return evLoop.ScheduleEvent(ctx, evSched, nil)
+	})
+	time.Sleep(EXECUTIONS * INTERVAL_MS)
+	errG.Go(func() error {
+		evLoop.StopScheduler()
+		return nil
+	})
+
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
 
 	if number != WANT && number != WANT+1 {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+	} else {
+		t.Log(number)
 	}
 }
 
 func TestRemoveEvent(t *testing.T) {
 	const (
-		WANT      = 7
-		EVENTNAME = "RemoveEventRegularFirst"
+		WANT           = 7
+		EVENTNAME      = "RemoveEventRegularFirst"
+		INTERVAL_MS    = time.Millisecond * 20
+		INTERVAL_EXECS = 5
 	)
 	var (
 		number int
@@ -226,37 +289,49 @@ func TestRemoveEvent(t *testing.T) {
 			return ""
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		errG        = new(errgroup.Group)
 	)
 	defer cancel()
 	var (
-		evSched       = event.NewIntervalEvent(numInc, time.Millisecond*20)
+		evSched       = event.NewIntervalEvent(numInc, INTERVAL_MS)
 		eventDefault  = event.NewEvent(numInc)
 		eventDefault2 = event.NewEvent(numInc)
 		eventDefault3 = event.NewEvent(numInc)
 	)
-	evLoop.On(ctx, EVENTNAME, eventDefault, nil)
-	evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
-	evLoop.On(ctx, EVENTNAME, eventDefault3, nil)
+	handleError(t, evLoop.On(ctx, EVENTNAME, eventDefault, nil))
+	handleError(t, evLoop.On(ctx, EVENTNAME, eventDefault2, nil))
+	handleError(t, evLoop.On(ctx, EVENTNAME, eventDefault3, nil))
 
-	go evLoop.ScheduleEvent(ctx, evSched, nil)
+	errG.Go(func() error {
+		return evLoop.ScheduleEvent(ctx, evSched, nil)
+	})
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.StartScheduler(ctx)
-	time.Sleep(time.Millisecond * 100)
+	errG.Go(func() error {
+		return evLoop.StartScheduler(ctx)
+	})
+	time.Sleep(INTERVAL_MS * INTERVAL_EXECS)
 
 	go evLoop.RemoveEvent(eventDefault3.GetId())
 	go evLoop.RemoveEvent(evSched.GetId())
 	go evLoop.RemoveEvent(eventDefault.GetId())
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.Trigger(ctx, EVENTNAME, nil)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME, nil)
+	})
 	time.Sleep(time.Millisecond * 10)
 
 	go evLoop.RemoveEvent(eventDefault2.GetId())
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.Trigger(ctx, EVENTNAME, nil)
-	time.Sleep(time.Millisecond * 10)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME, nil)
+	})
+
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
 
 	if number < WANT || number > WANT+1 {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
@@ -277,7 +352,10 @@ func TestSubevent(t *testing.T) {
 			return ""
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		errG        = new(errgroup.Group)
 	)
+
+	defer cancel()
 
 	var (
 		evListener    = event.NewEvent(numIncMutex)
@@ -287,16 +365,34 @@ func TestSubevent(t *testing.T) {
 		eventDefault3 = event.NewEvent(numIncMutex)
 	)
 
-	go evLoop.On(ctx, "test", eventDefault, nil)
-	go evLoop.On(ctx, "test", eventDefault2, nil)
-	go evLoop.On(ctx, "test", eventDefault3, nil)
+	errG.Go(func() error {
+		return evLoop.On(ctx, "test", eventDefault, nil)
+	})
+	errG.Go(func() error {
+		return evLoop.On(ctx, "test", eventDefault2, nil)
+	})
+	errG.Go(func() error {
+		return evLoop.On(ctx, "test", eventDefault3, nil)
+	})
 	time.Sleep(time.Millisecond * 20)
-	go evLoop.Subscribe(ctx, []event.Interface{eventDefault, eventDefault2, eventDefault3},
-		[]event.Interface{evListener, evListener2})
+	errG.Go(func() error {
+		return evLoop.Subscribe(ctx, []event.Interface{eventDefault, eventDefault2, eventDefault3},
+			[]event.Interface{evListener, evListener2})
+	})
 	time.Sleep(time.Millisecond * 20)
-	go evLoop.Trigger(ctx, "test", nil)
-	go evLoop.Trigger(ctx, "test", nil)
-	time.Sleep(time.Millisecond * 20)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, "test", nil)
+	})
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, "test", nil)
+	})
+
+	if err := errG.Wait(); err != nil {
+		t.Log(err)
+	}
+
+	//Нужна задержка, т.к. мы дожидаемся выполнения ивентов-тригеров, но не дожидаемся ивентов-слушателей
+	time.Sleep(time.Millisecond * 10)
 
 	if number != WANT {
 		t.Errorf("Number = %d; WANT %d", number, WANT)
