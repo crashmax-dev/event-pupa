@@ -2,13 +2,14 @@ package eventsList
 
 type priorityList map[int]EventIdsList
 
-func (pl priorityList) Priority(priority int) EventId {
-	if pl[priority] == nil {
-		pl[priority] = make(EventIdsList)
+func (pl *priorityList) Priority(priority int) *EventIdsList {
+	if (*pl)[priority] == nil {
+		(*pl)[priority] = make(EventIdsList)
 	}
-	return pl[priority]
+	result := (*pl)[priority]
+	return &result
 }
 
-func (pl priorityList) Len() int {
-	return len(pl)
+func (pl *priorityList) Len() int {
+	return len(*pl)
 }
