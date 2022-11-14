@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,7 +14,9 @@ var (
 	isSinkRegistered bool
 )
 
-func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredLogger, *zap.AtomicLevel) {
+// Initialize инициализирует логгер с уровнем логгирования level, в папке path по относительному пути, с добавлением
+// postfix к имени файла
+func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredLogger, *zap.AtomicLevel, error) {
 
 	if path == "" {
 		path = "logs"
@@ -31,7 +32,8 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 
 	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
+		return nil, nil, err
 	}
 
 	filename := getOSFilePath(filepath.Join(path,
@@ -59,7 +61,7 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 	if isSinkRegistered == false {
 		err = zap.RegisterSink("winfile", newWinFileSink)
 		if err != nil {
-			panic(err)
+			return nil, nil, err
 		}
 		isSinkRegistered = true
 	}
@@ -68,18 +70,16 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 
 	logger.Info("logger construction succeeded")
 
-	syncLogger(logger)
-
-	return logger.Sugar(), &atom
-}
-
-func syncLogger(logger *zap.Logger) {
-	err := logger.Sync()
-	if err != nil {
-		panic(err)
+	errSync := logger.Sync()
+	if errSync != nil {
+		fmt.Println("logger sync failed: ", errSync)
+		return nil, nil, errSync
 	}
+
+	return logger.Sugar(), &atom, nil
 }
 
+// NormalizeLevel выравнивает уровень для Dev и Prod, возвращая DebugLevel или ErrorLevel соответственно.
 func NormalizeLevel(level zapcore.Level) zapcore.Level {
 	if level == zap.DebugLevel {
 		return zapcore.DebugLevel
