@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+// toggleHandler включает и выключает ивенты. Принимает в параметрах запроса строку с перечислением функций через
+// запятую, которые надо включить или выключить.
 type toggleHandler struct {
 	baseHandler
 }
@@ -22,7 +24,7 @@ func (tg *toggleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
 	b, err := io.ReadAll(request.Body)
 	if err != nil {
-		internal.ServerlogErr(writer, "Bad request: %v", tg.logger, 400, err)
+		internal.ServerLogErr(writer, "Bad request: %v", tg.logger, 400, err)
 		return
 	}
 
@@ -31,7 +33,7 @@ func (tg *toggleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 	tg.baseHandler.logger.Infof(outputStr)
 	_, ioerr := io.WriteString(writer, outputStr)
 	if ioerr != nil {
-		internal.ServerlogErr(writer, "error while responding: %v", tg.logger, 500, err)
+		internal.ServerLogErr(writer, "error while responding: %v", tg.logger, 500, err)
 	}
 	for _, v := range s {
 		elem := eventloop.EventFunctionMapping[v]

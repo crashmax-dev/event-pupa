@@ -6,6 +6,7 @@ import (
 	loggerInternal "eventloop/internal/logger"
 	"eventloop/pkg/api/internal/handlers"
 	"eventloop/pkg/eventloop"
+	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"net/http"
@@ -17,8 +18,9 @@ var (
 	srvLogger *zap.SugaredLogger
 )
 
-func StartServer(level zapcore.Level, quit *chan struct{}) {
-
+// StartServer стартует сервер, посылает сигнал в quit по завершению работы сервера. Канал при каждом вызове создаётся
+// новый.
+func StartServer(level zapcore.Level, quit *chan struct{}) error {
 	if quit != nil {
 		newChan := make(chan struct{})
 		*quit = newChan
@@ -31,9 +33,16 @@ func StartServer(level zapcore.Level, quit *chan struct{}) {
 		"/toggle/":    handlers.TOGGLE,
 		"/scheduler/": handlers.SCHEDULER}
 
-	var atom *zap.AtomicLevel
-	srvLogger, atom = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
-	srvLogger.Infof("Server starting...")
+	var (
+		atom *zap.AtomicLevel
+		err  error
+	)
+	srvLogger, atom, err = loggerInternal.Initialize(zapcore.DebugLevel, "logs", "api")
+	if err != nil {
+		fmt.Println("logger init failed: ", err)
+	} else {
+		srvLogger.Infof("Server starting...")
+	}
 	evLoop := eventloop.NewEventLoop(level)
 	mux := http.NewServeMux()
 	for k, v := range handlersMap {
@@ -53,14 +62,16 @@ func StartServer(level zapcore.Level, quit *chan struct{}) {
 	if errors.Is(servErr, http.ErrServerClosed) {
 		srvLogger.Warn("Server closed")
 	} else if servErr != nil {
-		srvLogger.Errorf("Error starting server: %s\n", servErr)
+		return servErr
 	}
+	return nil
 }
 
-func StopServer(ctx context.Context) {
+func StopServer(ctx context.Context) error {
 	if err := serv.Shutdown(ctx); err != nil {
-		srvLogger.Errorf("Server shutdown error: %v", err)
+		return err
 	} else {
 		srvLogger.Infof("Server stopped.")
 	}
+	return nil
 }

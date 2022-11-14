@@ -3,13 +3,14 @@ package handlers
 import (
 	"context"
 	"eventloop/pkg/api/internal"
-	"eventloop/pkg/eventloop"
+	"eventloop/pkg/channelEx"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
 
+// triggerHandler триггерит ивенты по имени
 type triggerHandler struct {
 	baseHandler
 }
@@ -28,15 +29,21 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	ch := eventloop.Channel[string]{Ch: make(chan string, 1)}
-	go th.baseHandler.evLoop.Trigger(triggerCtx, param, &ch)
+	ch := channelEx.NewChannel(1)
+	if err := th.baseHandler.evLoop.Trigger(triggerCtx, param, ch); err != nil {
+		writer.WriteHeader(500)
+		th.baseHandler.logger.Errorf("event trigger fail: %v", err)
+	}
 
-	var output []string
-	for elem := range ch.Ch {
+	var (
+		output []string
+		chnl   = ch.Channel()
+	)
+	for elem := range chnl {
 		output = append(output, elem)
 	}
 	_, err := io.WriteString(writer, strings.Join(output, ","))
 	if err != nil {
-		internal.ServerlogErr(writer, "error while sending trigger results: %v", th.logger, 500, err)
+		internal.ServerLogErr(writer, "error while sending trigger results: %v", th.logger, 500, err)
 	}
 }

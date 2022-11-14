@@ -16,6 +16,7 @@ const (
 	SCHEDULER
 )
 
+// NewHandler создаёт новое событие типа ht, logger и evloop для всех хэндлеров одного сервера должны быть одни и те же
 func NewHandler(ht HandlerType, logger *zap.SugaredLogger, evLoop eventloop.Interface) http.Handler {
 	bh := baseHandler{logger: logger, evLoop: evLoop}
 	var handlerMap = map[HandlerType]http.Handler{

@@ -4,27 +4,30 @@ import (
 	"sync"
 )
 
-type eventsubscriber struct {
+// eventSubscriber - событие, которое триггерит другие события и/или триггерится само по другим событиям.
+type eventSubscriber struct {
 	channels []chan int
 	mx       sync.Mutex
 }
 
 func NewSubscriber() Interface {
-	return &eventsubscriber{}
+	return &eventSubscriber{}
 }
 
-func (ev *eventsubscriber) LockMutex() {
+func (ev *eventSubscriber) LockMutex() {
 	ev.mx.Lock()
 }
 
-func (ev *eventsubscriber) UnlockMutex() {
+func (ev *eventSubscriber) UnlockMutex() {
 	ev.mx.Unlock()
 }
 
-func (ev *eventsubscriber) GetChannels() []chan int {
+func (ev *eventSubscriber) GetChannels() []chan int {
 	return ev.channels
 }
 
-func (ev *eventsubscriber) AddChannel(ch chan int) {
+// AddChannel добавляет каналы, по которым тригеррится событие, и по этим же каналам событие-триггер триггерит
+// события слушатели.
+func (ev *eventSubscriber) AddChannel(ch chan int) {
 	ev.channels = append(ev.channels, ch)
 }

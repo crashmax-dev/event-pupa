@@ -12,7 +12,7 @@ type Interface interface {
 }
 
 type Priority interface {
-	Priority(priority int) EventId
+	Priority(priority int) *EventIdsList
 	Len() int
 }
 

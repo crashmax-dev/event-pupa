@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)
 type event struct {
 	id       uuid.UUID
 	priority int

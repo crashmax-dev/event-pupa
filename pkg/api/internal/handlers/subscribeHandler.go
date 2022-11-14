@@ -9,6 +9,19 @@ import (
 	"strings"
 )
 
+// subscribeHandler подписывает ивенты на события. Запрос должен быть JSON вида, числом обозначается пресет ивента:
+/*
+	{
+    "listeners": [
+        1,
+        2
+    ],
+    "triggers": [
+        2,
+        1
+    ]
+}
+*/
 type subscribeHandler struct {
 	baseHandler
 }
@@ -26,13 +39,13 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 		Triggers  []int `json:"triggers"`
 	}{}
 	if err := json.NewDecoder(request.Body).Decode(&sInfo); err != nil {
-		internal.ServerlogErr(writer, "JSON decode error: %v", sh.logger, 400, err)
+		internal.ServerLogErr(writer, "JSON decode error: %v", sh.logger, 400, err)
 		return
 	}
 
 	param := strings.TrimPrefix(request.URL.Path, "/subscribe/")
 	if len(strings.SplitAfter(param, "/")) > 1 {
-		internal.ServerlogErr(writer, "Invalid params", sh.logger, 400)
+		internal.ServerLogErr(writer, "Invalid params", sh.logger, 400)
 		return
 	}
 
@@ -45,7 +58,10 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 			sh.baseHandler.logger.Errorf("Error while creating trigger event: %v", err)
 		} else {
 			triggers = append(triggers, newEvent)
-			sh.baseHandler.evLoop.On(ctx, param, newEvent, nil)
+			if errOn := sh.baseHandler.evLoop.On(ctx, param, newEvent, nil); errOn != nil {
+				writer.WriteHeader(500)
+				sh.baseHandler.logger.Errorf("schedule event fail: %v", errOn)
+			}
 		}
 	}
 
@@ -58,5 +74,8 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 		}
 	}
 
-	sh.baseHandler.evLoop.Subscribe(ctx, triggers, listeners)
+	if errSubscribe := sh.baseHandler.evLoop.Subscribe(ctx, triggers, listeners); errSubscribe != nil {
+		writer.WriteHeader(500)
+		sh.baseHandler.logger.Errorf("event subscribe fail: %v", errSubscribe)
+	}
 }
