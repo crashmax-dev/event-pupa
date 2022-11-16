@@ -20,12 +20,7 @@ var (
 
 // StartServer стартует сервер, посылает сигнал в quit по завершению работы сервера. Канал при каждом вызове создаётся
 // новый.
-func StartServer(level zapcore.Level, quit *chan struct{}) error {
-	if quit != nil {
-		newChan := make(chan struct{})
-		*quit = newChan
-		defer close(*quit)
-	}
+func StartServer(level zapcore.Level) error {
 
 	handlersMap := map[string]handlers.HandlerType{"/events/": handlers.EVENT,
 		"/trigger/":   handlers.TRIGGER,
@@ -64,6 +59,7 @@ func StartServer(level zapcore.Level, quit *chan struct{}) error {
 	} else if servErr != nil {
 		return servErr
 	}
+
 	return nil
 }
 

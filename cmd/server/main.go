@@ -23,15 +23,16 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	quit := make(chan struct{})
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
-		err := api.StartServer(zapcore.InfoLevel, &quit)
+		err := api.StartServer(zapcore.InfoLevel)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}()
+
 	fmt.Println("Server started...")
 	go inputMonitor(sc)
 	<-sc
@@ -39,6 +40,5 @@ func main() {
 	if err := api.StopServer(ctx); err != nil {
 		fmt.Println(err)
 	}
-	<-quit
 	fmt.Println("Server stopped.")
 }
