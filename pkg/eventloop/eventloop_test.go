@@ -142,56 +142,57 @@ func TestIsContextDone(t *testing.T) {
 	}
 }
 
+// Проверяет функцию isScheduledEventDone
 func TestIsScheduledEventDone(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventCh, eventLoopCh := make(chan bool, 1), make(chan bool, 1)
 
 	tests := []struct {
-		init func()
-		done func()
-		dflt func()
-	}{{
+		init      func()
+		done      func()
+		errorFunc func()
+	}{{ // Незаканчивающееся событие
 		done: func() {
 			t.Errorf("isScheduledEventDone: true; Want: false")
 		},
 	},
-		{
+		{ //====
 			init: func() {
 				eventCh <- true
 			},
-			dflt: func() {
+			errorFunc: func() {
 				t.Errorf("isScheduledEventDone by event channel: false; Want: true")
 			},
 		},
-		{
+		{ //====
 			init: func() {
 				eventLoopCh <- true
 			},
-			dflt: func() {
+			errorFunc: func() {
 				t.Errorf("isScheduledEventDone by eventloop channel: false; Want: true")
 			},
 		},
-		{
+		{ //=====
 			init: func() {
 				cancel()
 			},
-			dflt: func() {
+			errorFunc: func() {
 				t.Errorf("isScheduledEventDone by context: false; Want: true")
 			},
 		}}
 
-	for _, t := range tests {
-		if t.init != nil {
-			t.init()
+	for _, test_ := range tests {
+		if test_.init != nil {
+			test_.init()
 		}
 		select {
 		case <-isScheduledEventDone(eventCh, eventLoopCh, ctx, nil):
-			if t.done != nil {
-				t.done()
+			if test_.done != nil {
+				test_.done()
 			}
 		default:
-			if t.dflt != nil {
-				t.dflt()
+			if test_.errorFunc != nil {
+				test_.errorFunc()
 			}
 		}
 	}
@@ -199,9 +200,9 @@ func TestIsScheduledEventDone(t *testing.T) {
 
 func TestStartScheduler(t *testing.T) {
 	const (
-		WANT        = 3
-		INTERVAL_MS = time.Millisecond * 20
-		EXECUTIONS  = 4
+		WANT       = 3
+		INTERVALMS = time.Millisecond * 20
+		EXECUTIONS = 4
 	)
 	var (
 		number int
@@ -215,7 +216,7 @@ func TestStartScheduler(t *testing.T) {
 
 	defer cancel()
 
-	evSched := event.NewIntervalEvent(numInc, INTERVAL_MS)
+	evSched := event.NewIntervalEvent(numInc, INTERVALMS)
 	errG.Go(func() error {
 		return evLoop.ScheduleEvent(ctx, evSched, nil)
 	})
@@ -223,7 +224,7 @@ func TestStartScheduler(t *testing.T) {
 	errG.Go(func() error {
 		return evLoop.StartScheduler(ctx)
 	})
-	time.Sleep(INTERVAL_MS * EXECUTIONS)
+	time.Sleep(INTERVALMS * EXECUTIONS)
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
 	}
@@ -235,9 +236,9 @@ func TestStartScheduler(t *testing.T) {
 
 func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	const (
-		WANT        = 4
-		INTERVAL_MS = time.Millisecond * 20
-		EXECUTIONS  = 4
+		WANT       = 4
+		INTERVALMS = time.Millisecond * 20
+		EXECUTIONS = 4
 	)
 	var (
 		number int
@@ -250,7 +251,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	)
 	defer cancel()
 
-	evSched := event.NewIntervalEvent(numInc, INTERVAL_MS)
+	evSched := event.NewIntervalEvent(numInc, INTERVALMS)
 	errG.Go(func() error {
 		return evLoop.StartScheduler(ctx)
 	})
@@ -258,7 +259,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	errG.Go(func() error {
 		return evLoop.ScheduleEvent(ctx, evSched, nil)
 	})
-	time.Sleep(EXECUTIONS * INTERVAL_MS)
+	time.Sleep(EXECUTIONS * INTERVALMS)
 	errG.Go(func() error {
 		evLoop.StopScheduler()
 		return nil
