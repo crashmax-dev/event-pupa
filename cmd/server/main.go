@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"eventloop/internal/http_api"
 	"eventloop/internal/logger"
-	"eventloop/pkg/http_api"
 	"fmt"
 	"os"
 	"os/signal"

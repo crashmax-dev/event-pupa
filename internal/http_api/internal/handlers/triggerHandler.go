@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"context"
+	"eventloop/internal/http_api/internal"
 	"eventloop/pkg/channelEx"
-	"eventloop/pkg/http_api/internal"
 	"io"
 	"net/http"
 	"strings"

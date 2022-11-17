@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"eventloop/internal/http_api/internal"
 	"eventloop/pkg/eventloop"
-	"eventloop/pkg/http_api/internal"
 	"fmt"
 	"io"
 	"net/http"

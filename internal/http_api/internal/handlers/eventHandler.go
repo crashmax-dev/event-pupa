@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"eventloop/pkg/http_api/internal"
+	internal2 "eventloop/internal/http_api/internal"
 	"github.com/google/uuid"
 	"io"
 	"net/http"
@@ -25,30 +25,30 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	switch request.Method {
 	case "GET":
-		eh.baseHandler.logger.Debugf(internal.ApiMessage("GET request"))
+		eh.baseHandler.logger.Debugf(internal2.ApiMessage("GET request"))
 		if evnts, err := eh.baseHandler.evLoop.GetAttachedEvents(params[0]); err == nil {
 			if codedMessage, errJson := json.Marshal(evnts); errJson == nil {
 				_, errW := writer.Write(codedMessage)
 				if errW != nil {
-					eh.baseHandler.logger.Errorf(internal.ApiMessage("error responding: %v"), errW)
+					eh.baseHandler.logger.Errorf(internal2.ApiMessage("error responding: %v"), errW)
 				}
 			} else {
-				internal.ServerLogErr(writer, errJson.Error(), eh.baseHandler.logger, 400)
+				internal2.ServerLogErr(writer, errJson.Error(), eh.baseHandler.logger, 400)
 			}
 		} else {
-			internal.ServerLogErr(writer, err.Error(), eh.baseHandler.logger, 200)
+			internal2.ServerLogErr(writer, err.Error(), eh.baseHandler.logger, 200)
 		}
 	case "POST", "PUT":
 		id, err := strconv.Atoi(params[0])
-		if err != nil || id > len(internal.Events) || len(params) != 2 {
+		if err != nil || id > len(internal2.Events) || len(params) != 2 {
 			writer.WriteHeader(404)
 			return
 		}
 
 		eventName := params[1]
-		newEvent, err := internal.CreateEvent(id, internal.REGULAR)
+		newEvent, err := internal2.CreateEvent(id, internal2.REGULAR)
 		if err != nil {
-			eh.baseHandler.logger.Errorf(internal.ApiMessage("Error while creating event: %v"), err)
+			eh.baseHandler.logger.Errorf(internal2.ApiMessage("Error while creating event: %v"), err)
 			return
 		}
 
@@ -59,32 +59,32 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 			}
 		}()
 
-		eh.baseHandler.logger.Infof(internal.ApiMessage("Event type %v created for %v"), id, eventName)
+		eh.baseHandler.logger.Infof(internal2.ApiMessage("Event type %v created for %v"), id, eventName)
 		_, err = io.WriteString(writer, "OK")
 		if err != nil {
-			eh.baseHandler.logger.Errorf(internal.ApiMessage("error responding: %v"), err)
+			eh.baseHandler.logger.Errorf(internal2.ApiMessage("error responding: %v"), err)
 		}
 	case "PATCH":
 		if b, err := io.ReadAll(request.Body); err == nil {
 			var sl []uuid.UUID
 			errJson := json.Unmarshal(b, &sl)
 			if errJson != nil {
-				internal.ServerLogErr(writer, "wrong json: %v", eh.baseHandler.logger, 400, errJson)
+				internal2.ServerLogErr(writer, "wrong json: %v", eh.baseHandler.logger, 400, errJson)
 				return
 			}
-			eh.baseHandler.logger.Infof(internal.ApiMessage("Removing events %v"), sl)
+			eh.baseHandler.logger.Infof(internal2.ApiMessage("Removing events %v"), sl)
 			for _, v := range sl {
 				eh.baseHandler.evLoop.RemoveEvent(v)
 			}
 			_, errRespond := io.WriteString(writer, "OK")
 			if errRespond != nil {
-				eh.baseHandler.logger.Errorf(internal.ApiMessage("error responding: %v"), errRespond)
+				eh.baseHandler.logger.Errorf(internal2.ApiMessage("error responding: %v"), errRespond)
 			}
 
 		} else {
-			internal.ServerLogErr(writer, "Error reading request: %v", eh.baseHandler.logger, 400, err.Error())
+			internal2.ServerLogErr(writer, "Error reading request: %v", eh.baseHandler.logger, 400, err.Error())
 		}
 	default:
-		internal.NoMethodResponse(writer, "GET, POST, PUT, PATCH")
+		internal2.NoMethodResponse(writer, "GET, POST, PUT, PATCH")
 	}
 }

@@ -3,10 +3,10 @@ package http_api
 import (
 	"context"
 	"errors"
+	"eventloop/internal/http_api/internal"
+	"eventloop/internal/http_api/internal/handlers"
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
-	"eventloop/pkg/http_api/internal"
-	"eventloop/pkg/http_api/internal/handlers"
 	"net/http"
 	"time"
 )
