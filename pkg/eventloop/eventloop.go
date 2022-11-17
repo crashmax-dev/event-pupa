@@ -32,7 +32,7 @@ type eventLoop struct {
 	logger logger.Interface
 }
 
-// NewEventLoop - конструктор для менеджера событий.
+// NewEventLoop - конструктор для менеджера событий. Инициализирует новый Event Loop.
 // Для level рекомендуются DebugLevel для Dev, и ErrorLevel для Prod. Можно указать любой уровень, он нормализуется в
 // Debug и Error, в зависимости от велчины уровня.
 func NewEventLoop(level string) Interface {
