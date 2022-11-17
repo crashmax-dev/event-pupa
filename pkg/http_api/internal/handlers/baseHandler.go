@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
-	"go.uber.org/zap"
 )
 
 type baseHandler struct {
-	logger *zap.SugaredLogger
+	logger logger.Interface
 	evLoop eventloop.Interface
 }

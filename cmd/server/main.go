@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
-	"eventloop/pkg/api"
+	"eventloop/internal/logger"
+	"eventloop/pkg/http_api"
 	"fmt"
-	"go.uber.org/zap/zapcore"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 )
+
+const _LOG_LEVEL = "debug"
 
 func inputMonitor(sc chan<- os.Signal) {
 	var input string
@@ -20,6 +22,12 @@ func inputMonitor(sc chan<- os.Signal) {
 }
 
 func main() {
+	srvLogger, err := initLogger()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -27,18 +35,33 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		err := api.StartServer(zapcore.InfoLevel)
-		if err != nil {
+		errServer := http_api.StartServer(srvLogger)
+		if errServer != nil {
 			fmt.Println(err)
+			return
 		}
 	}()
 
 	fmt.Println("Server started...")
+
 	go inputMonitor(sc)
 	<-sc
+
 	fmt.Println("Server stopping...")
-	if err := api.StopServer(ctx); err != nil {
-		fmt.Println(err)
+	if errStop := http_api.StopServer(ctx, srvLogger); err != nil {
+		fmt.Println(errStop)
 	}
+
 	fmt.Println("Server stopped.")
+}
+
+func initLogger() (logger.Interface, error) {
+	appLogger, err := logger.NewLogger(_LOG_LEVEL, "logs", "")
+	if err != nil {
+		return nil, err
+	} else {
+		appLogger.Infof("Server starting...")
+	}
+
+	return appLogger, nil
 }

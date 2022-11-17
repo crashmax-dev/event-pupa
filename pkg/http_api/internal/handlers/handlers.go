@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -17,7 +17,7 @@ const (
 )
 
 // NewHandler создаёт новое событие типа ht, logger и evloop для всех хэндлеров одного сервера должны быть одни и те же
-func NewHandler(ht HandlerType, logger *zap.SugaredLogger, evLoop eventloop.Interface) http.Handler {
+func NewHandler(ht HandlerType, logger logger.Interface, evLoop eventloop.Interface) http.Handler {
 	bh := baseHandler{logger: logger, evLoop: evLoop}
 	var handlerMap = map[HandlerType]http.Handler{
 		EVENT:     &eventHandler{bh},

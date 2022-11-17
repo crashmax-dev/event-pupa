@@ -10,8 +10,6 @@ import (
 	"eventloop/pkg/eventloop/internal/eventsList"
 	"fmt"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/slices"
 	"sync"
 	"time"
@@ -31,14 +29,14 @@ type eventLoop struct {
 	isSchedulerRunning bool
 	stopScheduler      chan bool
 
-	logger *zap.SugaredLogger
+	logger logger.Interface
 }
 
 // NewEventLoop - конструктор для менеджера событий.
 // Для level рекомендуются DebugLevel для Dev, и ErrorLevel для Prod. Можно указать любой уровень, он нормализуется в
 // Debug и Error, в зависимости от велчины уровня.
-func NewEventLoop(level zapcore.Level) Interface {
-	elLogger, _, err := logger.Initialize(level, "logs", "")
+func NewEventLoop(level string) Interface {
+	elLogger, err := logger.NewLogger(level, "logs", "")
 	if err != nil {
 		fmt.Printf("logger init error: %v", err)
 	}
@@ -262,7 +260,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
-func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context, logger *zap.SugaredLogger) <-chan struct{} {
+func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context, logger logger.Interface) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
 	select {

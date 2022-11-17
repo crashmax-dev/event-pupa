@@ -14,26 +14,34 @@ var (
 	isSinkRegistered bool
 )
 
-// Initialize инициализирует логгер с уровнем логгирования level, в папке path по относительному пути, с добавлением
-// postfix к имени файла
-func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredLogger, *zap.AtomicLevel, error) {
+type apiLogger struct {
+	base  *zap.SugaredLogger
+	level string
+}
 
+// NewLogger инициализирует логгер с уровнем логгирования level, в папке path по относительному пути, с добавлением
+// postfix к имени файла (postfix будет перед временем)
+func NewLogger(level string, path string, postfix string) (Interface, error) {
 	if path == "" {
 		path = "logs"
+	}
+	parsedLevel, parseErr := zapcore.ParseLevel(level)
+	if parseErr != nil {
+		return nil, parseErr
 	}
 
 	var (
 		levelSelected zapcore.Level
 	)
 
-	levelSelected = NormalizeLevel(level)
+	levelSelected = normalizeLevel(parsedLevel)
 
 	atom := zap.NewAtomicLevelAt(levelSelected)
 
 	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		fmt.Println(err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	filename := getOSFilePath(filepath.Join(path,
@@ -61,7 +69,7 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 	if isSinkRegistered == false {
 		err = zap.RegisterSink("winfile", newWinFileSink)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		isSinkRegistered = true
 	}
@@ -73,15 +81,50 @@ func Initialize(level zapcore.Level, path string, postfix string) (*zap.SugaredL
 	errSync := logger.Sync()
 	if errSync != nil {
 		fmt.Println("logger sync failed: ", errSync)
-		return nil, nil, errSync
+		return nil, errSync
 	}
-
-	return logger.Sugar(), &atom, nil
+	al := apiLogger{base: logger.Sugar(), level: level}
+	return &al, nil
 }
 
-// NormalizeLevel выравнивает уровень для Dev и Prod, возвращая DebugLevel или ErrorLevel соответственно.
-func NormalizeLevel(level zapcore.Level) zapcore.Level {
-	if level == zap.DebugLevel {
+func (al *apiLogger) Debugf(template string, args ...interface{}) {
+	al.base.Debugf(template, args)
+}
+func (al *apiLogger) Debugw(msg string, keysAndValues ...interface{}) {
+	al.base.Debugw(msg, keysAndValues)
+}
+func (al *apiLogger) Error(args ...interface{}) {
+	al.base.Error(args)
+}
+func (al *apiLogger) Errorf(template string, args ...interface{}) {
+	al.base.Errorf(template, args)
+}
+func (al *apiLogger) Errorw(msg string, keysAndValues ...interface{}) {
+	al.base.Errorw(msg, keysAndValues)
+}
+func (al *apiLogger) Infof(template string, args ...interface{}) {
+	al.base.Infof(template, args)
+}
+func (al *apiLogger) Infow(msg string, keysAndValues ...interface{}) {
+	al.base.Infow(msg, keysAndValues)
+}
+func (al *apiLogger) Warn(args ...interface{}) {
+	al.base.Warn(args)
+}
+func (al *apiLogger) Warnf(template string, args ...interface{}) {
+	al.base.Warnf(template, args)
+}
+func (al *apiLogger) Warnw(msg string, keysAndValues ...interface{}) {
+	al.base.Warnw(msg, keysAndValues)
+}
+
+func (al *apiLogger) Level() string {
+	return al.level
+}
+
+// normalizeLevel выравнивает уровень для Dev и Prod, возвращая DebugLevel или ErrorLevel соответственно.
+func normalizeLevel(level zapcore.Level) zapcore.Level {
+	if level >= zapcore.ErrorLevel {
 		return zapcore.DebugLevel
 	} else {
 		return zapcore.ErrorLevel

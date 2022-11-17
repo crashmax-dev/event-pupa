@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"context"
-	"eventloop/pkg/api/internal"
 	"eventloop/pkg/channelEx"
+	"eventloop/pkg/http_api/internal"
 	"io"
 	"net/http"
 	"strings"
@@ -32,7 +32,7 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	ch := channelEx.NewChannel(1)
 	if err := th.baseHandler.evLoop.Trigger(triggerCtx, param, ch); err != nil {
 		writer.WriteHeader(500)
-		th.baseHandler.logger.Errorf("event trigger fail: %v", err)
+		th.baseHandler.logger.Errorf(internal.ApiMessage("event trigger fail: %v"), err)
 	}
 
 	var (

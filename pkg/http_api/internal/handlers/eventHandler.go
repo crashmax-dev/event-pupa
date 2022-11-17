@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"eventloop/pkg/api/internal"
+	"eventloop/pkg/http_api/internal"
 	"github.com/google/uuid"
 	"io"
 	"net/http"
@@ -25,12 +25,12 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	switch request.Method {
 	case "GET":
-		eh.baseHandler.logger.Debugf("GET request")
+		eh.baseHandler.logger.Debugf(internal.ApiMessage("GET request"))
 		if evnts, err := eh.baseHandler.evLoop.GetAttachedEvents(params[0]); err == nil {
 			if codedMessage, errJson := json.Marshal(evnts); errJson == nil {
 				_, errW := writer.Write(codedMessage)
 				if errW != nil {
-					eh.baseHandler.logger.Errorf("error responding: %v", errW)
+					eh.baseHandler.logger.Errorf(internal.ApiMessage("error responding: %v"), errW)
 				}
 			} else {
 				internal.ServerLogErr(writer, errJson.Error(), eh.baseHandler.logger, 400)
@@ -48,7 +48,7 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		eventName := params[1]
 		newEvent, err := internal.CreateEvent(id, internal.REGULAR)
 		if err != nil {
-			eh.baseHandler.logger.Errorf("Error while creating event: %v", err)
+			eh.baseHandler.logger.Errorf(internal.ApiMessage("Error while creating event: %v"), err)
 			return
 		}
 
@@ -59,10 +59,10 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 			}
 		}()
 
-		eh.baseHandler.logger.Infof("Event type %v created for %v", id, eventName)
+		eh.baseHandler.logger.Infof(internal.ApiMessage("Event type %v created for %v"), id, eventName)
 		_, err = io.WriteString(writer, "OK")
 		if err != nil {
-			eh.baseHandler.logger.Errorf("error responding: %v", err)
+			eh.baseHandler.logger.Errorf(internal.ApiMessage("error responding: %v"), err)
 		}
 	case "PATCH":
 		if b, err := io.ReadAll(request.Body); err == nil {
@@ -72,13 +72,13 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 				internal.ServerLogErr(writer, "wrong json: %v", eh.baseHandler.logger, 400, errJson)
 				return
 			}
-			eh.baseHandler.logger.Infof("Removing events %v", sl)
+			eh.baseHandler.logger.Infof(internal.ApiMessage("Removing events %v"), sl)
 			for _, v := range sl {
 				eh.baseHandler.evLoop.RemoveEvent(v)
 			}
 			_, errRespond := io.WriteString(writer, "OK")
 			if errRespond != nil {
-				eh.baseHandler.logger.Errorf("error responding: %v", errRespond)
+				eh.baseHandler.logger.Errorf(internal.ApiMessage("error responding: %v"), errRespond)
 			}
 
 		} else {
