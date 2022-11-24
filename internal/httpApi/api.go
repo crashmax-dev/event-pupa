@@ -8,6 +8,7 @@ import (
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -17,8 +18,8 @@ var (
 	serv http.Server
 )
 
-// StartServer стартует API сервер для доступа к Event Loop
-func StartServer(srvLogger logger.Interface) error {
+// StartServer стартует API сервер для доступа к Event Loop. Функция блокирующая
+func StartServer(port int, srvLogger logger.Interface) error {
 
 	helper.ApiMessageSetPrefix(_APIPREFIX)
 
@@ -35,7 +36,7 @@ func StartServer(srvLogger logger.Interface) error {
 	}
 
 	serv = http.Server{
-		Addr:         ":8090",
+		Addr:         ":" + strconv.Itoa(port),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
