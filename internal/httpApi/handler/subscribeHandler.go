@@ -27,6 +27,7 @@ type subscribeHandler struct {
 	baseHandler
 }
 
+// ServeHTTP принимает JSON с массивами listeners и triggers, в каждом из которых пресеты ивентов, которые будут созданы
 func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	ctx, _ := context.WithCancel(context.Background())
 

@@ -38,24 +38,7 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 
 	param := strings.TrimPrefix(request.URL.Path, "/scheduler/")
 
-	//Получаем ID ивента из URL, и создаём
-	if param != "" {
-		if id, err := strconv.Atoi(param); err == nil {
-			if newEvent, errC := eventpreset.CreateEvent(id, eventpreset.INTERVALED); errC == nil {
-				if errSE := sh.baseHandler.evLoop.ScheduleEvent(ctx, newEvent, nil); errSE == nil {
-					JSON.Status = "Event is scheduled succesfully"
-				} else {
-					writer.WriteHeader(500)
-					sh.baseHandler.logger.Errorf(helper.ApiMessage("schedule event fail: %v"), errSE)
-				}
-			} else {
-				helper.ServerLogErr(writer, "error while creating event: %v", sh.baseHandler.logger, 500, errC)
-			}
-		} else {
-			helper.ServerLogErr(writer, "no such event: %v", sh.baseHandler.logger, 400, param)
-			sh.logger.Debugf(helper.ApiMessage("No such event details: %v"), err)
-		}
-	}
+	sh.scheduleEvent(ctx, writer, &JSON, param)
 
 	if b, err := io.ReadAll(request.Body); err != nil {
 		helper.ServerLogErr(writer, "bad request: %v", sh.baseHandler.logger, 400, err)
@@ -83,4 +66,40 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 	}
 	byteJson, _ := json.Marshal(JSON)
 	writer.Write(byteJson)
+}
+
+// scheduleEvent получаем ID ивента из URL, и создаём ивент
+func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
+	writer http.ResponseWriter,
+	JSON *ScheduleResponse,
+	param string) {
+	var (
+		id       int
+		newEvent event.Interface
+		err      error
+	)
+
+	if param == "" {
+		return
+	}
+
+	if id, err = strconv.Atoi(param); err != nil {
+		JSON.EventStatus = helper.ServerJsonLogErr(writer, "no such event: %v", sh.baseHandler.logger, 400, param)
+		sh.logger.Debugf(helper.ApiMessage("No such event details: %v"), err)
+		return
+	}
+
+	if newEvent, err = eventpreset.CreateEvent(id, eventpreset.INTERVALED); err != nil {
+		JSON.EventStatus = helper.ServerJsonLogErr(writer, "error while creating event: %v", sh.baseHandler.logger, 500, err)
+		return
+	}
+
+	if err = sh.baseHandler.evLoop.ScheduleEvent(ctx, newEvent, nil); err != nil {
+		writer.WriteHeader(500)
+		JSON.EventStatus = "schedule event fail"
+		sh.baseHandler.logger.Errorf(helper.ApiMessage("schedule event fail: %v"), err)
+		return
+	}
+
+	JSON.EventStatus = "Event is scheduled succesfully"
 }
