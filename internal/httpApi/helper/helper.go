@@ -25,7 +25,19 @@ func ServerLogErr(writer http.ResponseWriter, format string, logger logger.Inter
 	if _, err := io.WriteString(writer, errs); err != nil {
 		logger.Error(err)
 	}
+}
+
+func ServerJsonLogErr(writer http.ResponseWriter,
+	format string,
+	logger logger.Interface,
+	statusCode int,
+	a ...any) string {
+
+	errs := fmt.Sprintf(format, a...)
+	logger.Error(ApiPrefix + errs)
+
 	writer.WriteHeader(statusCode)
+	return errs
 }
 
 func ApiMessageSetPrefix(inputApiPrefix string) {

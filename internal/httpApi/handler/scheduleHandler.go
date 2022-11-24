@@ -20,8 +20,9 @@ type schedulerHandler struct {
 }
 
 type ScheduleResponse struct {
-	Status string
-	Result []string
+	SchedulerStatus string
+	EventStatus     string
+	Result          []string
 }
 
 func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -41,31 +42,35 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 	sh.scheduleEvent(ctx, writer, &JSON, param)
 
 	if b, err := io.ReadAll(request.Body); err != nil {
-		helper.ServerLogErr(writer, "bad request: %v", sh.baseHandler.logger, 400, err)
+		JSON.SchedulerStatus = helper.ServerJsonLogErr(writer, "bad request: %v", sh.baseHandler.logger, 400, err)
 	} else {
 		switch sm := strings.ToLower(string(b)); sm {
 		case "start":
 			if errSS := sh.baseHandler.evLoop.StartScheduler(ctx); errSS != nil {
 				if sh.baseHandler.evLoop.IsSchedulerRunning() {
 					writer.WriteHeader(400)
-					io.WriteString(writer, "Scheduler is already running")
+					JSON.SchedulerStatus = "Scheduler is already running"
 				} else {
 					writer.WriteHeader(500)
 				}
 				sh.baseHandler.logger.Errorf(helper.ApiMessage("scheduler start fail: %v"), errSS)
 			} else {
-				io.WriteString(writer, ". Scheduler started")
+				JSON.SchedulerStatus = "Scheduler started"
 			}
 		case "stop":
 			sh.baseHandler.evLoop.StopScheduler()
-			JSON = ScheduleResponse{Status: "Scheduler stopped", Result: sh.baseHandler.evLoop.GetSchedulerResults()}
+			JSON = ScheduleResponse{EventStatus: JSON.EventStatus,
+				SchedulerStatus: "Scheduler stopped",
+				Result:          sh.baseHandler.evLoop.GetSchedulerResults()}
 
 		default:
 			sh.baseHandler.logger.Errorf(helper.ApiMessage("No known method: %v"), sm)
 		}
 	}
 	byteJson, _ := json.Marshal(JSON)
-	writer.Write(byteJson)
+	if _, errWrite := writer.Write(byteJson); errWrite != nil {
+		sh.baseHandler.logger.Errorf(helper.ApiMessage("Error responding: %v"), errWrite.Error())
+	}
 }
 
 // scheduleEvent получаем ID ивента из URL, и создаём ивент
