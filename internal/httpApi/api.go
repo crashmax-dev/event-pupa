@@ -3,8 +3,8 @@ package http_api
 import (
 	"context"
 	"errors"
-	"eventloop/internal/http_api/internal"
-	"eventloop/internal/http_api/internal/handlers"
+	"eventloop/internal/httpApi/handler"
+	"eventloop/internal/httpApi/helper"
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
 	"net/http"
@@ -22,16 +22,16 @@ func StartServer(srvLogger logger.Interface) error {
 
 	internal.ApiMessageSetPrefix(_APIPREFIX)
 
-	handlersMap := map[string]handlers.HandlerType{"/events/": handlers.EVENT,
-		"/trigger/":   handlers.TRIGGER,
-		"/subscribe/": handlers.SUBSCRIBE,
-		"/toggle/":    handlers.TOGGLE,
-		"/scheduler/": handlers.SCHEDULER}
+	handlersMap := map[string]handler.HandlerType{"/events/": handler.EVENT,
+		"/trigger/":   handler.TRIGGER,
+		"/subscribe/": handler.SUBSCRIBE,
+		"/toggle/":    handler.TOGGLE,
+		"/scheduler/": handler.SCHEDULER}
 
 	evLoop := eventloop.NewEventLoop(srvLogger.Level())
 	mux := http.NewServeMux()
 	for k, v := range handlersMap {
-		mux.Handle(k, handlers.NewHandler(v, srvLogger, evLoop))
+		mux.Handle(k, handler.NewHandler(v, srvLogger, evLoop))
 	}
 
 	serv = http.Server{
@@ -43,7 +43,7 @@ func StartServer(srvLogger logger.Interface) error {
 
 	servErr := serv.ListenAndServe()
 	if errors.Is(servErr, http.ErrServerClosed) {
-		srvLogger.Warn(internal.ApiMessage("Server closed"))
+		srvLogger.Warn(helper.ApiMessage("Server closed"))
 	} else if servErr != nil {
 		return servErr
 	}
@@ -55,7 +55,7 @@ func StopServer(ctx context.Context, srvLogger logger.Interface) error {
 	if err := serv.Shutdown(ctx); err != nil {
 		return err
 	} else {
-		srvLogger.Infof(internal.ApiMessage("Server stopped."))
+		srvLogger.Infof(helper.ApiMessage("Server stopped."))
 	}
 	return nil
 }

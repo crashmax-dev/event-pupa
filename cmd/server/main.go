@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"eventloop/internal/http_api"
+	"eventloop/internal/httpApi"
 	"eventloop/internal/logger"
 	"fmt"
 	"os"
@@ -35,7 +35,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		errServer := http_api.StartServer(srvLogger)
+		errServer := httpApi.StartServer(8090, srvLogger)
 		if errServer != nil {
 			fmt.Println(err)
 			return
@@ -48,7 +48,7 @@ func main() {
 	<-sc
 
 	fmt.Println("Server stopping...")
-	if errStop := http_api.StopServer(ctx, srvLogger); err != nil {
+	if errStop := httpApi.StopServer(ctx, srvLogger); err != nil {
 		fmt.Println(errStop)
 	}
 

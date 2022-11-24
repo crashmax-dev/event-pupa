@@ -1,8 +1,8 @@
-package handlers
+package handler
 
 import (
 	"context"
-	"eventloop/internal/http_api/internal"
+	"eventloop/internal/httpApi/helper"
 	"eventloop/pkg/channelEx"
 	"io"
 	"net/http"
@@ -19,7 +19,7 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	triggerCtx, triggerCancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer triggerCancel()
 	if request.Method != "POST" {
-		internal.NoMethodResponse(writer, "POST")
+		helper.NoMethodResponse(writer, "POST")
 		return
 	}
 
@@ -44,6 +44,6 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	}
 	_, err := io.WriteString(writer, strings.Join(output, ","))
 	if err != nil {
-		internal.ServerLogErr(writer, "error while sending trigger results: %v", th.logger, 500, err)
+		helper.ServerLogErr(writer, "error while sending trigger results: %v", th.logger, 500, err)
 	}
 }
