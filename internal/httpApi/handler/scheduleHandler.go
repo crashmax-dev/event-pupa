@@ -14,7 +14,15 @@ type schedulerHandler struct {
 	baseHandler
 }
 
+type ScheduleResponse struct {
+	Status string
+	Result []string
+}
+
 func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	var (
+		JSON ScheduleResponse
+	)
 	ctx, _ := context.WithCancel(context.Background())
 
 	if request.Method != "POST" {
