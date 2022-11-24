@@ -59,9 +59,12 @@ func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context, t *testing.T, nam
 }
 
 func TriggerOn_NoEventsTrigger(ctx context.Context, t *testing.T, name string, _ func(ctx context.Context) string) string {
-	go func() {
-		_ = evLoop.Trigger(ctx, name, nil)
-	}()
+	err := evLoop.Trigger(ctx, name, nil)
+
+	if err != nil {
+		t.Errorf("Empty trigger failed: %v", err)
+		return "1"
+	}
 	return "0"
 }
 
