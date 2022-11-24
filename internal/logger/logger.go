@@ -30,11 +30,7 @@ func NewLogger(level string, path string, postfix string) (Interface, error) {
 		return nil, parseErr
 	}
 
-	var (
-		levelSelected zapcore.Level
-	)
-
-	levelSelected = normalizeLevel(parsedLevel)
+	levelSelected := normalizeLevel(parsedLevel)
 
 	atom := zap.NewAtomicLevelAt(levelSelected)
 

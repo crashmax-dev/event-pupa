@@ -453,6 +453,6 @@ func TestPrioritySync(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	evLoop = NewEventLoop(zapcore.DebugLevel)
+	evLoop = NewEventLoop(zapcore.DebugLevel.String())
 	os.Exit(m.Run())
 }
