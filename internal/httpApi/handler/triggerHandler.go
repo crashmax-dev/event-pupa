@@ -46,7 +46,13 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	for elem := range ch.Channel() {
 		output = append(output, elem)
 	}
+	if len(output) == 0 {
+		helper.ServerLogErr(writer, "nothing to trigger", th.logger, 204)
+		return
+	}
+
 	_, err := io.WriteString(writer, strings.Join(output, ","))
+
 	if err != nil {
 		helper.ServerLogErr(writer, "error while sending trigger results: %v", th.logger, 500, err)
 	}
