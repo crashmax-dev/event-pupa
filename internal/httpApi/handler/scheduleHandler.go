@@ -42,7 +42,11 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 	sh.scheduleEvent(ctx, writer, &JSON, param)
 
 	if b, err := io.ReadAll(request.Body); err != nil {
-		JSON.SchedulerStatus = helper.ServerJsonLogErr(writer, "bad request: %v", sh.baseHandler.logger, 400, err)
+		JSON.SchedulerStatus = helper.ServerJsonLogErr(writer,
+			"bad request: %v",
+			sh.baseHandler.logger,
+			400,
+			err)
 	} else {
 		switch sm := strings.ToLower(string(b)); sm {
 		case "start":
