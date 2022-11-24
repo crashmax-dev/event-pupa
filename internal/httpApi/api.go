@@ -20,7 +20,7 @@ var (
 // StartServer стартует API сервер для доступа к Event Loop
 func StartServer(srvLogger logger.Interface) error {
 
-	internal.ApiMessageSetPrefix(_APIPREFIX)
+	helper.ApiMessageSetPrefix(_APIPREFIX)
 
 	handlersMap := map[string]handler.HandlerType{"/events/": handler.EVENT,
 		"/trigger/":   handler.TRIGGER,
