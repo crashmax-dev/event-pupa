@@ -62,7 +62,7 @@ func NewLogger(level string, path string, postfix string) (Interface, error) {
 		return os.OpenFile(u.Path[1:], os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	}
 
-	if isSinkRegistered == false {
+	if !isSinkRegistered {
 		err = zap.RegisterSink("winfile", newWinFileSink)
 		if err != nil {
 			return nil, err
@@ -122,7 +122,6 @@ func (al *apiLogger) Level() string {
 func normalizeLevel(level zapcore.Level) zapcore.Level {
 	if level >= zapcore.ErrorLevel {
 		return zapcore.DebugLevel
-	} else {
-		return zapcore.ErrorLevel
 	}
+	return zapcore.ErrorLevel
 }
