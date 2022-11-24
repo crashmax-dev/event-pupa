@@ -98,6 +98,9 @@ func (al *apiLogger) Errorf(template string, args ...interface{}) {
 func (al *apiLogger) Errorw(msg string, keysAndValues ...interface{}) {
 	al.base.Errorw(msg, keysAndValues)
 }
+func (al *apiLogger) Info(args ...interface{}) {
+	al.base.Info(args)
+}
 func (al *apiLogger) Infof(template string, args ...interface{}) {
 	al.base.Infof(template, args)
 }
