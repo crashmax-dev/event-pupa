@@ -3,7 +3,6 @@ package handler
 import (
 	"eventloop/internal/httpApi/helper"
 	"eventloop/pkg/eventloop"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -30,16 +29,19 @@ func (tg *toggleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 	}
 
 	s := strings.Split(string(b), ",")
-	outputStr := fmt.Sprintf("Toggle: %v", s)
-	tg.baseHandler.logger.Infof(outputStr)
-	_, ioerr := io.WriteString(writer, outputStr)
-	if ioerr != nil {
-		internal.ServerLogErr(writer, "error while responding: %v", tg.logger, 500, err)
-	}
+
+	var ef []eventloop.EventFunction
+
 	for _, v := range s {
 		elem := eventloop.EventFunctionMapping[v]
 		if elem > 0 {
-			tg.baseHandler.evLoop.Toggle(elem)
+			ef = append(ef, elem)
 		}
+	}
+	outputStr := tg.baseHandler.evLoop.Toggle(ef...)
+	tg.baseHandler.logger.Infof(outputStr)
+	_, ioerr := io.WriteString(writer, outputStr)
+	if ioerr != nil {
+		helper.ServerLogErr(writer, "error while responding: %v", tg.logger, 500, err)
 	}
 }
