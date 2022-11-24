@@ -30,16 +30,20 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	}
 
 	ch := channelEx.NewChannel(1)
-	if err := th.baseHandler.evLoop.Trigger(triggerCtx, param, ch); err != nil {
-		writer.WriteHeader(500)
-		th.baseHandler.logger.Errorf(internal.ApiMessage("event trigger fail: %v"), err)
-	}
+
+	var errTrig error
+	go func() {
+		if errTrig = th.baseHandler.evLoop.Trigger(triggerCtx, param, ch); errTrig != nil {
+			io.WriteString(writer, "Event trigger fail")
+			th.baseHandler.logger.Errorf(helper.ApiMessage("event trigger fail: %v"), errTrig)
+			return
+		}
+	}()
 
 	var (
 		output []string
-		chnl   = ch.Channel()
 	)
-	for elem := range chnl {
+	for elem := range ch.Channel() {
 		output = append(output, elem)
 	}
 	_, err := io.WriteString(writer, strings.Join(output, ","))
