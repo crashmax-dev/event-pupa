@@ -22,6 +22,7 @@ func ServerLogErr(writer http.ResponseWriter, format string, logger logger.Inter
 	errs := fmt.Sprintf(format, a...)
 	logger.Error(ApiPrefix + errs)
 
+	writer.WriteHeader(statusCode)
 	if _, err := io.WriteString(writer, errs); err != nil {
 		logger.Error(err)
 	}
