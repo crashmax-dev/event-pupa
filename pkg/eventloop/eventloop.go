@@ -7,7 +7,8 @@ import (
 	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
-	"eventloop/pkg/eventloop/internal/eventsList"
+	"eventloop/pkg/eventloop/internal/eventslist"
+	"eventloop/pkg/eventloop/internal/scheduler"
 	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
@@ -25,10 +26,10 @@ type eventLoop struct {
 	events eventslist.Interface
 	mx     *sync.RWMutex
 
-	disabled           []EventFunction
-	isSchedulerRunning bool
-	schedulerResults   map[string]string
-	stopScheduler      chan bool
+	disabled []EventFunction
+
+	//TODO: Нужен шедулер, выделить все это дерьмо в отдельный компонент
+	scheduler scheduler.Scheduler
 
 	logger logger.Interface
 }
@@ -43,10 +44,10 @@ func NewEventLoop(level string) Interface {
 	}
 
 	return &eventLoop{
-		mx:            &sync.RWMutex{},
-		events:        eventsList.New(),
-		stopScheduler: make(chan bool),
-		logger:        elLogger,
+		mx:        &sync.RWMutex{},
+		events:    eventslist.New(),
+		scheduler: scheduler.NewScheduler(),
+		logger:    elLogger,
 	}
 }
 
@@ -301,9 +302,9 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 		select {
 		case <-ticker.C:
 			go func() {
-				e.schedulerResults[event.GetId().String()] = event.RunFunction(ctx)
+				e.scheduler.SetSchedulerResults(event.GetID(), event.RunFunction(ctx))
 			}()
-		case <-isScheduledEventDone(evntSchedule.GetQuitChannel(), e.stopScheduler, ctx, e.logger):
+		case <-isScheduledEventDone(ctx, evntSchedule.GetQuitChannel(), e.scheduler.Stopper, e.logger):
 			return
 		}
 	}
@@ -326,7 +327,7 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 
 	e.addEvent(INTERVALED, newEvent)
 
-	if e.isSchedulerRunning {
+	if e.scheduler.IsSchedulerRunning() {
 		go e.runScheduledEvent(ctx, newEvent)
 	}
 	if out != nil {
@@ -344,22 +345,26 @@ func (e *eventLoop) StartScheduler(ctx context.Context) error {
 		return errors.New(errStr)
 	}
 
-	if e.isSchedulerRunning {
+	if e.scheduler.IsSchedulerRunning() {
 		errStr := "scheduler is already running"
 		e.logger.Warnw(errStr)
 		return errors.New(errStr)
 	}
 
-	e.schedulerResults = make(map[string]string)
+	e.scheduler.ResetResults()
 
 	for _, evts := range e.events.EventName(INTERVALED).Priority(0).List() {
 		curEvts := evts
 		go e.runScheduledEvent(ctx, curEvts)
 	}
 
-	e.isSchedulerRunning = true
+	e.scheduler.RunSchedule(true)
 	e.logger.Infow("Scheduler started")
 	return nil
+}
+
+func (e *eventLoop) Scheduler() scheduler.Interface {
+	return &e.scheduler
 }
 
 // StopScheduler останавливает выполнение ранее добавленных интервальных событий.
@@ -367,22 +372,12 @@ func (e *eventLoop) StopScheduler() {
 	e.logger.Infow("Scheduler stopping...")
 	e.mx.Lock()
 	defer e.mx.Unlock()
-	if len(e.events.EventName(INTERVALED).Priority(0).List()) > 0 && e.isSchedulerRunning {
+	if len(e.events.EventName(INTERVALED).Priority(0).List()) > 0 && e.scheduler.IsSchedulerRunning() {
 		e.logger.Infow("Send signal to stop")
-		e.stopScheduler <- true
+		e.scheduler.Stopper <- true
 	}
-	e.isSchedulerRunning = false
+	e.scheduler.RunSchedule(false)
 	e.logger.Infow("Send signal to stop")
-}
-
-func (e *eventLoop) IsSchedulerRunning() bool {
-	return e.isSchedulerRunning
-}
-
-func (e *eventLoop) GetSchedulerResults() []string {
-	e.mx.RLock()
-	defer e.mx.RUnlock()
-	return maps.Values(e.schedulerResults)
 }
 
 // RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было

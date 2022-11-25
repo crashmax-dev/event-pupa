@@ -4,6 +4,7 @@ import (
 	"context"
 	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/internal/scheduler"
 	"github.com/google/uuid"
 )
 
@@ -14,8 +15,7 @@ type Interface interface {
 	Toggle(eventFunc ...EventFunction) string
 	ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error
 	StartScheduler(ctx context.Context) error
-	IsSchedulerRunning() bool
-	GetSchedulerResults() []string
+	Scheduler() scheduler.Interface
 	StopScheduler()
 	RemoveEvent(id uuid.UUID) bool
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
