@@ -205,42 +205,44 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		for _, loopevent := range e.events.EventName(eventName).Priority(priorIndex).List() {
 			wg.Add(1)
 
-			go func(ev event.Interface) {
-				defer wg.Done()
-
-				result := ev.RunFunction(ctx)
-				if ch != nil && !ch.IsClosed() {
-					ch.Channel() <- result
-				}
-
-				listener := ev.GetSubscriber()
-				if listener == nil {
-					return
-				}
-				if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
-					evTrigger := ev.GetSubscriber()
-					evTrigger.LockMutex()
-					e.logger.Debugw("Sending messages...",
-						"listener", listenerChannels,
-						"trigger", ev.GetId())
-					for _, chnl := range listenerChannels {
-						e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetId())
-						chnl <- 1
-					}
-					e.logger.Infow("All messages send", "trigger", ev.GetId())
-					evTrigger.UnlockMutex()
-				}
-			}(loopevent)
+			go e.triggerEventFunc(ctx, loopevent, &wg, ch)
 
 			if loopevent.IsOnce() {
 				loopevent.GetOnce().Do(func() {
-					e.RemoveEvent(loopevent.GetId())
+					e.RemoveEvent(loopevent.GetID())
 				})
 			}
 		}
 	}
 	wg.Wait()
 	return deferErr
+}
+
+func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg *sync.WaitGroup, ch channelEx.Interface[string]) {
+	defer wg.Done()
+
+	result := ev.RunFunction(ctx)
+	if ch != nil && !ch.IsClosed() {
+		ch.Channel() <- result
+	}
+
+	listener := ev.GetSubscriber()
+	if listener == nil {
+		return
+	}
+	if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
+		evTrigger := ev.GetSubscriber()
+		evTrigger.LockMutex()
+		e.logger.Debugw("Sending messages...",
+			"listener", listenerChannels,
+			"trigger", ev.GetID())
+		for _, chnl := range listenerChannels {
+			e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetID())
+			chnl <- 1
+		}
+		e.logger.Infow("All messages send", "trigger", ev.GetID())
+		evTrigger.UnlockMutex()
+	}
 }
 
 // Toggle выключает функции менеджера событий, ON и TRIGGER. При попытке использования этих функций выводится ошибка.
