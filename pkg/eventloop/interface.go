@@ -11,7 +11,7 @@ type Interface interface {
 	addEvent(eventName string, newEvent event.Interface)
 	On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) error
 	Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error
-	Toggle(eventFunc ...EventFunction)
+	Toggle(eventFunc ...EventFunction) string
 	ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error
 	StartScheduler(ctx context.Context) error
 	StopScheduler()

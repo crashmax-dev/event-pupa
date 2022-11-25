@@ -245,17 +245,23 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 
 // Toggle выключает функции менеджера событий, ON и TRIGGER. При попытке использования этих функций выводится ошибка.
 // Функции можно включить обратно простым прокидыванием тех же параметров, в зависимости от того что надо включить.
-func (e *eventLoop) Toggle(eventFuncs ...EventFunction) {
+func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 	for _, v := range eventFuncs {
-		//Включение
+		if result != "" {
+			result += " | "
+		}
+		// Включение
 		if x := slices.Index(e.disabled, v); x != -1 {
-			e.logger.Infof("Enabling function %v", v)
+			result += fmt.Sprintf("Enabling function %v", v)
+			e.logger.Info(result)
 			e.disabled = internal.RemoveSliceItemByIndex(e.disabled, x)
-		} else { //Выключение
-			e.logger.Infof("Disabling function %v", v)
+		} else { // Выключение
+			result += fmt.Sprintf("Disabling function %v", v)
+			e.logger.Infof(result)
 			e.disabled = append(e.disabled, v)
 		}
 	}
+	return
 }
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
