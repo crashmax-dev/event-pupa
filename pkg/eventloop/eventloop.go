@@ -27,6 +27,7 @@ type eventLoop struct {
 
 	disabled           []EventFunction
 	isSchedulerRunning bool
+	schedulerResults   map[string]string
 	stopScheduler      chan bool
 
 	logger logger.Interface
@@ -301,7 +302,9 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 	for {
 		select {
 		case <-ticker.C:
-			go event.RunFunction(ctx)
+			go func() {
+				e.schedulerResults[event.GetId().String()] = event.RunFunction(ctx)
+			}()
 		case <-isScheduledEventDone(evntSchedule.GetQuitChannel(), e.stopScheduler, ctx, e.logger):
 			return
 		}
@@ -350,6 +353,8 @@ func (e *eventLoop) StartScheduler(ctx context.Context) error {
 		return errors.New(errStr)
 	}
 
+	e.schedulerResults = make(map[string]string)
+
 	for _, evts := range e.events.EventName(INTERVALED).Priority(0).List() {
 		curEvts := evts
 		go e.runScheduledEvent(ctx, curEvts)
@@ -371,6 +376,16 @@ func (e *eventLoop) StopScheduler() {
 	}
 	e.isSchedulerRunning = false
 	e.logger.Infow("Send signal to stop")
+}
+
+func (e *eventLoop) IsSchedulerRunning() bool {
+	return e.isSchedulerRunning
+}
+
+func (e *eventLoop) GetSchedulerResults() []string {
+	e.mx.RLock()
+	defer e.mx.RUnlock()
+	return maps.Values(e.schedulerResults)
 }
 
 // RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было
