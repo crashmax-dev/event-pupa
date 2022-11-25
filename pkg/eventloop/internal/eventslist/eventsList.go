@@ -1,7 +1,6 @@
-package eventsList
+package eventslist
 
 import (
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"sync"
@@ -29,20 +28,20 @@ func (el *eventsList) EventName(eventName string) Priority {
 func (el *eventsList) GetEventIdsByName(eventName string) (result []uuid.UUID, err error) {
 	pl := el.data[eventName]
 	if pl.Len() == 0 {
-		return nil, errors.New(fmt.Sprintf("no such event name: %v", eventName))
+		return nil, fmt.Errorf("no such event name: %v", eventName)
 	}
 	for _, priors := range el.data[eventName] {
 		for _, evnt := range priors {
-			result = append(result, evnt.GetId())
+			result = append(result, evnt.GetID())
 		}
 	}
 	return result, nil
 }
 
 func (eil *EventIdsList) iterateEvents(id uuid.UUID) bool {
-	for eventIdKey, eventIdValue := range *eil {
-		if eventIdValue.GetId() == id {
-			delete(*eil, eventIdKey)
+	for eventIDKey, eventIdValue := range *eil {
+		if eventIdValue.GetID() == id {
+			delete(*eil, eventIDKey)
 			return true
 		}
 	}

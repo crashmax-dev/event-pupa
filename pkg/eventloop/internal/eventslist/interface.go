@@ -1,4 +1,4 @@
-package eventsList
+package eventslist
 
 import (
 	"eventloop/pkg/eventloop/event"
@@ -16,8 +16,8 @@ type Priority interface {
 	Len() int
 }
 
-type EventId interface {
+type EventID interface {
 	List() EventIdsList
-	EventId(eventId string) event.Interface
+	EventID(eventID string) event.Interface
 	AddEvent(newEvent event.Interface)
 }

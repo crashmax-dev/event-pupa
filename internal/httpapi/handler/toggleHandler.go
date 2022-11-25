@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"eventloop/internal/httpApi/helper"
+	"eventloop/internal/httpapi/helper"
 	"eventloop/pkg/eventloop"
 	"io"
 	"net/http"
@@ -18,7 +18,7 @@ type toggleHandler struct {
 func (tg *toggleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != "POST" {
 		helper.NoMethodResponse(writer, "POST")
-		tg.baseHandler.logger.Infof(helper.ApiMessage("[Toggle] No such method: %s"), request.Method)
+		tg.baseHandler.logger.Infof(helper.APIMessage("[Toggle] No such method: %s"), request.Method)
 		return
 	}
 

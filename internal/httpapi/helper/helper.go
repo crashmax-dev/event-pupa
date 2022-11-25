@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ApiPrefix string
+	APIPrefix string
 )
 
 // NoMethodResponse возвращает клиенту 405 и пишет, какие методы он может использовать для запроса
@@ -20,7 +20,7 @@ func NoMethodResponse(writer http.ResponseWriter, allowed string) {
 // ServerLogErr пишет ошибку с форматируемым текстом format с параметрами a, в лог logger и клиенту в writer
 func ServerLogErr(writer http.ResponseWriter, format string, logger logger.Interface, statusCode int, a ...any) {
 	errs := fmt.Sprintf(format, a...)
-	logger.Error(ApiPrefix + errs)
+	logger.Error(APIPrefix + errs)
 
 	writer.WriteHeader(statusCode)
 	if _, err := io.WriteString(writer, errs); err != nil {
@@ -28,23 +28,22 @@ func ServerLogErr(writer http.ResponseWriter, format string, logger logger.Inter
 	}
 }
 
-func ServerJsonLogErr(writer http.ResponseWriter,
+func ServerJSONLogErr(writer http.ResponseWriter,
 	format string,
 	logger logger.Interface,
 	statusCode int,
 	a ...any) string {
-
 	errs := fmt.Sprintf(format, a...)
-	logger.Error(ApiPrefix + errs)
+	logger.Error(APIPrefix + errs)
 
 	writer.WriteHeader(statusCode)
 	return errs
 }
 
-func ApiMessageSetPrefix(inputApiPrefix string) {
-	ApiPrefix = inputApiPrefix
+func APIMessageSetPrefix(inputApiPrefix string) {
+	APIPrefix = inputApiPrefix
 }
 
-func ApiMessage(message string) string {
-	return ApiPrefix + message
+func APIMessage(message string) string {
+	return APIPrefix + message
 }

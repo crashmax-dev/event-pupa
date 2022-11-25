@@ -156,7 +156,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 			t.Errorf("isScheduledEventDone: true; Want: false")
 		},
 	},
-		{ //====
+		{ // ====
 			init: func() {
 				eventCh <- true
 			},
@@ -164,7 +164,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 				t.Errorf("isScheduledEventDone by event channel: false; Want: true")
 			},
 		},
-		{ //====
+		{ // ====
 			init: func() {
 				eventLoopCh <- true
 			},
@@ -172,7 +172,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 				t.Errorf("isScheduledEventDone by eventloop channel: false; Want: true")
 			},
 		},
-		{ //=====
+		{ // =====
 			init: func() {
 				cancel()
 			},
@@ -181,18 +181,18 @@ func TestIsScheduledEventDone(t *testing.T) {
 			},
 		}}
 
-	for _, test_ := range tests {
-		if test_.init != nil {
-			test_.init()
+	for _, testValue := range tests {
+		if testValue.init != nil {
+			testValue.init()
 		}
 		select {
-		case <-isScheduledEventDone(eventCh, eventLoopCh, ctx, nil):
-			if test_.done != nil {
-				test_.done()
+		case <-isScheduledEventDone(ctx, eventCh, eventLoopCh, nil):
+			if testValue.done != nil {
+				testValue.done()
 			}
 		default:
-			if test_.errorFunc != nil {
-				test_.errorFunc()
+			if testValue.errorFunc != nil {
+				testValue.errorFunc()
 			}
 		}
 	}
@@ -313,9 +313,9 @@ func TestRemoveEvent(t *testing.T) {
 	})
 	time.Sleep(INTERVAL_MS * INTERVAL_EXECS)
 
-	go evLoop.RemoveEvent(eventDefault3.GetId())
-	go evLoop.RemoveEvent(evSched.GetId())
-	go evLoop.RemoveEvent(eventDefault.GetId())
+	go evLoop.RemoveEvent(eventDefault3.GetID())
+	go evLoop.RemoveEvent(evSched.GetID())
+	go evLoop.RemoveEvent(eventDefault.GetID())
 	time.Sleep(time.Millisecond * 10)
 
 	errG.Go(func() error {
@@ -323,7 +323,7 @@ func TestRemoveEvent(t *testing.T) {
 	})
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.RemoveEvent(eventDefault2.GetId())
+	go evLoop.RemoveEvent(eventDefault2.GetID())
 	time.Sleep(time.Millisecond * 10)
 
 	errG.Go(func() error {
@@ -392,7 +392,7 @@ func TestSubevent(t *testing.T) {
 		t.Log(err)
 	}
 
-	//Нужна задержка, т.к. мы дожидаемся выполнения ивентов-тригеров, но не дожидаемся ивентов-слушателей
+	// Нужна задержка, т.к. мы дожидаемся выполнения ивентов-тригеров, но не дожидаемся ивентов-слушателей
 	time.Sleep(time.Millisecond * 10)
 
 	if number != WANT {
@@ -449,7 +449,6 @@ func TestPrioritySync(t *testing.T) {
 	if numExecs != WANT {
 		t.Errorf("Number = %d; WANT %d", numExecs, WANT)
 	}
-
 }
 
 func TestMain(m *testing.M) {

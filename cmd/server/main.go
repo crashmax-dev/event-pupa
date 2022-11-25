@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"eventloop/internal/httpApi"
+	"eventloop/internal/httpapi"
 	"eventloop/internal/logger"
 	"fmt"
 	"os"
@@ -11,7 +11,7 @@ import (
 	"syscall"
 )
 
-const _LOG_LEVEL = "debug"
+const _LOGLEVEL = "debug"
 
 func inputMonitor(sc chan<- os.Signal) {
 	var input string
@@ -35,7 +35,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		errServer := httpApi.StartServer(8090, srvLogger)
+		errServer := httpapi.StartServer(8090, srvLogger)
 		if errServer != nil {
 			fmt.Println(err)
 			return
@@ -48,7 +48,7 @@ func main() {
 	<-sc
 
 	fmt.Println("Server stopping...")
-	if errStop := httpApi.StopServer(ctx, srvLogger); err != nil {
+	if errStop := httpapi.StopServer(ctx, srvLogger); err != nil {
 		fmt.Println(errStop)
 	}
 
@@ -56,12 +56,11 @@ func main() {
 }
 
 func initLogger() (logger.Interface, error) {
-	appLogger, err := logger.NewLogger(_LOG_LEVEL, "logs", "")
+	appLogger, err := logger.NewLogger(_LOGLEVEL, "logs", "")
 	if err != nil {
 		return nil, err
-	} else {
-		appLogger.Infof("Server starting...")
 	}
 
+	appLogger.Infof("Server starting...")
 	return appLogger, nil
 }

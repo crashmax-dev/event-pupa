@@ -1,10 +1,10 @@
-package httpApi
+package httpapi
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"eventloop/internal/httpApi/handler"
+	"eventloop/internal/httpapi/handler"
 	"fmt"
 	"net/http"
 	"net/url"

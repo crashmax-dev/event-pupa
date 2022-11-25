@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"eventloop/internal/httpApi/helper"
+	"eventloop/internal/httpapi/helper"
 	"eventloop/pkg/channelEx"
 	"io"
 	"net/http"
@@ -35,7 +35,7 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	go func() {
 		if errTrig = th.baseHandler.evLoop.Trigger(triggerCtx, param, ch); errTrig != nil {
 			io.WriteString(writer, "Event trigger fail")
-			th.baseHandler.logger.Errorf(helper.ApiMessage("event trigger fail: %v"), errTrig)
+			th.baseHandler.logger.Errorf(helper.APIMessage("event trigger fail: %v"), errTrig)
 			return
 		}
 	}()

@@ -12,7 +12,6 @@ import (
 )
 
 func TestOnAndTrigger(t *testing.T) {
-
 	tests := []test{{name: "Simple", f: TriggerOn_Simple, want: 1},
 		{name: "Multiple", f: TriggerOn_Multiple, want: 3},
 		{name: "Once", f: TriggerOn_Once, want: 1},
@@ -43,8 +42,6 @@ func TestOnAndTrigger(t *testing.T) {
 			}
 		})
 	}
-
-	//cancel()
 }
 
 func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context, t *testing.T, name string, _ func(ctx context.Context) string) string {
@@ -133,7 +130,7 @@ func TriggerOn_Multiple(ctx context.Context, t *testing.T, eventName string, far
 	return result
 }
 
-func TriggerOn_Once(ctx context.Context, t *testing.T, eventName string, farg func(ctx context.Context) string) string {
+func TriggerOn_Once(ctx context.Context, _ *testing.T, eventName string, farg func(ctx context.Context) string) string {
 
 	errG, errCtx := errgroup.WithContext(ctx)
 

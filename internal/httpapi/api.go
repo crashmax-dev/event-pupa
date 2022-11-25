@@ -1,10 +1,10 @@
-package httpApi
+package httpapi
 
 import (
 	"context"
 	"errors"
-	"eventloop/internal/httpApi/handler"
-	"eventloop/internal/httpApi/helper"
+	"eventloop/internal/httpapi/handler"
+	"eventloop/internal/httpapi/helper"
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
 	"net/http"
@@ -20,10 +20,9 @@ var (
 
 // StartServer стартует API сервер для доступа к Event Loop. Функция блокирующая
 func StartServer(port int, srvLogger logger.Interface) error {
+	helper.APIMessageSetPrefix(_APIPREFIX)
 
-	helper.ApiMessageSetPrefix(_APIPREFIX)
-
-	handlersMap := map[string]handler.HandlerType{"/events/": handler.EVENT,
+	handlersMap := map[string]handler.Type{"/events/": handler.EVENT,
 		"/trigger/":   handler.TRIGGER,
 		"/subscribe/": handler.SUBSCRIBE,
 		"/toggle/":    handler.TOGGLE,
@@ -44,7 +43,7 @@ func StartServer(port int, srvLogger logger.Interface) error {
 
 	servErr := serv.ListenAndServe()
 	if errors.Is(servErr, http.ErrServerClosed) {
-		srvLogger.Warn(helper.ApiMessage("Server closed"))
+		srvLogger.Warn(helper.APIMessage("Server closed"))
 	} else if servErr != nil {
 		return servErr
 	}
@@ -53,10 +52,10 @@ func StartServer(port int, srvLogger logger.Interface) error {
 }
 
 func StopServer(ctx context.Context, srvLogger logger.Interface) error {
-	if err := serv.Shutdown(ctx); err != nil {
+	err := serv.Shutdown(ctx)
+	if err != nil {
 		return err
-	} else {
-		srvLogger.Infof(helper.ApiMessage("Server stopped."))
 	}
+	srvLogger.Infof(helper.APIMessage("Server stopped."))
 	return nil
 }

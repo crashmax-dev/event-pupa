@@ -1,4 +1,4 @@
-package eventsList
+package eventslist
 
 import "eventloop/pkg/eventloop/event"
 
@@ -9,9 +9,9 @@ func (eil *EventIdsList) List() EventIdsList {
 }
 
 func (eil *EventIdsList) AddEvent(newEvent event.Interface) {
-	(*eil)[newEvent.GetId().String()] = newEvent
+	(*eil)[newEvent.GetID().String()] = newEvent
 }
 
-func (eil *EventIdsList) EventId(eventId string) event.Interface {
-	return (*eil)[eventId]
+func (eil *EventIdsList) EventID(eventID string) event.Interface {
+	return (*eil)[eventID]
 }

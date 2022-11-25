@@ -1,4 +1,4 @@
-package eventsList
+package eventslist
 
 type priorityList map[int]EventIdsList
 

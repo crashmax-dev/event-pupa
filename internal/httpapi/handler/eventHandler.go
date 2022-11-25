@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"eventloop/internal/httpApi/eventpreset"
-	"eventloop/internal/httpApi/helper"
+	"eventloop/internal/httpapi/eventpreset"
+	"eventloop/internal/httpapi/helper"
 	"github.com/google/uuid"
 	"io"
 	"net/http"
@@ -37,15 +37,15 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
-	eh.baseHandler.logger.Debugf(helper.ApiMessage("GET request"))
+	eh.baseHandler.logger.Debugf(helper.APIMessage("GET request"))
 	if evnts, err := eh.baseHandler.evLoop.GetAttachedEvents(eventName); err == nil {
-		if codedMessage, errJson := json.Marshal(evnts); errJson == nil {
+		if codedMessage, errJSON := json.Marshal(evnts); errJSON == nil {
 			_, errW := writer.Write(codedMessage)
 			if errW != nil {
-				eh.baseHandler.logger.Errorf(helper.ApiMessage("error responding: %v"), errW)
+				eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), errW)
 			}
 		} else {
-			helper.ServerLogErr(writer, errJson.Error(), eh.baseHandler.logger, 400)
+			helper.ServerLogErr(writer, errJSON.Error(), eh.baseHandler.logger, 400)
 		}
 	} else {
 		helper.ServerLogErr(writer, err.Error(), eh.baseHandler.logger, 200)
@@ -62,7 +62,7 @@ func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter,
 	eventName := params[1]
 	newEvent, err := eventpreset.CreateEvent(id, eventpreset.REGULAR)
 	if err != nil {
-		eh.baseHandler.logger.Errorf(helper.ApiMessage("Error while creating event: %v"), err)
+		eh.baseHandler.logger.Errorf(helper.APIMessage("Error while creating event: %v"), err)
 		return
 	}
 
@@ -74,30 +74,29 @@ func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter,
 		return
 	}
 
-	eh.baseHandler.logger.Infof(helper.ApiMessage("Event type %v created for %v"), id, eventName)
+	eh.baseHandler.logger.Infof(helper.APIMessage("Event type %v created for %v"), id, eventName)
 	_, err = io.WriteString(writer, newEvent.GetID().String())
 	if err != nil {
-		eh.baseHandler.logger.Errorf(helper.ApiMessage("error responding: %v"), err)
+		eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), err)
 	}
 }
 
 func (eh *eventHandler) delete(writer http.ResponseWriter, request *http.Request) {
 	if b, err := io.ReadAll(request.Body); err == nil {
 		var sl []uuid.UUID
-		errJson := json.Unmarshal(b, &sl)
-		if errJson != nil {
-			helper.ServerLogErr(writer, "wrong json: %v", eh.baseHandler.logger, 400, errJson)
+		errJSON := json.Unmarshal(b, &sl)
+		if errJSON != nil {
+			helper.ServerLogErr(writer, "wrong json: %v", eh.baseHandler.logger, 400, errJSON)
 			return
 		}
-		eh.baseHandler.logger.Infof(helper.ApiMessage("Removing events %v"), sl)
+		eh.baseHandler.logger.Infof(helper.APIMessage("Removing events %v"), sl)
 		for _, v := range sl {
 			eh.baseHandler.evLoop.RemoveEvent(v)
 		}
 		_, errRespond := io.WriteString(writer, "OK")
 		if errRespond != nil {
-			eh.baseHandler.logger.Errorf(helper.ApiMessage("error responding: %v"), errRespond)
+			eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), errRespond)
 		}
-
 	} else {
 		helper.ServerLogErr(writer, "Error reading request: %v", eh.baseHandler.logger, 400, err.Error())
 	}

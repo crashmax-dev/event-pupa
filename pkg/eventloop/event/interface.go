@@ -9,7 +9,7 @@ import (
 )
 
 type Interface interface {
-	GetId() uuid.UUID
+	GetID() uuid.UUID
 	GetPriority() int
 	SetPriority(prior int)
 	RunFunction(ctx context.Context) string

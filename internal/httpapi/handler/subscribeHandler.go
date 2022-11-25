@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"eventloop/internal/httpApi/eventpreset"
-	"eventloop/internal/httpApi/helper"
+	"eventloop/internal/httpapi/eventpreset"
+	"eventloop/internal/httpapi/helper"
 	"eventloop/pkg/eventloop/event"
 	"net/http"
 	"strings"
@@ -57,11 +57,11 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 	for _, v := range sInfo.Triggers {
 		newEvent, err := eventpreset.CreateEvent(v, eventpreset.REGULAR)
 		if err != nil {
-			sh.baseHandler.logger.Errorf(helper.ApiMessage("Error while creating trigger event: %v"), err)
+			sh.baseHandler.logger.Errorf(helper.APIMessage("Error while creating trigger event: %v"), err)
 		} else {
 			triggers = append(triggers, newEvent)
 			if errOn := sh.baseHandler.evLoop.On(ctx, param, newEvent, nil); errOn != nil {
-				sh.baseHandler.logger.Errorf(helper.ApiMessage("schedule event fail: %v"), errOn)
+				sh.baseHandler.logger.Errorf(helper.APIMessage("schedule event fail: %v"), errOn)
 			}
 		}
 	}
@@ -69,7 +69,7 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 	for _, v := range sInfo.Listeners {
 		newEvent, err := eventpreset.CreateEvent(v, eventpreset.REGULAR)
 		if err != nil {
-			sh.baseHandler.logger.Errorf(helper.ApiMessage("Error while creating listener event: %v"), err)
+			sh.baseHandler.logger.Errorf(helper.APIMessage("Error while creating listener event: %v"), err)
 		} else {
 			listeners = append(listeners, newEvent)
 		}
@@ -77,6 +77,6 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 
 	if errSubscribe := sh.baseHandler.evLoop.Subscribe(ctx, triggers, listeners); errSubscribe != nil {
 		writer.WriteHeader(500)
-		sh.baseHandler.logger.Errorf(helper.ApiMessage("event subscribe fail: %v"), errSubscribe)
+		sh.baseHandler.logger.Errorf(helper.APIMessage("event subscribe fail: %v"), errSubscribe)
 	}
 }

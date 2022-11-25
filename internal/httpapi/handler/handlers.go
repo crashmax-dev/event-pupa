@@ -6,10 +6,10 @@ import (
 	"net/http"
 )
 
-type HandlerType uint8
+type Type uint8
 
 const (
-	EVENT HandlerType = iota
+	EVENT Type = iota
 	TRIGGER
 	SUBSCRIBE
 	TOGGLE
@@ -17,9 +17,9 @@ const (
 )
 
 // NewHandler создаёт новое событие типа ht, logger и evloop для всех хэндлеров одного сервера должны быть одни и те же
-func NewHandler(ht HandlerType, logger logger.Interface, evLoop eventloop.Interface) http.Handler {
+func NewHandler(ht Type, logger logger.Interface, evLoop eventloop.Interface) http.Handler {
 	bh := baseHandler{logger: logger, evLoop: evLoop}
-	var handlerMap = map[HandlerType]http.Handler{
+	var handlerMap = map[Type]http.Handler{
 		EVENT:     &eventHandler{bh},
 		TRIGGER:   &triggerHandler{bh},
 		SUBSCRIBE: &subscribeHandler{baseHandler: bh},

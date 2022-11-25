@@ -22,7 +22,7 @@ const INTERVALED = "@INTERVALED"
 // каждого, так и одноразовые, выполняющиеся с определённым интервалом. Также можно задавать приоритет обычным событиям.
 // Для использования нужно создавать event.
 type eventLoop struct {
-	events eventsList.Interface
+	events eventslist.Interface
 	mx     *sync.RWMutex
 
 	disabled           []EventFunction
@@ -66,27 +66,27 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		for _, t := range triggers {
 			ch := make(chan int, 1)
 			trigger.AddChannel(ch)
-			e.logger.Infow("Event subscribed", "trigger", t.GetId(), "listener", v.GetId())
+			e.logger.Infow("Event subscribed", "trigger", t.GetID(), "listener", v.GetID())
 			t.GetSubscriber().AddChannel(ch)
 		}
 
-		//Запскаем ждуна, когда триггеры сработают, и срабатываем сами
+		// Запскаем ждуна, когда триггеры сработают, и срабатываем сами
 		go func(ctx context.Context, v event.Interface) {
 			for {
 				select {
 				case <-ctx.Done():
-					e.logger.Infow("Stop listening because of context", "eventId", v.GetId())
+					e.logger.Infow("Stop listening because of context", "eventId", v.GetID())
 					return
 				default:
 					trigger.LockMutex()
-					e.logger.Debugw("Waiting for triggers...", "event", v.GetId())
+					e.logger.Debugw("Waiting for triggers...", "event", v.GetID())
 					channels := trigger.GetChannels()
-					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetId())
+					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetID())
 					for _, ch := range channels {
-						e.logger.Debugw("Waiting for channel", "ch", ch, "event", v.GetId())
+						e.logger.Debugw("Waiting for channel", "ch", ch, "event", v.GetID())
 						<-ch
 					}
-					e.logger.Infow("Subscriber event fired", "event", v.GetId())
+					e.logger.Infow("Subscriber event fired", "event", v.GetID())
 					v.RunFunction(ctx)
 					trigger.UnlockMutex()
 				}
@@ -116,19 +116,19 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	if isContextDone(ctx) {
 		errStr := "can't add listener to event, context is done"
 		e.logger.Warnw(errStr,
-			"event", newEvent.GetId(),
+			"event", newEvent.GetID().String(),
 			"eventname", eventName)
 		return errors.New(errStr)
 	}
 
-	//Если выключено добавление - не добавляем
+	// Если выключено добавление - не добавляем
 	if slices.Contains(e.disabled, ON) {
 		if out != nil {
-			out <- newEvent.GetId()
+			out <- newEvent.GetID()
 		}
 		errStr := "can't attach listener, On disabled"
 		e.logger.Warnw(errStr,
-			"event", newEvent.GetId(),
+			"event", newEvent.GetID(),
 			"eventname", eventName)
 		return errors.New(errStr)
 	}
@@ -147,7 +147,7 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	e.logger.Debugw("Event added", "eventname", eventName)
 
 	if out != nil {
-		out <- newEvent.GetId()
+		out <- newEvent.GetID()
 	}
 	return nil
 }
@@ -157,7 +157,6 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 // В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова
 // нужно создавать новый channelEx
 func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error {
-
 	var deferErr error
 
 	if ch != nil && !ch.IsClosed() {
@@ -171,7 +170,6 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 				}
 			}(ch)
 		}
-
 	}
 
 	if isContextDone(ctx) {
@@ -267,7 +265,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
-func isScheduledEventDone(eventCh, eventLoopCh <-chan bool, ctx context.Context, logger logger.Interface) <-chan struct{} {
+func isScheduledEventDone(ctx context.Context, eventCh, eventLoopCh <-chan bool, logger logger.Interface) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
 	select {
@@ -295,7 +293,7 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 	evntSchedule, _ := event.GetSchedule()
 	evntInterval := evntSchedule.GetInterval()
 	e.logger.Infow("Scheduled event starting with interval",
-		"event", event.GetId(),
+		"event", event.GetID(),
 		"interval", evntInterval)
 	ticker := time.NewTicker(evntInterval)
 	defer ticker.Stop()
@@ -315,7 +313,6 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 // это событие сразу.
 // out возвращает UUID события в хранилище событий
 func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error {
-
 	if _, err := newEvent.GetSchedule(); err != nil {
 		e.logger.Errorw(err.Error(), "event", newEvent)
 		return err
@@ -333,7 +330,7 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 		go e.runScheduledEvent(ctx, newEvent)
 	}
 	if out != nil {
-		out <- newEvent.GetId()
+		out <- newEvent.GetID()
 	}
 	return nil
 }

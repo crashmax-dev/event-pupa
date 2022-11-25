@@ -43,7 +43,7 @@ func NewPriorityEvent(fun eventFunc, priority int) Interface {
 	return &event{id: uuid.New(), fun: fun, priority: priority}
 }
 
-func (ev *event) GetId() uuid.UUID {
+func (ev *event) GetID() uuid.UUID {
 	return ev.id
 }
 
