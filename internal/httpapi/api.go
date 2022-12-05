@@ -19,7 +19,7 @@ var (
 )
 
 // StartServer стартует API сервер для доступа к Event Loop. Функция блокирующая
-func StartServer(port int, srvLogger logger.Interface) error {
+func StartServer(port int, evLoop eventloop.Interface, srvLogger logger.Interface) error {
 	helper.APIMessageSetPrefix(_APIPREFIX)
 
 	handlersMap := map[string]handler.Type{"/events/": handler.EVENT,
@@ -28,7 +28,6 @@ func StartServer(port int, srvLogger logger.Interface) error {
 		"/toggle/":    handler.TOGGLE,
 		"/scheduler/": handler.SCHEDULER}
 
-	evLoop := eventloop.NewEventLoop(srvLogger.Level())
 	mux := http.NewServeMux()
 	for k, v := range handlersMap {
 		mux.Handle(k, handler.NewHandler(v, srvLogger, evLoop))

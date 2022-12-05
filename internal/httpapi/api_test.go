@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"eventloop/internal/logger"
+	"eventloop/pkg/eventloop"
 	"fmt"
 	"os"
 	"strconv"
@@ -153,8 +154,10 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	evLoop := eventloop.NewEventLoop(testLogger.Level())
+
 	go func() {
-		errServ := StartServer(8090, testLogger)
+		errServ := StartServer(8090, evLoop, testLogger)
 		if errServ != nil {
 			fmt.Println(errServ)
 			os.Exit(1)

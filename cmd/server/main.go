@@ -4,6 +4,7 @@ import (
 	"context"
 	"eventloop/internal/httpapi"
 	"eventloop/internal/logger"
+	"eventloop/pkg/eventloop"
 	"fmt"
 	"os"
 	"os/signal"
@@ -23,6 +24,8 @@ func inputMonitor(sc chan<- os.Signal) {
 
 func main() {
 	srvLogger, err := initLogger()
+	evLoop := eventloop.NewEventLoop(srvLogger.Level())
+
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -35,7 +38,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		errServer := httpapi.StartServer(8090, srvLogger)
+		errServer := httpapi.StartServer(8090, evLoop, srvLogger)
 		if errServer != nil {
 			fmt.Println(err)
 			return
