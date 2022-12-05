@@ -3,8 +3,9 @@ package httpapi
 import (
 	"bytes"
 	"context"
-	"eventloop/internal/logger"
+	loggerImplement "eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
+	"eventloop/pkg/logger"
 	"fmt"
 	"os"
 	"strconv"
@@ -148,7 +149,7 @@ func TestMain(m *testing.M) {
 	var (
 		err error
 	)
-	testLogger, err = logger.NewLogger("debug", "logs", "test")
+	testLogger, err = loggerImplement.NewLogger("debug", "logs", "test")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

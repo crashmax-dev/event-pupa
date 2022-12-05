@@ -1,7 +1,7 @@
 package helper
 
 import (
-	"eventloop/internal/logger"
+	"eventloop/pkg/logger"
 	"fmt"
 	"io"
 	"net/http"

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
+	"eventloop/pkg/logger"
 )
 
 type baseHandler struct {

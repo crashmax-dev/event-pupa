@@ -5,6 +5,7 @@ import (
 	"eventloop/internal/httpapi"
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop"
+	loggerInterface "eventloop/pkg/logger"
 	"fmt"
 	"os"
 	"os/signal"
@@ -58,7 +59,7 @@ func main() {
 	fmt.Println("Server stopped.")
 }
 
-func initLogger() (logger.Interface, error) {
+func initLogger() (loggerInterface.Interface, error) {
 	appLogger, err := logger.NewLogger(_LOGLEVEL, "logs", "")
 	if err != nil {
 		return nil, err

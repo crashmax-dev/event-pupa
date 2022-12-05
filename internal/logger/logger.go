@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"eventloop/pkg/logger"
 	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

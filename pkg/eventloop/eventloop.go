@@ -9,6 +9,7 @@ import (
 	"eventloop/pkg/eventloop/internal"
 	"eventloop/pkg/eventloop/internal/eventslist"
 	"eventloop/pkg/eventloop/internal/scheduler"
+	loggerInterface "eventloop/pkg/logger"
 	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
@@ -31,7 +32,7 @@ type eventLoop struct {
 	//TODO: Нужен шедулер, выделить все это дерьмо в отдельный компонент
 	scheduler scheduler.Scheduler
 
-	logger logger.Interface
+	logger loggerInterface.Interface
 }
 
 // NewEventLoop - конструктор для менеджера событий. Инициализирует новый Event Loop.
@@ -268,7 +269,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
-func isScheduledEventDone(ctx context.Context, eventCh, eventLoopCh <-chan bool, logger logger.Interface) <-chan struct{} {
+func isScheduledEventDone(ctx context.Context, eventCh, eventLoopCh <-chan bool, logger loggerInterface.Interface) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
 	select {
