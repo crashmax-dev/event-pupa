@@ -21,13 +21,14 @@ type apiLogger struct {
 
 // NewLogger инициализирует логгер с уровнем логгирования level, в папке path по относительному пути, с добавлением
 // postfix к имени файла (postfix будет перед временем)
-func NewLogger(level string, path string, postfix string) (Interface, error) {
+func NewLogger(level string, path string, postfix string) (logger.Interface, error) {
 	if path == "" {
 		path = "logs"
 	}
 	parsedLevel, parseErr := zapcore.ParseLevel(level)
 	if parseErr != nil {
-		return nil, parseErr
+		fmt.Println("Level parsing error; revert to Prod level")
+		parsedLevel = zapcore.ErrorLevel
 	}
 
 	levelSelected := normalizeLevel(parsedLevel)
