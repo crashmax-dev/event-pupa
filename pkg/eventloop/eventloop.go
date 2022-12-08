@@ -152,6 +152,34 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	return nil
 }
 
+// TODO: godoc
+func (e *eventLoop) OnBefore(ctx context.Context, eventName string, elFunction event.EventFunc) {
+	const before_priority = -2
+
+	// Без имени ивента = триггерится будет на все эвенты
+	newEv := event.NewPriorityEvent(elFunction, before_priority)
+
+	if eventName == "" {
+		e.addEvent(string(BEFORE_TRIGGER), newEv)
+	} else {
+		e.addEvent(eventName, newEv)
+	}
+}
+
+// TODO: godoc
+func (e *eventLoop) OnAfter(ctx context.Context, eventName string, elFunction event.EventFunc) {
+	const after_priority = -1
+
+	// Без имени ивента = триггерится будет на все эвенты
+	newEv := event.NewPriorityEvent(elFunction, after_priority)
+
+	if eventName == "" {
+		e.addEvent(string(AFTER_TRIGGER), newEv)
+	} else {
+		e.addEvent(eventName, newEv)
+	}
+}
+
 // Trigger вызывает событие с определённым eventName. Функция ждёт выполнения всех добавленных на событие функций,
 // поэтому синхронный вызов заблокирует родительский цикл выполнения программы.
 // В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова

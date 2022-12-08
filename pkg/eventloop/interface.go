@@ -11,6 +11,8 @@ import (
 type Interface interface {
 	addEvent(eventName string, newEvent event.Interface)
 	On(ctx context.Context, eventName string, newEvent event.Interface, out chan<- uuid.UUID) error
+	OnBefore(ctx context.Context, eventName string, elFunction event.EventFunc)
+	OnAfter(ctx context.Context, eventName string, elFunction event.EventFunc)
 	Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error
 	Toggle(eventFunc ...EventFunction) string
 	ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error
