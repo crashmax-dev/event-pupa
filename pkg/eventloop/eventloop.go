@@ -17,9 +17,6 @@ import (
 	"time"
 )
 
-// INTERVALED - зарезервированное название события для интервальных событий
-const INTERVALED = "@INTERVALED"
-
 // eventLoop представляет собой менеджер событий. Позволяет использовать как классические события с названиями для
 // каждого, так и одноразовые, выполняющиеся с определённым интервалом. Также можно задавать приоритет обычным событиям.
 // Для использования нужно создавать event.
@@ -135,7 +132,8 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 		return errors.New(errStr)
 	}
 
-	if eventName == INTERVALED {
+	//TODO: переписать возврат ошипки
+	if slices.Contains(eventLoopEvents, eventLoopEvent(eventName)) {
 		errStr := fmt.Sprintf("Event name %v is reserved", INTERVALED)
 		e.logger.Warnf("Event name %v is reserved", INTERVALED)
 		return errors.New(errStr)
@@ -187,8 +185,8 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		return errors.New(str)
 	}
 
-	if eventName == INTERVALED {
-		str := fmt.Sprintf("Event name %v is reserved", INTERVALED)
+	if slices.Contains(eventLoopEvents, eventLoopEvent(eventName)) {
+		str := fmt.Sprintf("Event name %v is reserved", eventLoopEvent(eventName))
 		e.logger.Warnf(str)
 		return errors.New(str)
 	}
@@ -328,7 +326,7 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 		return errors.New(errStr)
 	}
 
-	e.addEvent(INTERVALED, newEvent)
+	e.addEvent(string(INTERVALED), newEvent)
 
 	if e.scheduler.IsSchedulerRunning() {
 		go e.runScheduledEvent(ctx, newEvent)
@@ -356,7 +354,7 @@ func (e *eventLoop) StartScheduler(ctx context.Context) error {
 
 	e.scheduler.ResetResults()
 
-	for _, evts := range e.events.EventName(INTERVALED).Priority(0).List() {
+	for _, evts := range e.events.EventName(string(INTERVALED)).Priority(0).List() {
 		curEvts := evts
 		go e.runScheduledEvent(ctx, curEvts)
 	}
@@ -375,7 +373,7 @@ func (e *eventLoop) StopScheduler() {
 	e.logger.Infow("Scheduler stopping...")
 	e.mx.Lock()
 	defer e.mx.Unlock()
-	if len(e.events.EventName(INTERVALED).Priority(0).List()) > 0 && e.scheduler.IsSchedulerRunning() {
+	if len(e.events.EventName(string(INTERVALED)).Priority(0).List()) > 0 && e.scheduler.IsSchedulerRunning() {
 		e.logger.Infow("Send signal to stop")
 		e.scheduler.Stopper <- true
 	}
