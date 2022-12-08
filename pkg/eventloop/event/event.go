@@ -14,7 +14,7 @@ import (
 type event struct {
 	id       uuid.UUID
 	priority int
-	fun      eventFunc
+	fun      EventFunc
 
 	isOnce bool
 	sync.Once
@@ -25,21 +25,21 @@ type event struct {
 	schedule   schedule.Interface
 }
 
-type eventFunc func(ctx context.Context) string
+type EventFunc func(ctx context.Context) string
 
-func NewEvent(fun eventFunc) Interface {
+func NewEvent(fun EventFunc) Interface {
 	return &event{id: uuid.New(), fun: fun}
 }
 
-func NewIntervalEvent(fun eventFunc, interval time.Duration) Interface {
+func NewIntervalEvent(fun EventFunc, interval time.Duration) Interface {
 	return &event{id: uuid.New(), fun: fun, schedule: schedule.NewScheduleEvent(interval)}
 }
 
-func NewOnceEvent(fun eventFunc) Interface {
+func NewOnceEvent(fun EventFunc) Interface {
 	return &event{id: uuid.New(), fun: fun, isOnce: true}
 }
 
-func NewPriorityEvent(fun eventFunc, priority int) Interface {
+func NewPriorityEvent(fun EventFunc, priority int) Interface {
 	return &event{id: uuid.New(), fun: fun, priority: priority}
 }
 
