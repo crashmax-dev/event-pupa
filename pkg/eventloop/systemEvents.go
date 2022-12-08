@@ -1,11 +1,16 @@
 package eventloop
 
-type eventLoopEvent string
+type eventLoopSystemEvent string
 
 const (
-	INTERVALED     eventLoopEvent = "@INTERVALED"
-	BEFORE_TRIGGER eventLoopEvent = "@BEFORE"
-	AFTER_TRIGGER  eventLoopEvent = "@AFTER"
+	INTERVALED     eventLoopSystemEvent = "@INTERVALED"
+	BEFORE_TRIGGER eventLoopSystemEvent = "@BEFORE"
+	AFTER_TRIGGER  eventLoopSystemEvent = "@AFTER"
 )
 
-var eventLoopEvents = []eventLoopEvent{INTERVALED, BEFORE_TRIGGER, AFTER_TRIGGER}
+const (
+	BEFORE_PRIORITY = -2
+	AFTER_PRIORITY  = -1
+)
+
+var eventLoopEvents = []eventLoopSystemEvent{INTERVALED, BEFORE_TRIGGER, AFTER_TRIGGER}

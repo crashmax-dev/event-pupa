@@ -26,7 +26,6 @@ type eventLoop struct {
 
 	disabled []EventFunction
 
-	//TODO: Нужен шедулер, выделить все это дерьмо в отдельный компонент
 	scheduler scheduler.Scheduler
 
 	logger loggerInterface.Interface
@@ -133,7 +132,7 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 	}
 
 	//TODO: переписать возврат ошипки
-	if slices.Contains(eventLoopEvents, eventLoopEvent(eventName)) {
+	if slices.Contains(eventLoopEvents, eventLoopSystemEvent(eventName)) {
 		errStr := fmt.Sprintf("Event name %v is reserved", INTERVALED)
 		e.logger.Warnf("Event name %v is reserved", INTERVALED)
 		return errors.New(errStr)
@@ -154,10 +153,8 @@ func (e *eventLoop) On(ctx context.Context, eventName string, newEvent event.Int
 
 // TODO: godoc
 func (e *eventLoop) OnBefore(ctx context.Context, eventName string, elFunction event.EventFunc) {
-	const before_priority = -2
-
 	// Без имени ивента = триггерится будет на все эвенты
-	newEv := event.NewPriorityEvent(elFunction, before_priority)
+	newEv := event.NewPriorityEvent(elFunction, BEFORE_PRIORITY)
 
 	if eventName == "" {
 		e.addEvent(string(BEFORE_TRIGGER), newEv)
@@ -168,10 +165,9 @@ func (e *eventLoop) OnBefore(ctx context.Context, eventName string, elFunction e
 
 // TODO: godoc
 func (e *eventLoop) OnAfter(ctx context.Context, eventName string, elFunction event.EventFunc) {
-	const after_priority = -1
 
 	// Без имени ивента = триггерится будет на все эвенты
-	newEv := event.NewPriorityEvent(elFunction, after_priority)
+	newEv := event.NewPriorityEvent(elFunction, AFTER_PRIORITY)
 
 	if eventName == "" {
 		e.addEvent(string(AFTER_TRIGGER), newEv)
@@ -187,6 +183,7 @@ func (e *eventLoop) OnAfter(ctx context.Context, eventName string, elFunction ev
 func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error {
 	var deferErr error
 
+	// Обработка канала, закрываем по завершении
 	if ch != nil && !ch.IsClosed() {
 		if ch.IsClosed() {
 			deferErr = errors.New("trigger accept only new channels")
@@ -206,6 +203,8 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 			"eventname", eventName)
 		return errors.New(str)
 	}
+
+	// Выключен ли Триггер
 	if slices.Contains(e.disabled, TRIGGER) {
 		str := "can't trigger event, trigger is disabled"
 		e.logger.Warnw(str,
@@ -213,8 +212,8 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		return errors.New(str)
 	}
 
-	if slices.Contains(eventLoopEvents, eventLoopEvent(eventName)) {
-		str := fmt.Sprintf("Event name %v is reserved", eventLoopEvent(eventName))
+	if slices.Contains(eventLoopEvents, eventLoopSystemEvent(eventName)) {
+		str := fmt.Sprintf("Event name %v is reserved", eventLoopSystemEvent(eventName))
 		e.logger.Warnf(str)
 		return errors.New(str)
 	}
@@ -228,6 +227,13 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		wg sync.WaitGroup
 	)
 
+	// Run before global events
+	e.triggerEventFuncList(ctx, e.events.EventName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())
+
+	// Run before events
+	e.triggerEventFuncList(ctx, e.events.EventName(eventName).Priority(BEFORE_PRIORITY).List())
+
+	//TODO: приоритеты не обязательно идут по порядку, переписать чтобы учитывало все приоритеты
 	for priorIndex := e.events.EventName(eventName).Len() - 1; priorIndex >= 0; priorIndex-- {
 		for _, loopevent := range e.events.EventName(eventName).Priority(priorIndex).List() {
 			wg.Add(1)
@@ -241,8 +247,22 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 			}
 		}
 	}
+
 	wg.Wait()
+
+	// Run after global events
+	e.triggerEventFuncList(ctx, e.events.EventName(string(AFTER_TRIGGER)).Priority(AFTER_PRIORITY).List())
+
+	// Run after events
+	e.triggerEventFuncList(ctx, e.events.EventName(eventName).Priority(AFTER_PRIORITY).List())
+
 	return deferErr
+}
+
+func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.EventIdsList) {
+	for _, event := range list {
+		event.RunFunction(ctx)
+	}
 }
 
 func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg *sync.WaitGroup, ch channelEx.Interface[string]) {
