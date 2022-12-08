@@ -7,30 +7,30 @@ import (
 )
 
 type eventsList struct {
-	data map[string]priorityList
-	mx   sync.Mutex
+	priorities map[string]priorityList
+	mx         sync.Mutex
 }
 
 func New() Interface {
-	result := eventsList{data: make(map[string]priorityList)}
+	result := eventsList{priorities: make(map[string]priorityList)}
 	return &result
 }
 
 func (el *eventsList) EventName(eventName string) Priority {
-	if el.data[eventName] == nil {
-		el.data[eventName] = make(priorityList)
+	if el.priorities[eventName] == nil {
+		el.priorities[eventName] = make(map[int]EventIdsList)
 	}
-	result := el.data[eventName]
+	result := el.priorities[eventName]
 	return &result
 }
 
 // GetEventIdsByName возвращает из eventloop список айдишек событий, повешенных на событие eventName
 func (el *eventsList) GetEventIdsByName(eventName string) (result []uuid.UUID, err error) {
-	pl := el.data[eventName]
+	pl := el.priorities[eventName]
 	if pl.Len() == 0 {
 		return nil, fmt.Errorf("no such event name: %v", eventName)
 	}
-	for _, priors := range el.data[eventName] {
+	for _, priors := range el.priorities[eventName] {
 		for _, evnt := range priors {
 			result = append(result, evnt.GetID())
 		}
@@ -64,10 +64,10 @@ func (pl *priorityList) iteratePriorities(id uuid.UUID) bool {
 func (el *eventsList) RemoveEvent(id uuid.UUID) bool {
 	el.mx.Lock()
 	defer el.mx.Unlock()
-	for eventNameKey, eventNameValue := range el.data {
+	for eventNameKey, eventNameValue := range el.priorities {
 		if eventNameValue.iteratePriorities(id) {
 			if len(eventNameValue) == 0 {
-				delete(el.data, eventNameKey)
+				delete(el.priorities, eventNameKey)
 			}
 			return true
 		}
