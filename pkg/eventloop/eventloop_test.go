@@ -313,9 +313,7 @@ func TestRemoveEvent(t *testing.T) {
 	})
 	time.Sleep(INTERVAL_MS * INTERVAL_EXECS)
 
-	go evLoop.RemoveEvent(eventDefault3.GetID())
-	go evLoop.RemoveEvent(evSched.GetID())
-	go evLoop.RemoveEvent(eventDefault.GetID())
+	go evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()})
 	time.Sleep(time.Millisecond * 10)
 
 	errG.Go(func() error {
@@ -323,7 +321,7 @@ func TestRemoveEvent(t *testing.T) {
 	})
 	time.Sleep(time.Millisecond * 10)
 
-	go evLoop.RemoveEvent(eventDefault2.GetID())
+	go evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault2.GetID()})
 	time.Sleep(time.Millisecond * 10)
 
 	errG.Go(func() error {
