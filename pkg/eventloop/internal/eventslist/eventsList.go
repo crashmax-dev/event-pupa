@@ -38,39 +38,50 @@ func (el *eventsList) GetEventIdsByName(eventName string) (result []uuid.UUID, e
 	return result, nil
 }
 
-func (eil *EventIdsList) iterateEvents(id uuid.UUID) bool {
+func (eil *EventIdsList) iterateEvents(ids []uuid.UUID) []uuid.UUID {
 	for eventIDKey, eventIdValue := range *eil {
-		if eventIdValue.GetID() == id {
+		if index := slices.Index(ids, eventIdValue.GetID()); index != -1 {
 			delete(*eil, eventIDKey)
-			return true
+			ids[index] = ids[len(ids)-1]
+			ids = ids[:len(ids)-1]
+
+			if len(ids) == 0 {
+				return ids
+			}
 		}
 	}
-	return false
+	return ids
 }
 
-func (pl *priorityList) iteratePriorities(id uuid.UUID) bool {
+func (pl *priorityList) iteratePriorities(ids []uuid.UUID) []uuid.UUID {
 	for priorKey, priorValue := range *pl {
-		if priorValue.iterateEvents(id) {
+		if modIds := priorValue.iterateEvents(ids); len(modIds) != len(ids) {
 			if len(priorValue) == 0 {
 				delete(*pl, priorKey)
 			}
-			return true
+			ids = modIds
+			if len(ids) == 0 {
+				return ids
+			}
 		}
 	}
-	return false
+	return ids
 }
 
 // RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было
-func (el *eventsList) RemoveEvent(id uuid.UUID) bool {
+func (el *eventsList) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
 	el.mx.Lock()
 	defer el.mx.Unlock()
 	for eventNameKey, eventNameValue := range el.priorities {
-		if eventNameValue.iteratePriorities(id) {
+		if modIds := eventNameValue.iteratePriorities(ids); len(modIds) != len(ids) {
 			if len(eventNameValue) == 0 {
 				delete(el.priorities, eventNameKey)
 			}
-			return true
+			ids = modIds
+			if len(ids) == 0 {
+				return ids
+			}
 		}
 	}
-	return false
+	return ids
 }

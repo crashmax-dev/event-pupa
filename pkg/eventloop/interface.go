@@ -19,7 +19,7 @@ type Interface interface {
 	StartScheduler(ctx context.Context) error
 	Scheduler() scheduler.Interface
 	StopScheduler()
-	RemoveEvent(id uuid.UUID) bool
+	RemoveEventByUUIDs(id []uuid.UUID) []uuid.UUID
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
 	GetAttachedEvents(eventName string) (result []uuid.UUID, err error)
 }

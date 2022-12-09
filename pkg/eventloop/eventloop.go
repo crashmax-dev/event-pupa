@@ -242,7 +242,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 
 			if loopevent.IsOnce() {
 				loopevent.GetOnce().Do(func() {
-					e.RemoveEvent(loopevent.GetID())
+					e.RemoveEventByUUIDs([]uuid.UUID{loopevent.GetID()})
 				})
 			}
 		}
@@ -430,8 +430,8 @@ func (e *eventLoop) StopScheduler() {
 }
 
 // RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было
-func (e *eventLoop) RemoveEvent(id uuid.UUID) bool {
-	return e.events.RemoveEvent(id)
+func (e *eventLoop) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
+	return e.events.RemoveEventByUUIDs(ids)
 }
 
 // GetAttachedEvents возвращает все события, прикреплённые к eventName

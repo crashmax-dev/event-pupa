@@ -7,7 +7,7 @@ import (
 
 type Interface interface {
 	EventName(eventName string) Priority
-	RemoveEvent(id uuid.UUID) bool
+	RemoveEventByUUIDs(id []uuid.UUID) []uuid.UUID
 	GetEventIdsByName(eventName string) (result []uuid.UUID, err error)
 }
 
