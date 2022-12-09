@@ -451,6 +451,46 @@ func TestPrioritySync(t *testing.T) {
 	}
 }
 
+// Before-After
+func TestBeforeAfter(t *testing.T) {
+	const (
+		WANT      = 6
+		EVENTNAME = "BEFORE_AFTER_EVENT"
+	)
+	var (
+		result           = 0
+		defaultEventFunc = func(ctx context.Context) string {
+			result++
+			return fmt.Sprintf("%v", result)
+		}
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		errG        = new(errgroup.Group)
+	)
+
+	defer cancel()
+
+	evLoop.OnAfter(ctx, EVENTNAME, defaultEventFunc)
+	evLoop.OnAfter(ctx, "", defaultEventFunc)
+	evLoop.OnBefore(ctx, EVENTNAME, defaultEventFunc)
+	evLoop.OnBefore(ctx, "", defaultEventFunc)
+
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME, nil)
+	})
+
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, "Random Event", nil)
+	})
+
+	if err := errG.Wait(); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if result != WANT {
+		t.Errorf("Number = %d; WANT %d", result, WANT)
+	}
+}
+
 func TestMain(m *testing.M) {
 	evLoop = NewEventLoop(zapcore.DebugLevel.String())
 	os.Exit(m.Run())
