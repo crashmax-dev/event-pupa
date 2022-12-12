@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"net/http"
+
 	"eventloop/pkg/eventloop"
 	"eventloop/pkg/logger"
-	"net/http"
 )
 
 type Type uint8

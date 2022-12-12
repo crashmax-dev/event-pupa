@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
-	"eventloop/internal/httpapi"
-	"eventloop/internal/logger"
-	"eventloop/pkg/eventloop"
-	loggerInterface "eventloop/pkg/logger"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"eventloop/internal/httpapi"
+	"eventloop/internal/logger"
+	"eventloop/pkg/eventloop"
+	loggerInterface "eventloop/pkg/logger"
 )
 
 const (
@@ -32,6 +33,7 @@ func inputMonitor(sc chan<- os.Signal) {
 }
 
 func main() {
+
 	srvLogger, err := initLogger()
 	evLoop := eventloop.NewEventLoop(srvLogger.Level())
 
