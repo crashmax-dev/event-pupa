@@ -3,6 +3,10 @@ package eventloop
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
+	"time"
+
 	"eventloop/internal/logger"
 	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
@@ -10,11 +14,8 @@ import (
 	"eventloop/pkg/eventloop/internal/eventslist"
 	"eventloop/pkg/eventloop/internal/scheduler"
 	loggerInterface "eventloop/pkg/logger"
-	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
-	"sync"
-	"time"
 )
 
 // eventLoop представляет собой менеджер событий. Позволяет использовать как классические события с названиями для

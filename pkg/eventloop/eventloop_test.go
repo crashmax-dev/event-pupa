@@ -2,15 +2,17 @@ package eventloop
 
 import (
 	"context"
-	"eventloop/pkg/channelEx"
-	"eventloop/pkg/eventloop/event"
 	"fmt"
-	"go.uber.org/zap/zapcore"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"eventloop/pkg/channelEx"
+	"eventloop/pkg/eventloop/event"
+	"github.com/google/uuid"
+	"go.uber.org/zap/zapcore"
+	"golang.org/x/sync/errgroup"
 )
 
 var (

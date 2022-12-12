@@ -2,8 +2,10 @@ package eventslist
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"sync"
+
+	"github.com/google/uuid"
+	"golang.org/x/exp/slices"
 )
 
 type eventsList struct {

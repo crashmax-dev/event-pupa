@@ -1,10 +1,11 @@
 package helper
 
 import (
-	"eventloop/pkg/logger"
 	"fmt"
 	"io"
 	"net/http"
+
+	"eventloop/pkg/logger"
 )
 
 var (

@@ -3,13 +3,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"eventloop/internal/httpapi/eventpreset"
-	"eventloop/internal/httpapi/helper"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"eventloop/internal/httpapi/eventpreset"
+	"eventloop/internal/httpapi/helper"
+	"github.com/google/uuid"
 )
 
 // eventHandler для обработки запросов по получению событий, по созданию и аттачу событий, удалению.

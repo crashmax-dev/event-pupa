@@ -2,12 +2,13 @@ package handler
 
 import (
 	"context"
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/channelEx"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"eventloop/internal/httpapi/helper"
+	"eventloop/pkg/channelEx"
 )
 
 // triggerHandler триггерит ивенты по имени
