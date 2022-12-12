@@ -7,9 +7,9 @@ import (
 	"eventloop/internal/httpapi/helper"
 	"eventloop/pkg/eventloop"
 	"eventloop/pkg/logger"
-	"net/http"
-	"strconv"
-	"time"
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "eventloop/cmd/server/docs"
 )
 
 const _APIPREFIX = "[API] "
@@ -32,6 +32,11 @@ func StartServer(port int, evLoop eventloop.Interface, srvLogger logger.Interfac
 	for k, v := range handlersMap {
 		mux.Handle(k, handler.NewHandler(v, srvLogger, evLoop))
 	}
+
+	// Swagger
+	docs.SwaggerInfo.Host = fmt.Sprintf(docs.SwaggerInfo.Host, port)
+	mux.HandleFunc("/swagger/", httpSwagger.Handler(httpSwagger.URL(
+		fmt.Sprintf("http://localhost:%v/swagger/doc.json", port))))
 
 	serv = http.Server{
 		Addr:         ":" + strconv.Itoa(port),

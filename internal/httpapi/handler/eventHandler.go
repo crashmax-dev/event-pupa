@@ -37,6 +37,16 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 }
 
+// get godoc
+//
+//	@Summary 	Get all events by trigger name
+//	@Tags		events,triggers
+//	@Produce	json
+//	@Param		{triggerName} 	path 	string 	true 	"Name of trigger"
+//	@Success	200 {array} 	uuid.UUID 	"Array of Event UUIDs"
+//	@Failure	404	{string} 	string 		"No events with that name"
+//	@Failure	500	{string}	string
+//	@Router 	/events/{triggerName} [get]
 func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
 	eh.baseHandler.logger.Debugf(helper.APIMessage("GET request"))
 	if evnts, err := eh.baseHandler.evLoop.GetAttachedEvents(eventName); err == nil {
@@ -53,6 +63,18 @@ func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
 	}
 }
 
+// postput godoc
+//
+// @Summary 	Create preset event with given trigger name. Return UUID of freshly created event.
+// @Tags		events,triggers
+// @Produce	plain
+// @Param		{eventPresetId}	path	number	true	"Predefined preset for new event"
+// @Param		{triggerName} 	path 	string 	true 	"Name of trigger to attach"
+// @Success	200
+// @Failure	404
+// @Failure	500	{string}	string
+// @Router 	/events/{eventPresetId}/{triggerName} [put]
+// @Router 	/events/{eventPresetId}/{triggerName} [post]
 func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter, params []string) {
 	id, err := strconv.Atoi(params[0])
 	if err != nil || id > len(eventpreset.Events) || len(params) != 2 {
@@ -82,6 +104,16 @@ func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter,
 	}
 }
 
+// delete godoc
+//
+// @Summary 	Delete events by UUIDs
+// @Tags		events
+// @Accept	json
+// @Produce	json
+// @Param		{eventPresetId}	body	[]string	true	"UUIDs of events to delete"
+// @Success	200	{array}		[]string	"Array of remaining not deleted events from request"
+// @Failure	400 {string}	string		"Something wrong with request"
+// @Router 	/events/ [delete]
 func (eh *eventHandler) delete(writer http.ResponseWriter, request *http.Request) {
 	if b, err := io.ReadAll(request.Body); err == nil {
 		var sl []uuid.UUID
