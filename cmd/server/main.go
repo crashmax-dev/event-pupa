@@ -13,7 +13,10 @@ import (
 	"syscall"
 )
 
-const _LOGLEVEL = "debug"
+const (
+	_LOGLEVEL = "debug"
+	_PORT     = 8090
+)
 
 func inputMonitor(sc chan<- os.Signal) {
 	var input string
@@ -39,7 +42,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		errServer := httpapi.StartServer(8090, evLoop, srvLogger)
+		errServer := httpapi.StartServer(_PORT, evLoop, srvLogger)
 		if errServer != nil {
 			fmt.Println(err)
 			return
