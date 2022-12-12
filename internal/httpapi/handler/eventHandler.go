@@ -121,9 +121,10 @@ func (eh *eventHandler) delete(writer http.ResponseWriter, request *http.Request
 		}
 		eh.baseHandler.logger.Infof(helper.APIMessage("Removing events %v"), sl)
 
-		eh.baseHandler.evLoop.RemoveEventByUUIDs(sl)
+		ids := eh.baseHandler.evLoop.RemoveEventByUUIDs(sl)
+		output, _ := json.Marshal(ids)
 
-		_, errRespond := io.WriteString(writer, "OK")
+		_, errRespond := writer.Write(output)
 		if errRespond != nil {
 			eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), errRespond)
 		}
