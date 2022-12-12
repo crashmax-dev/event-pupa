@@ -430,7 +430,6 @@ func (e *eventLoop) StopScheduler() {
 	e.logger.Infow("Send signal to stop")
 }
 
-// RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было
 func (e *eventLoop) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
 	return e.events.RemoveEventByUUIDs(ids)
 }

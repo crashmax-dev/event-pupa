@@ -20,6 +20,8 @@ type Interface interface {
 	StartScheduler(ctx context.Context) error
 	Scheduler() scheduler.Interface
 	StopScheduler()
+	// RemoveEventByUUIDs удаляет событие по срезу идентификаторов. Возвращает срез оставшихся событий из запроса, которые
+	// не были удалены
 	RemoveEventByUUIDs(id []uuid.UUID) []uuid.UUID
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
 	GetAttachedEvents(eventName string) (result []uuid.UUID, err error)
