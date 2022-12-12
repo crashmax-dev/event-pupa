@@ -56,10 +56,10 @@ func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
 				eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), errW)
 			}
 		} else {
-			helper.ServerLogErr(writer, errJSON.Error(), eh.baseHandler.logger, 400)
+			helper.ServerLogErr(writer, errJSON.Error(), eh.baseHandler.logger, 500)
 		}
 	} else {
-		helper.ServerLogErr(writer, err.Error(), eh.baseHandler.logger, 200)
+		helper.ServerLogErr(writer, err.Error(), eh.baseHandler.logger, 404)
 	}
 }
 
@@ -78,22 +78,17 @@ func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
 func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter, params []string) {
 	id, err := strconv.Atoi(params[0])
 	if err != nil || id > len(eventpreset.Events) || len(params) != 2 {
-		writer.WriteHeader(404)
+		helper.ServerLogErr(writer, "No event with preset %v", eh.logger, 404, id)
 		return
 	}
 
 	eventName := params[1]
-	newEvent, err := eventpreset.CreateEvent(id, eventpreset.REGULAR)
-	if err != nil {
-		eh.baseHandler.logger.Errorf(helper.APIMessage("Error while creating event: %v"), err)
-		return
-	}
+	newEvent, _ := eventpreset.CreateEvent(id, eventpreset.REGULAR)
 
 	errOn := eh.baseHandler.evLoop.On(ctx, eventName, newEvent, nil)
 	if errOn != nil {
-		eh.logger.Errorf(errOn.Error())
-		writer.WriteHeader(400)
-		io.WriteString(writer, "Event is not created")
+		helper.ServerLogErr(writer, "Event is not created", eh.logger, 400)
+		eh.logger.Error(errOn)
 		return
 	}
 
@@ -119,7 +114,9 @@ func (eh *eventHandler) delete(writer http.ResponseWriter, request *http.Request
 		var sl []uuid.UUID
 		errJSON := json.Unmarshal(b, &sl)
 		if errJSON != nil {
-			helper.ServerLogErr(writer, "wrong json: %v", eh.baseHandler.logger, 400, errJSON)
+			writer.WriteHeader(400)
+			io.WriteString(writer, "incorrect json")
+			eh.logger.Errorf("wrong json: %v", errJSON)
 			return
 		}
 		eh.baseHandler.logger.Infof(helper.APIMessage("Removing events %v"), sl)
