@@ -3,18 +3,18 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"eventloop/internal/httpapi/eventpreset"
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/eventloop/event"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"eventloop/internal/httpapi/eventpreset"
+	"eventloop/internal/httpapi/helper"
+	"eventloop/pkg/eventloop/event"
+	"github.com/google/uuid"
 )
 
-// schedulerHandler запускает и останавливает выполнение интервальных событий, создаёт новые из пресетов. При стопе
-// возвращает JSON вида:
-/* {Result: [...], Status: "..."}*/
+// schedulerHandler запускает и останавливает выполнение интервальных событий, создаёт новые из пресетов
 type schedulerHandler struct {
 	baseHandler
 }
