@@ -71,6 +71,7 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 
 		default:
 			sh.baseHandler.logger.Errorf(helper.APIMessage("No known method: %v"), sm)
+			JSON.SchedulerStatus = "no know method for scheduler status change"
 		}
 	}
 	byteJSON, _ := json.Marshal(JSON)
@@ -95,14 +96,14 @@ func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
 	}
 
 	if id, err = strconv.Atoi(param); err != nil {
-		jSON.EventStatus = helper.ServerJSONLogErr(writer, "no such event: %v", sh.baseHandler.logger, 400, param)
-		sh.logger.Debugf(helper.APIMessage("No such event details: %v"), err)
-		return
+		jSON.EventStatus = helper.ServerJSONLogErr(writer, "no event preset requested: %v", sh.baseHandler.logger, 400, param)
+		sh.logger.Debugf(helper.APIMessage("no event preset requested details: %v"), err)
+		return uuid.Nil
 	}
 
 	if newEvent, err = eventpreset.CreateEvent(id, eventpreset.INTERVALED); err != nil {
-		jSON.EventStatus = helper.ServerJSONLogErr(writer, "error while creating event: %v", sh.baseHandler.logger, 500, err)
-		return
+		jSON.EventStatus = helper.ServerJSONLogErr(writer, "error while creating event: %v", sh.baseHandler.logger, 400, err)
+		return uuid.Nil
 	}
 
 	if err = sh.baseHandler.evLoop.ScheduleEvent(ctx, newEvent, nil); err != nil {
