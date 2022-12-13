@@ -20,9 +20,11 @@ type schedulerHandler struct {
 }
 
 type ScheduleResponse struct {
-	SchedulerStatus string
-	EventStatus     string
-	Result          []string
+	// Id of new generated event
+	uuid.UUID
+	SchedulerStatus string   // Scheduler status after request
+	EventStatus     string   // Status of newly generated event
+	Result          []string // Results of scheduler execution after stop
 }
 
 func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -39,7 +41,7 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 
 	param := strings.TrimPrefix(request.URL.Path, "/scheduler/")
 
-	sh.scheduleEvent(ctx, writer, &JSON, param)
+	JSON.UUID = sh.scheduleEvent(ctx, writer, &JSON, param)
 
 	if b, err := io.ReadAll(request.Body); err != nil {
 		JSON.SchedulerStatus = helper.ServerJSONLogErr(writer,
@@ -81,7 +83,7 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
 	writer http.ResponseWriter,
 	jSON *ScheduleResponse,
-	param string) {
+	param string) uuid.UUID {
 	var (
 		id       int
 		newEvent event.Interface
@@ -89,7 +91,7 @@ func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
 	)
 
 	if param == "" {
-		return
+		return uuid.Nil
 	}
 
 	if id, err = strconv.Atoi(param); err != nil {
@@ -107,8 +109,9 @@ func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
 		writer.WriteHeader(500)
 		jSON.EventStatus = "schedule event fail"
 		sh.baseHandler.logger.Errorf(helper.APIMessage("schedule event fail: %v"), err)
-		return
+		return uuid.Nil
 	}
 
 	jSON.EventStatus = "Event is scheduled succesfully"
+	return newEvent.GetID()
 }
