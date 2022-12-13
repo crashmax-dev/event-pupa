@@ -61,9 +61,9 @@ func (ev *event) RunFunction(ctx context.Context) string {
 
 func (ev *event) GetSubscriber() subscriber.Interface {
 	if ev.subscriber == nil {
-		ev.subscriber = subscriber.NewSubscriber()
+		return nil, errors.New("it is not a subscriber event")
 	}
-	return ev.subscriber
+	return ev.subscriber, nil
 }
 
 func (ev *event) GetSchedule() (schedule.Interface, error) {
