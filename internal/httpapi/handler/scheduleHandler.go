@@ -19,6 +19,9 @@ type schedulerHandler struct {
 	baseHandler
 }
 
+// Schedule response model info
+// @Description User account information
+// @Description with user id and username
 type ScheduleResponse struct {
 	// Id of new generated event
 	uuid.UUID
@@ -27,6 +30,22 @@ type ScheduleResponse struct {
 	Result          []string // Results of scheduler execution after stop
 }
 
+// ServeHTTP godoc
+//
+// @Summary	Starts/stops event scheduler and/or creates scheduled event from preset
+// @Tags		events,schedule
+// @Accept	plain
+// @Produce	json
+// @Param		eventPresetId	path	number	false		"Predefined preset for new event" example(1)
+// @Param		schedulerMethod	body	string	false	"Method for scheduler to start or stop" example(START)
+// @Success	200	{object}	ScheduleResponse	"info about event, scheduler and scheduler execution results if scheduler stops"
+// @Failure	400	{string}	string	"no event preset requested"
+// @Failure	400	{string}	string	"no such event preset"
+// @Failure	400	{string}	string	"scheduler is already running"
+// @Failure	405	{string}	string	"only POST allowed"
+// @Failure	500	{string}	string	"schedule event fail"
+// @Failure	500	{string}	string	"scheduler start fail"
+// @Router		/scheduler/{eventPresetId} [post]
 func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	var (
 		JSON ScheduleResponse
