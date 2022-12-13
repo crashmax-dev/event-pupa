@@ -19,11 +19,11 @@ const (
 	_PORT     = 8090
 )
 
-// @title Event Loop API
-// @version 1.0
-// @description TODO
-// @contact.url TODO
-// @host localhost:%v
+// @title			Event Loop API
+// @version		1.0
+// @description	TODO
+// @contact.url	TODO
+// @host			localhost:%v
 func inputMonitor(sc chan<- os.Signal) {
 	var input string
 	for strings.ToLower(input) != "stop" {

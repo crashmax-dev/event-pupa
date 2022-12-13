@@ -3,11 +3,13 @@ package event
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
+
+	"eventloop/pkg/eventloop/event/once"
 	"eventloop/pkg/eventloop/event/schedule"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"github.com/google/uuid"
-	"sync"
-	"time"
 )
 
 // event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)
