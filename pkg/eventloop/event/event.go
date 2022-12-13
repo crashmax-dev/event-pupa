@@ -16,13 +16,11 @@ type event struct {
 	priority int
 	fun      EventFunc
 
-	isOnce bool
-	sync.Once
-
 	mx sync.Mutex
 
 	subscriber subscriber.Interface
 	schedule   schedule.Interface
+	once       once.Interface
 }
 
 type EventFunc func(ctx context.Context) string
@@ -36,7 +34,7 @@ func NewIntervalEvent(fun EventFunc, interval time.Duration) Interface {
 }
 
 func NewOnceEvent(fun EventFunc) Interface {
-	return &event{id: uuid.New(), fun: fun, isOnce: true}
+	return &event{id: uuid.New(), fun: fun, once: once.NewOnce()}
 }
 
 func NewPriorityEvent(fun EventFunc, priority int) Interface {
@@ -73,10 +71,9 @@ func (ev *event) GetSchedule() (schedule.Interface, error) {
 	return ev.schedule, nil
 }
 
-func (ev *event) IsOnce() bool {
-	return ev.isOnce
-}
-
-func (ev *event) GetOnce() *sync.Once {
-	return &ev.Once
+func (ev *event) Once() (once.Interface, error) {
+	if ev.once == nil {
+		return nil, errors.New("it is not an once event")
+	}
+	return ev.once, nil
 }

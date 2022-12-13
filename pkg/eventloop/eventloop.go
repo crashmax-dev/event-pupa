@@ -241,8 +241,8 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 
 			go e.triggerEventFunc(ctx, loopevent, &wg, ch)
 
-			if loopevent.IsOnce() {
-				loopevent.GetOnce().Do(func() {
+			if once, err := loopevent.Once(); err == nil {
+				once.Do(func() {
 					e.RemoveEventByUUIDs([]uuid.UUID{loopevent.GetID()})
 				})
 			}

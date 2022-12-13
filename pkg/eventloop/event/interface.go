@@ -2,10 +2,11 @@ package event
 
 import (
 	"context"
+
+	"eventloop/pkg/eventloop/event/once"
 	"eventloop/pkg/eventloop/event/schedule"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"github.com/google/uuid"
-	"sync"
 )
 
 type Interface interface {
@@ -13,8 +14,7 @@ type Interface interface {
 	GetPriority() int
 	SetPriority(prior int)
 	RunFunction(ctx context.Context) string
-	GetSubscriber() subscriber.Interface
-	GetSchedule() (schedule.Interface, error)
-	IsOnce() bool
-	GetOnce() *sync.Once
+	Subscriber() (subscriber.Interface, error)
+	Schedule() (schedule.Interface, error)
+	Once() (once.Interface, error)
 }
