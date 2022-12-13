@@ -61,12 +61,13 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		return errors.New(errStr)
 	}
 	for _, v := range listeners {
-		trigger := v.GetSubscriber()
+		trigger, _ := v.Subscriber()
 		for _, t := range triggers {
 			ch := make(chan int, 1)
 			trigger.AddChannel(ch)
 			e.logger.Infow("Event subscribed", "trigger", t.GetID(), "listener", v.GetID())
-			t.GetSubscriber().AddChannel(ch)
+			tSub, _ := t.Subscriber()
+			tSub.AddChannel(ch)
 		}
 
 		// Запскаем ждуна, когда триггеры сработают, и срабатываем сами
@@ -274,13 +275,13 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg
 		ch.Channel() <- result
 	}
 
-	listener := ev.GetSubscriber()
-	if listener == nil {
+	listener, err := ev.Subscriber()
+	if err != nil {
 		return
 	}
 	if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
-		evTrigger := ev.GetSubscriber()
-		evTrigger.LockMutex()
+		//evTrigger := ev.Subscriber()
+		listener.LockMutex()
 		e.logger.Debugw("Sending messages...",
 			"listener", listenerChannels,
 			"trigger", ev.GetID())
@@ -289,7 +290,7 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg
 			chnl <- 1
 		}
 		e.logger.Infow("All messages send", "trigger", ev.GetID())
-		evTrigger.UnlockMutex()
+		listener.UnlockMutex()
 	}
 }
 
@@ -341,7 +342,7 @@ func isScheduledEventDone(ctx context.Context, eventCh, eventLoopCh <-chan bool,
 }
 
 func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface) {
-	evntSchedule, _ := event.GetSchedule()
+	evntSchedule, _ := event.Schedule()
 	evntInterval := evntSchedule.GetInterval()
 	e.logger.Infow("Scheduled event starting with interval",
 		"event", event.GetID(),
@@ -364,7 +365,7 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 // это событие сразу.
 // out возвращает UUID события в хранилище событий
 func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error {
-	if _, err := newEvent.GetSchedule(); err != nil {
+	if _, err := newEvent.Schedule(); err != nil {
 		e.logger.Errorw(err.Error(), "event", newEvent)
 		return err
 	}

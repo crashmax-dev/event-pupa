@@ -57,14 +57,14 @@ func (ev *event) RunFunction(ctx context.Context) string {
 	return ev.fun(ctx)
 }
 
-func (ev *event) GetSubscriber() subscriber.Interface {
+func (ev *event) Subscriber() (subscriber.Interface, error) {
 	if ev.subscriber == nil {
 		return nil, errors.New("it is not a subscriber event")
 	}
 	return ev.subscriber, nil
 }
 
-func (ev *event) GetSchedule() (schedule.Interface, error) {
+func (ev *event) Schedule() (schedule.Interface, error) {
 	if ev.schedule == nil {
 		return nil, errors.New("it is not an interval event")
 	}
