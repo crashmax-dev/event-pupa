@@ -60,11 +60,12 @@ func (ev *event) RunFunction(ctx context.Context) string {
 	return ev.fun(ctx)
 }
 
-func (ev *event) Subscriber() (subscriber.Interface, error) {
+// Subscriber
+func (ev *event) Subscriber() subscriber.Interface {
 	if ev.subscriber == nil {
-		return nil, errors.New("it is not a subscriber event")
+		ev.subscriber = subscriber.NewSubscriber()
 	}
-	return ev.subscriber, nil
+	return ev.subscriber
 }
 
 func (ev *event) Interval() (interval.Interface, error) {

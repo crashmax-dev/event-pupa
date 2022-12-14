@@ -61,12 +61,12 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		return errors.New(errStr)
 	}
 	for _, v := range listeners {
-		trigger, _ := v.Subscriber()
+		trigger := v.Subscriber()
 		for _, t := range triggers {
 			ch := make(chan int, 1)
 			trigger.AddChannel(ch)
 			e.logger.Infow("Event subscribed", "trigger", t.GetID(), "listener", v.GetID())
-			tSub, _ := t.Subscriber()
+			tSub := t.Subscriber()
 			tSub.AddChannel(ch)
 		}
 
@@ -275,10 +275,7 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg
 		ch.Channel() <- result
 	}
 
-	listener, err := ev.Subscriber()
-	if err != nil {
-		return
-	}
+	listener := ev.Subscriber()
 	if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
 		//evTrigger := ev.Subscriber()
 		listener.LockMutex()

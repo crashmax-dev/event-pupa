@@ -14,7 +14,7 @@ type Interface interface {
 	GetPriority() int
 	SetPriority(prior int)
 	RunFunction(ctx context.Context) string
-	Subscriber() (subscriber.Interface, error)
+	Subscriber() subscriber.Interface
 	Interval() (interval.Interface, error)
 	Once() (once.Interface, error)
 }
