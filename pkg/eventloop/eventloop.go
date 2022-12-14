@@ -342,8 +342,8 @@ func isScheduledEventDone(ctx context.Context, eventCh, eventLoopCh <-chan bool,
 }
 
 func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface) {
-	evntSchedule, _ := event.Schedule()
-	evntInterval := evntSchedule.GetInterval()
+	evntSchedule, _ := event.Interval()
+	evntInterval := evntSchedule.GetDuration()
 	e.logger.Infow("Scheduled event starting with interval",
 		"event", event.GetID(),
 		"interval", evntInterval)
@@ -365,7 +365,7 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface
 // это событие сразу.
 // out возвращает UUID события в хранилище событий
 func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error {
-	if _, err := newEvent.Schedule(); err != nil {
+	if _, err := newEvent.Interval(); err != nil {
 		e.logger.Errorw(err.Error(), "event", newEvent)
 		return err
 	}

@@ -1,8 +1,8 @@
-package schedule
+package interval
 
 import "time"
 
 type Interface interface {
-	GetInterval() time.Duration
+	GetDuration() time.Duration
 	GetQuitChannel() chan bool
 }

@@ -1,4 +1,4 @@
-package schedule
+package interval
 
 import (
 	"time"
@@ -11,11 +11,11 @@ type eventSchedule struct {
 	quit     chan bool
 }
 
-func NewScheduleEvent(interval time.Duration) Interface {
+func NewIntervalEvent(interval time.Duration) Interface {
 	return &eventSchedule{interval: interval, quit: make(chan bool)}
 }
 
-func (e eventSchedule) GetInterval() time.Duration {
+func (e eventSchedule) GetDuration() time.Duration {
 	return e.interval
 }
 

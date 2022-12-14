@@ -22,7 +22,7 @@ type event struct {
 	mx sync.Mutex
 
 	subscriber subscriber.Interface
-	schedule   schedule.Interface
+	interval   interval.Interface
 	once       once.Interface
 }
 
@@ -32,8 +32,8 @@ func NewEvent(fun EventFunc) Interface {
 	return &event{id: uuid.New(), fun: fun}
 }
 
-func NewIntervalEvent(fun EventFunc, interval time.Duration) Interface {
-	return &event{id: uuid.New(), fun: fun, schedule: schedule.NewScheduleEvent(interval)}
+func NewIntervalEvent(fun EventFunc, intervalTime time.Duration) Interface {
+	return &event{id: uuid.New(), fun: fun, interval: interval.NewIntervalEvent(intervalTime)}
 }
 
 func NewOnceEvent(fun EventFunc) Interface {
@@ -67,11 +67,11 @@ func (ev *event) Subscriber() (subscriber.Interface, error) {
 	return ev.subscriber, nil
 }
 
-func (ev *event) Schedule() (schedule.Interface, error) {
-	if ev.schedule == nil {
+func (ev *event) Interval() (interval.Interface, error) {
+	if ev.interval == nil {
 		return nil, errors.New("it is not an interval event")
 	}
-	return ev.schedule, nil
+	return ev.interval, nil
 }
 
 func (ev *event) Once() (once.Interface, error) {
