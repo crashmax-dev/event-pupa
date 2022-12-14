@@ -3,11 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"strings"
+
 	"eventloop/internal/httpapi/eventpreset"
 	"eventloop/internal/httpapi/helper"
 	"eventloop/pkg/eventloop/event"
-	"net/http"
-	"strings"
 )
 
 // subscribeHandler подписывает ивенты на события. Запрос должен быть JSON вида, числом обозначается пресет ивента:

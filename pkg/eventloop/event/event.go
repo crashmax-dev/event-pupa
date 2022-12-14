@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"eventloop/pkg/eventloop/event/after"
+	"eventloop/pkg/eventloop/event/interval"
 	"eventloop/pkg/eventloop/event/once"
-	"eventloop/pkg/eventloop/event/schedule"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"github.com/google/uuid"
 )
