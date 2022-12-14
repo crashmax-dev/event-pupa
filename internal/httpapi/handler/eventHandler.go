@@ -42,7 +42,7 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 //	@Summary	Get all events by trigger name
 //	@Tags		events,triggers
 //	@Produce	json
-//	@Param		{triggerName}	path		string		true	"Name of trigger"
+//	@Param		{triggerName}	path		string		true	"Name of trigger"	example(TRIGGER_EVENT)
 //	@Success	200				{array}		uuid.UUID	"Array of Event UUIDs"
 //	@Failure	404				{string}	string		"No events with that name"
 //	@Failure	500				{string}	string
@@ -68,11 +68,11 @@ func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
 //	@Summary	Create preset event with given trigger name. Return UUID of freshly created event.
 //	@Tags		events,triggers
 //	@Produce	plain
-//	@Param		{eventPresetId}	path	number	true	"Predefined preset for new event"
-//	@Param		{triggerName}	path	string	true	"Name of trigger to attach"
-//	@Success	200
-//	@Failure	404
-//	@Failure	500	{string}	string
+//	@Param		{eventPresetId}	path	number	true	"Predefined preset for new event" example(1)
+//	@Param		{triggerName}	path	string	true	"Name of trigger to attach"	example(TRIGGER_EVENT)
+//	@Success	200	{string}		string	"UUID of new event" example("7c4f1168-7e80-4bd0-aa54-6e014df243e6")
+//	@Failure 	400	{string}	string	"Event is not created"
+//	@Failure	404	{string}	string	"No preset with this id"
 //	@Router		/events/{eventPresetId}/{triggerName} [put]
 //	@Router		/events/{eventPresetId}/{triggerName} [post]
 func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter, params []string) {
