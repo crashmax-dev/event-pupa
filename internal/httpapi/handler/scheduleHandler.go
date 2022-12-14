@@ -24,7 +24,7 @@ type schedulerHandler struct {
 // @Description with user id and username
 type ScheduleResponse struct {
 	// Id of new generated event
-	uuid.UUID
+	UUID            uuid.UUID
 	SchedulerStatus string   // Scheduler status after request
 	EventStatus     string   // Status of newly generated event
 	Result          []string // Results of scheduler execution after stop
