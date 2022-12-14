@@ -70,7 +70,8 @@ func (pl *priorityList) iteratePriorities(ids []uuid.UUID) []uuid.UUID {
 	return ids
 }
 
-// RemoveEvent удаляет событие. Возвращает true если событие было в хранилище, false если не было
+// RemoveEventByUUIDs удаляет события. Возвращает пустой срез, если всё удалено, или срез айдишек, которые не были
+// найдены и не удалены.
 func (el *eventsList) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
 	el.mx.Lock()
 	defer el.mx.Unlock()
