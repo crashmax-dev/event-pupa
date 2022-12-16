@@ -24,24 +24,38 @@ type event struct {
 	subscriber subscriber.Interface
 	interval   interval.Interface
 	once       once.Interface
+	after      after.Interface
+}
+
+type EventArgs struct {
+	triggerName string
+	priority    int
+	isOnce      bool
+	fun         EventFunc
+
+	intervalTime time.Duration
+	after.DateAfter
 }
 
 type EventFunc func(ctx context.Context) string
 
-func NewEvent(fun EventFunc) Interface {
-	return &event{id: uuid.New(), fun: fun}
-}
+func NewEvent(args EventArgs) Interface {
+	newEvent := &event{id: uuid.New(),
+		fun:         args.fun,
+		triggerName: args.triggerName,
+		priority:    args.priority}
 
-func NewIntervalEvent(fun EventFunc, intervalTime time.Duration) Interface {
-	return &event{id: uuid.New(), fun: fun, interval: interval.NewIntervalEvent(intervalTime)}
-}
+	if args.isOnce {
+		newEvent.once = once.NewOnce()
+	}
+	if args.intervalTime.String() != "0s" {
+		newEvent.interval = interval.NewIntervalEvent(args.intervalTime)
+	}
+	if args.DateAfter == (after.DateAfter{}) {
+		newEvent.after = after.New(args.DateAfter)
+	}
 
-func NewOnceEvent(fun EventFunc) Interface {
-	return &event{id: uuid.New(), fun: fun, once: once.NewOnce()}
-}
-
-func NewPriorityEvent(fun EventFunc, priority int) Interface {
-	return &event{id: uuid.New(), fun: fun, priority: priority}
+	return newEvent
 }
 
 func (ev *event) GetID() uuid.UUID {
