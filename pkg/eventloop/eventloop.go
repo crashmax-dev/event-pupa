@@ -49,6 +49,52 @@ func NewEventLoop(level string) Interface {
 	}
 }
 
+func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface) error {
+	if ctxErr := e.checkContext(ctx, "can't register event, context is done",
+		"event", newEvent.GetID().String(),
+		"trigger", newEvent.GetTriggerName()); ctxErr != nil {
+		return ctxErr
+	}
+
+	// Если выключено добавление - не добавляем
+	if slices.Contains(e.disabled, REGISTER) {
+		errStr := "register disabled, can't register event"
+		e.logger.Warnw(errStr,
+			"event", newEvent.GetID())
+		return errors.New(errStr)
+	}
+
+	// ON
+	if triggerName := newEvent.GetTriggerName(); triggerName != "" {
+		if slices.Contains(eventLoopEvents, eventLoopSystemEvent(triggerName)) {
+			errStr := fmt.Sprintf("Trigger name %v is reserved", triggerName)
+			e.logger.Warnf("Trigger name %v is reserved", triggerName)
+			return errors.New(errStr)
+		}
+
+		e.mx.Lock()
+		defer e.mx.Unlock()
+
+		e.addEvent(newEvent.GetTriggerName(), newEvent)
+
+		e.logger.Debugw("Event added", "triggerName", newEvent.GetTriggerName())
+
+	} else if _, intervalErr := newEvent.Interval(); intervalErr != nil { // INTERVAL
+		e.addEvent(string(INTERVALED), newEvent)
+		go e.runScheduledEvent(ctx, newEvent)
+	} else if afterComponent, afterErr := newEvent.After(); afterErr != nil {
+		e.addEvent(string(AFTER), newEvent)
+
+		go func(afterComponent after.Interface) {
+			time.Sleep(afterComponent.GetDuration())
+		}(afterComponent)
+	} else {
+		return errors.New("event must be at least ON, INTERVAL or AFTER")
+	}
+
+	return nil
+}
+
 // Subscribe подписывает список событий listeners на список событий triggers. Само событие триггерится с помощью Trigger/
 // В случае передачи контекста с дедлайном или таймаутом, если контекст ещё живой, подписанные события всё равно
 // выполнятся один раз в случае триггера.
