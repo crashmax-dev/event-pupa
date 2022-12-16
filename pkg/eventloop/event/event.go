@@ -83,15 +83,20 @@ func (ev *event) Subscriber() subscriber.Interface {
 }
 
 func (ev *event) Interval() (interval.Interface, error) {
-	if ev.interval == nil {
-		return nil, errors.New("it is not an interval event")
-	}
-	return ev.interval, nil
+	return getSubInterface(ev.interval, "it is not an interval event")
 }
 
 func (ev *event) Once() (once.Interface, error) {
-	if ev.once == nil {
-		return nil, errors.New("it is not an once event")
+	return getSubInterface(ev.once, "it is not an once event")
+}
+
+func (ev *event) After() (after.Interface, error) {
+	return getSubInterface(ev.after, "it is not an after event")
+}
+
+func getSubInterface[T any](i T, errMsg string) (T, error) {
+	if i == nil {
+		return nil, errors.New(errMsg)
 	}
-	return ev.once, nil
+	return i, nil
 }
