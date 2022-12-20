@@ -47,6 +47,14 @@ func (eil *EventIdsList) iterateEvents(ids []uuid.UUID) []uuid.UUID {
 			ids[index] = ids[len(ids)-1]
 			ids = ids[:len(ids)-1]
 
+			if intervalComp, errInterval := eventIDValue.Interval(); errInterval == nil && intervalComp.IsRunning() {
+				intervalComp.GetQuitChannel() <- true
+			}
+
+			if afterComp, afterErr := eventIDValue.After(); afterErr == nil {
+				afterComp.GetBreakChannel() <- true
+			}
+
 			if len(ids) == 0 {
 				return ids
 			}

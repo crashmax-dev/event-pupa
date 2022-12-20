@@ -12,8 +12,9 @@ import (
 type Interface interface {
 	GetID() uuid.UUID
 	GetPriority() int
-	SetPriority(prior int)
-	RunFunction(ctx context.Context) string
+	GetTriggerName() string
+	RunFunction(ctx context.Context)
+	After() (after.Interface, error)
 	Subscriber() subscriber.Interface
 	Interval() (interval.Interface, error)
 	Once() (once.Interface, error)

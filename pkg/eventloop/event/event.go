@@ -51,7 +51,7 @@ func NewEvent(args EventArgs) Interface {
 	if args.intervalTime.String() != "0s" {
 		newEvent.interval = interval.NewIntervalEvent(args.intervalTime)
 	}
-	if args.DateAfter == (after.DateAfter{}) {
+	if args.DateAfter != (after.DateAfter{}) {
 		newEvent.after = after.New(args.DateAfter)
 	}
 

@@ -81,13 +81,10 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 
 	} else if _, intervalErr := newEvent.Interval(); intervalErr != nil { // INTERVAL
 		e.addEvent(string(INTERVALED), newEvent)
-		go e.runScheduledEvent(ctx, newEvent)
-	} else if afterComponent, afterErr := newEvent.After(); afterErr != nil {
+		e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
+	} else if afterComp, afterErr := newEvent.After(); afterErr == nil {
 		e.addEvent(string(AFTER), newEvent)
-
-		go func(afterComponent after.Interface) {
-			time.Sleep(afterComponent.GetDuration())
-		}(afterComponent)
+		e.logger.Debugw("Event added", "start_time", afterComp.GetDuration())
 	} else {
 		return errors.New("event must be at least ON, INTERVAL or AFTER")
 	}
@@ -316,9 +313,8 @@ func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.Ev
 func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg *sync.WaitGroup, ch channelEx.Interface[string]) {
 	defer wg.Done()
 
-	result := ev.RunFunction(ctx)
-	if ch != nil && !ch.IsClosed() {
-		ch.Channel() <- result
+	if after, afterErr := ev.After(); afterErr == nil {
+		after.Wait()
 	}
 
 	listener := ev.Subscriber()

@@ -463,23 +463,48 @@ func TestBeforeAfter(t *testing.T) {
 			result++
 			return fmt.Sprintf("%v", result)
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-		errG        = new(errgroup.Group)
+		ctx, cancel           = context.WithTimeout(context.Background(), time.Second)
+		errG                  = new(errgroup.Group)
+		globalBeforeEventArgs = event.EventArgs{Fun: defaultEventFunc,
+			TriggerName: string(BEFORE_TRIGGER),
+			Priority:    BEFORE_PRIORITY}
+		globalAfterEventArgs = event.EventArgs{Fun: defaultEventFunc,
+			TriggerName: string(AFTER_TRIGGER),
+			Priority:    AFTER_PRIORITY}
+		beforeEventArgs = event.EventArgs{
+			Fun:         defaultEventFunc,
+			TriggerName: EVENTNAME,
+			Priority:    BEFORE_PRIORITY,
+		}
+		afterEventArgs = event.EventArgs{
+			Fun:         defaultEventFunc,
+			TriggerName: EVENTNAME,
+			Priority:    AFTER_PRIORITY,
+		}
 	)
 
 	defer cancel()
 
-	evLoop.OnAfter(ctx, EVENTNAME, defaultEventFunc)
-	evLoop.OnAfter(ctx, "", defaultEventFunc)
-	evLoop.OnBefore(ctx, EVENTNAME, defaultEventFunc)
-	evLoop.OnBefore(ctx, "", defaultEventFunc)
+	gaEvent, neErr1 := event.NewEvent(globalAfterEventArgs)
+	gbEvent, neErr2 := event.NewEvent(globalBeforeEventArgs)
+	laEvent, neErr3 := event.NewEvent(afterEventArgs)
+	lbEvent, neErr4 := event.NewEvent(beforeEventArgs)
+
+	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
+		t.Error(neErr1, neErr2, neErr3, neErr4)
+	}
+
+	evLoop.RegisterEvent(ctx, gaEvent)
+	evLoop.RegisterEvent(ctx, gbEvent)
+	evLoop.RegisterEvent(ctx, laEvent)
+	evLoop.RegisterEvent(ctx, lbEvent)
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME, nil)
+		return evLoop.Trigger(ctx, EVENTNAME)
 	})
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, "Random Event", nil)
+		return evLoop.Trigger(ctx, "Random Event")
 	})
 
 	if err := errG.Wait(); err != nil {
