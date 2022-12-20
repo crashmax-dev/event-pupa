@@ -14,10 +14,23 @@ import (
 )
 
 // event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)
+
+type EventArgs struct {
+	TriggerName string
+	Priority    int
+	IsOnce      bool
+	Fun         EventFunc
+
+	IntervalTime time.Duration
+	after.DateAfter
+}
+
 type event struct {
-	id       uuid.UUID
-	priority int
-	fun      EventFunc
+	id          uuid.UUID
+	triggerName string
+	priority    int
+	fun         EventFunc
+	result      string
 
 	mx sync.Mutex
 
@@ -27,25 +40,19 @@ type event struct {
 	after      after.Interface
 }
 
-type EventArgs struct {
-	triggerName string
-	priority    int
-	isOnce      bool
-	fun         EventFunc
-
-	intervalTime time.Duration
-	after.DateAfter
-}
-
 type EventFunc func(ctx context.Context) string
 
-func NewEvent(args EventArgs) Interface {
-	newEvent := &event{id: uuid.New(),
-		fun:         args.fun,
-		triggerName: args.triggerName,
-		priority:    args.priority}
+func NewEvent(args EventArgs) (Interface, error) {
+	if args.Fun == nil {
+		return nil, errors.New("no function, please add")
+	}
 
-	if args.isOnce {
+	newEvent := &event{id: uuid.New(),
+		fun:         args.Fun,
+		triggerName: args.TriggerName,
+		priority:    args.Priority}
+
+	if args.IsOnce {
 		newEvent.once = once.NewOnce()
 	}
 	if args.IntervalTime.String() != "0s" {
@@ -55,7 +62,7 @@ func NewEvent(args EventArgs) Interface {
 		newEvent.after = after.New(args.DateAfter)
 	}
 
-	return newEvent
+	return newEvent, nil
 }
 
 func (ev *event) GetID() uuid.UUID {
