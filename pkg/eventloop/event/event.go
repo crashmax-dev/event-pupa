@@ -69,6 +69,10 @@ func (ev *event) GetID() uuid.UUID {
 	return ev.id
 }
 
+func (ev *event) GetTriggerName() string {
+	return ev.triggerName
+}
+
 func (ev *event) GetPriority() int {
 	return ev.priority
 }
