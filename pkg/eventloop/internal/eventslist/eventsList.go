@@ -41,8 +41,8 @@ func (el *eventsList) GetEventIdsByName(eventName string) (result []uuid.UUID, e
 }
 
 func (eil *EventIdsList) iterateEvents(ids []uuid.UUID) []uuid.UUID {
-	for eventIDKey, eventIdValue := range *eil {
-		if index := slices.Index(ids, eventIdValue.GetID()); index != -1 {
+	for eventIDKey, eventIDValue := range *eil {
+		if index := slices.Index(ids, eventIDValue.GetID()); index != -1 {
 			delete(*eil, eventIDKey)
 			ids[index] = ids[len(ids)-1]
 			ids = ids[:len(ids)-1]
