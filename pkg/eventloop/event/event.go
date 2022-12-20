@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync"
 	"time"
 
@@ -112,8 +113,9 @@ func (ev *event) After() (after.Interface, error) {
 }
 
 func getSubInterface[T any](i T, errMsg string) (T, error) {
-	if i == nil {
-		return nil, errors.New(errMsg)
+	var nilRes T
+	if reflect.ValueOf(&i).Elem().IsZero() {
+		return nilRes, errors.New(errMsg)
 	}
 	return i, nil
 }
