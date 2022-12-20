@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"eventloop/internal/logger"
-	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
 	"eventloop/pkg/eventloop/internal/eventslist"
-	"eventloop/pkg/eventloop/internal/scheduler"
-	loggerInterface "eventloop/pkg/logger"
+	loggerEventLoop "eventloop/pkg/logger"
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 )
@@ -27,9 +25,7 @@ type eventLoop struct {
 
 	disabled []EventFunction
 
-	scheduler scheduler.Scheduler
-
-	logger loggerInterface.Interface
+	logger loggerEventLoop.Interface
 }
 
 // NewEventLoop - конструктор для менеджера событий. Инициализирует новый Event Loop.
