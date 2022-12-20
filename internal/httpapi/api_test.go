@@ -3,15 +3,16 @@ package httpapi
 import (
 	"bytes"
 	"context"
-	loggerImplement "eventloop/internal/logger"
-	"eventloop/pkg/eventloop"
-	"eventloop/pkg/logger"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	loggerImplement "eventloop/internal/logger"
+	"eventloop/pkg/eventloop"
+	"eventloop/pkg/logger"
 )
 
 const OK = "200 OK"

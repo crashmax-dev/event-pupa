@@ -1,14 +1,15 @@
 package logger
 
 import (
-	"eventloop/pkg/logger"
 	"fmt"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"net/url"
 	"os"
 	"path/filepath"
 	"time"
+
+	"eventloop/pkg/logger"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (

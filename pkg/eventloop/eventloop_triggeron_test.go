@@ -2,13 +2,14 @@ package eventloop
 
 import (
 	"context"
-	"eventloop/pkg/channelEx"
-	"eventloop/pkg/eventloop/event"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"strconv"
 	"testing"
 	"time"
+
+	"eventloop/pkg/channelEx"
+	"eventloop/pkg/eventloop/event"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestOnAndTrigger(t *testing.T) {
