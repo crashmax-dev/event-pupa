@@ -5,8 +5,8 @@ import "errors"
 type EventFunction uint8
 
 const (
-	ON EventFunction = iota + 1
-	TRIGGER
+	TRIGGER EventFunction = iota + 1
+	REGISTER
 )
 
 func (ef EventFunction) String() (string, error) {
@@ -19,6 +19,6 @@ func (ef EventFunction) String() (string, error) {
 }
 
 var EventFunctionMapping = map[string]EventFunction{
-	"ON":      ON,
-	"TRIGGER": TRIGGER,
+	"TRIGGER":  TRIGGER,
+	"REGISTER": REGISTER,
 }
