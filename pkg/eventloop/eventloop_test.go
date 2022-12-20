@@ -147,7 +147,7 @@ func TestIsContextDone(t *testing.T) {
 // Проверяет функцию isScheduledEventDone
 func TestIsScheduledEventDone(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	eventCh, eventLoopCh := make(chan bool, 1), make(chan bool, 1)
+	eventCh := make(chan bool, 1)
 
 	tests := []struct {
 		init      func()
@@ -166,14 +166,6 @@ func TestIsScheduledEventDone(t *testing.T) {
 				t.Errorf("isScheduledEventDone by event channel: false; Want: true")
 			},
 		},
-		{ // ====
-			init: func() {
-				eventLoopCh <- true
-			},
-			errorFunc: func() {
-				t.Errorf("isScheduledEventDone by eventloop channel: false; Want: true")
-			},
-		},
 		{ // =====
 			init: func() {
 				cancel()
@@ -188,7 +180,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 			testValue.init()
 		}
 		select {
-		case <-isScheduledEventDone(ctx, eventCh, eventLoopCh, nil):
+		case <-isScheduledEventDone(ctx, eventCh, nil):
 			if testValue.done != nil {
 				testValue.done()
 			}
@@ -203,7 +195,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 func TestStartScheduler(t *testing.T) {
 	const (
 		WANT       = 3
-		INTERVALMS = time.Millisecond * 20
+		INTERVALMS = time.Millisecond * 200
 		EXECUTIONS = 4
 	)
 	var (
@@ -212,21 +204,30 @@ func TestStartScheduler(t *testing.T) {
 			number++
 			return ""
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second*200)
 		errG        = new(errgroup.Group)
 	)
 
 	defer cancel()
 
-	evSched := event.NewIntervalEvent(numInc, INTERVALMS)
+	errG.SetLimit(-1)
+
+	evSched, neErr := event.NewEvent(event.EventArgs{Fun: numInc, IntervalTime: INTERVALMS})
+	if neErr != nil {
+		t.Error(neErr)
+	}
 	errG.Go(func() error {
-		return evLoop.ScheduleEvent(ctx, evSched, nil)
+		return evLoop.RegisterEvent(ctx, evSched)
 	})
 	time.Sleep(time.Millisecond * 20)
 	errG.Go(func() error {
-		return evLoop.StartScheduler(ctx)
+		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
 	time.Sleep(INTERVALMS * EXECUTIONS)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, string(INTERVALED))
+	})
+
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
 	}
@@ -253,18 +254,24 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	)
 	defer cancel()
 
-	evSched := event.NewIntervalEvent(numInc, INTERVALMS)
+	evSched, neErr := event.NewEvent(event.EventArgs{Fun: numInc, IntervalTime: INTERVALMS})
+	if neErr != nil {
+		t.Error(neErr)
+	}
 	errG.Go(func() error {
-		return evLoop.StartScheduler(ctx)
+		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
 	time.Sleep(time.Millisecond * 10)
 	errG.Go(func() error {
-		return evLoop.ScheduleEvent(ctx, evSched, nil)
+		return evLoop.RegisterEvent(ctx, evSched)
+	})
+	time.Sleep(time.Millisecond * 10)
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
 	time.Sleep(EXECUTIONS * INTERVALMS)
 	errG.Go(func() error {
-		evLoop.StopScheduler()
-		return nil
+		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
 
 	if err := errG.Wait(); err != nil {

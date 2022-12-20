@@ -317,19 +317,14 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg
 		after.Wait()
 	}
 
-	listener := ev.Subscriber()
-	if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
-		//evTrigger := ev.Subscriber()
-		listener.LockMutex()
-		e.logger.Debugw("Sending messages...",
-			"listener", listenerChannels,
-			"trigger", ev.GetID())
-		for _, chnl := range listenerChannels {
-			e.logger.Debugw("Writing to channel", "channel", ch, "trigger", ev.GetID())
-			chnl <- 1
+	if interval, err := ev.Interval(); err == nil {
+		if interval.IsRunning() {
+			interval.GetQuitChannel() <- true
+		} else {
+			e.runScheduledEvent(ctx, ev)
 		}
-		e.logger.Infow("All messages send", "trigger", ev.GetID())
-		listener.UnlockMutex()
+	} else {
+		ev.RunFunction(ctx)
 	}
 }
 

@@ -48,8 +48,8 @@ func NewEvent(args EventArgs) Interface {
 	if args.isOnce {
 		newEvent.once = once.NewOnce()
 	}
-	if args.intervalTime.String() != "0s" {
-		newEvent.interval = interval.NewIntervalEvent(args.intervalTime)
+	if args.IntervalTime.String() != "0s" {
+		newEvent.interval = interval.NewIntervalEvent(args.IntervalTime)
 	}
 	if args.DateAfter != (after.DateAfter{}) {
 		newEvent.after = after.New(args.DateAfter)
@@ -66,12 +66,18 @@ func (ev *event) GetPriority() int {
 	return ev.priority
 }
 
-func (ev *event) SetPriority(prior int) {
-	ev.priority = prior
-}
+func (ev *event) RunFunction(ctx context.Context) {
+	ev.result = ev.fun(ctx)
 
-func (ev *event) RunFunction(ctx context.Context) string {
-	return ev.fun(ctx)
+	//Отправка сообщений, подписанным на это событие, событиям
+	listener := ev.Subscriber()
+	if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
+		listener.LockMutex()
+		for _, chnl := range listenerChannels {
+			chnl <- 1
+		}
+		listener.UnlockMutex()
+	}
 }
 
 // Subscriber
