@@ -47,6 +47,11 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 		fmt.Sprintf("log_%s%s.log", postfix,
 			time.Now().Format("02012006"))))
 
+	outputPath := []string{filename}
+	if levelSelected == zapcore.DebugLevel {
+		outputPath = append(outputPath, "stdout")
+	}
+
 	config := zap.Config{
 		Level:    atom,
 		Encoding: "json",
