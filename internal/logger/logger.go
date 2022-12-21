@@ -97,44 +97,44 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 }
 
 func (al *apiLogger) Debugf(template string, args ...interface{}) {
-	al.base.Debugf(template, args)
+	al.base.Debugf(template, args...)
 }
 func (al *apiLogger) Debugw(msg string, keysAndValues ...interface{}) {
-	al.base.Debugw(msg, keysAndValues)
+	al.base.Debugw(msg, keysAndValues...)
 }
 func (al *apiLogger) Error(args ...interface{}) {
-	al.base.Error(args)
+	al.base.Error(args...)
 }
 func (al *apiLogger) Errorf(template string, args ...interface{}) {
-	al.base.Errorf(template, args)
+	al.base.Errorf(template, args...)
 }
 func (al *apiLogger) Errorw(msg string, keysAndValues ...interface{}) {
-	al.base.Errorw(msg, keysAndValues)
+	al.base.Errorw(msg, keysAndValues...)
 }
 func (al *apiLogger) Info(args ...interface{}) {
-	al.base.Info(args)
+	al.base.Info(args...)
 }
 func (al *apiLogger) Infof(template string, args ...interface{}) {
-	al.base.Infof(template, args)
+	al.base.Infof(template, args...)
 }
 func (al *apiLogger) Infow(msg string, keysAndValues ...interface{}) {
-	al.base.Infow(msg, keysAndValues)
+	al.base.Infow(msg, keysAndValues...)
 }
 func (al *apiLogger) Warn(args ...interface{}) {
-	al.base.Warn(args)
+	al.base.Warn(args...)
 }
 func (al *apiLogger) Warnf(template string, args ...interface{}) {
-	al.base.Warnf(template, args)
+	al.base.Warnf(template, args...)
 }
 func (al *apiLogger) Warnw(msg string, keysAndValues ...interface{}) {
-	al.base.Warnw(msg, keysAndValues)
+	al.base.Warnw(msg, keysAndValues...)
 }
 
 func (al *apiLogger) Level() string {
 	return al.level
 }
 
-func (al *ApiLogger) Sync() error {
+func (al *apiLogger) Sync() error {
 	return al.base.Sync()
 }
 
