@@ -213,16 +213,17 @@ func TestIsScheduledEventDone(t *testing.T) {
 func TestStartScheduler(t *testing.T) {
 	const (
 		WANT       = 3
-		INTERVALMS = time.Millisecond * 200
+		INTERVALMS = time.Millisecond * 10
 		EXECUTIONS = 4
 	)
 	var (
 		number int
 		numInc = func(ctx context.Context) string {
 			number++
-			return ""
+			return strconv.Itoa(number)
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second*200)
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second*200)
 		errG        = new(errgroup.Group)
 	)
 
@@ -237,10 +238,15 @@ func TestStartScheduler(t *testing.T) {
 	errG.Go(func() error {
 		return evLoop.RegisterEvent(ctx, evSched)
 	})
-	time.Sleep(time.Millisecond * 20)
+	<-execCh
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
+
+	var result int
+	for i := 0; i < EXECUTIONS; i++ {
+		result, _ = strconv.Atoi(<-execCh)
+	}
 	time.Sleep(INTERVALMS * EXECUTIONS)
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
@@ -250,8 +256,8 @@ func TestStartScheduler(t *testing.T) {
 		t.Log(err)
 	}
 
-	if number != WANT && number != WANT+1 {
-		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+	if result != WANT {
+		t.Errorf("Number = %d; WANT %d", result, WANT)
 	}
 }
 
