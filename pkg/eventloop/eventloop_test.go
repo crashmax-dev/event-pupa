@@ -108,41 +108,46 @@ func TestToggleTrigger(t *testing.T) {
 		number int
 		numInc = func(ctx context.Context) string {
 			number++
-			return ""
+			return strconv.Itoa(number)
 		}
-		eventDefault = event.NewEvent(numInc)
-		ctx, cancel  = context.WithTimeout(context.Background(), time.Second)
-		errG         = new(errgroup.Group)
+
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		errG        = new(errgroup.Group)
 	)
+
+	eventDefault, neErr := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
+	if neErr != nil {
+		t.Error(neErr)
+	}
 
 	defer cancel()
 
 	errG.Go(func() error {
-		return evLoop.On(ctx, EVENTNAME, eventDefault, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault)
 	})
-	time.Sleep(time.Millisecond * 20)
+	<-execCh
 
-	go evLoop.Toggle(TRIGGER)
-	time.Sleep(time.Millisecond * 20)
+	evLoop.Toggle(TRIGGER)
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME, nil)
+		return evLoop.Trigger(ctx, EVENTNAME)
 	})
-	time.Sleep(time.Millisecond * 20)
+	<-execCh
 
-	go evLoop.Toggle(TRIGGER)
-	time.Sleep(time.Millisecond * 20)
+	evLoop.Toggle(TRIGGER)
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME, nil)
+		return evLoop.Trigger(ctx, EVENTNAME)
 	})
+	result, _ := strconv.Atoi(<-execCh)
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
 	}
 
-	if number != WANT {
-		t.Errorf("Number: %v; Want: %v", number, WANT)
+	if result != WANT {
+		t.Errorf("Number: %v; Want: %v", result, WANT)
 	}
 }
 
