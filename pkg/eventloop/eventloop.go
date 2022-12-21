@@ -249,17 +249,13 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	e.logger.Infow("Events triggered", "eventname", eventName)
-
-	var (
-		wg sync.WaitGroup
-	)
+	e.logger.Infow("Trigger event", "triggerName", triggerName)
 
 	// Run before global events
-	e.triggerEventFuncList(ctx, e.events.EventName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.EventName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())
 
 	// Run before events
-	e.triggerEventFuncList(ctx, e.events.EventName(eventName).Priority(BEFORE_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.EventName(triggerName).Priority(BEFORE_PRIORITY).List())
 
 	keys := e.events.EventName(triggerName).GetKeys()
 	for priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
@@ -276,13 +272,11 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		}
 	}
 
-	wg.Wait()
-
 	// Run after global events
-	e.triggerEventFuncList(ctx, e.events.EventName(string(AFTER_TRIGGER)).Priority(AFTER_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.EventName(string(AFTER_TRIGGER)).Priority(AFTER_PRIORITY).List())
 
 	// Run after events
-	e.triggerEventFuncList(ctx, e.events.EventName(eventName).Priority(AFTER_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.EventName(triggerName).Priority(AFTER_PRIORITY).List())
 
 	return deferErr
 }
@@ -293,8 +287,7 @@ func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.Ev
 	}
 }
 
-func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg *sync.WaitGroup, ch channelEx.Interface[string]) {
-	defer wg.Done()
+func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 
 	if after, afterErr := ev.After(); afterErr == nil {
 		after.Wait()
@@ -335,7 +328,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
-func isScheduledEventDone(ctx context.Context, eventCh, eventLoopCh <-chan bool, logger loggerInterface.Interface) <-chan struct{} {
+func isScheduledEventDone(ctx context.Context, eventCh <-chan bool, logger loggerEventLoop.Interface) <-chan struct{} {
 	result := make(chan struct{}, 1)
 	result <- struct{}{}
 	select {
