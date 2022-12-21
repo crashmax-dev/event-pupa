@@ -278,45 +278,36 @@ func isScheduledEventDone(ctx context.Context, eventCh <-chan bool, logger logge
 	}
 }
 
-func (e *eventLoop) runScheduledEvent(ctx context.Context, event event.Interface) {
-	evntSchedule, _ := event.Interval()
-	evntInterval := evntSchedule.GetDuration()
-	e.logger.Infow("Scheduled event starting with interval",
-		"event", event.GetID(),
+func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
+	schedCtx, cancel := context.WithCancel(ctx)
+	intervalComponent, _ := ev.Interval()
+	evntInterval := intervalComponent.GetDuration()
+	e.logger.Infow("Scheduled ev starting with interval",
+		"ev", ev.GetID(),
 		"interval", evntInterval)
 	ticker := time.NewTicker(evntInterval)
+	intervalComponent.SetRunning(true)
+
+	defer cancel()
+	defer intervalComponent.SetRunning(false)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
-			go func() {
-				e.scheduler.SetSchedulerResults(event.GetID(), event.RunFunction(ctx))
-			}()
-		case <-isScheduledEventDone(ctx, evntSchedule.GetQuitChannel(), e.scheduler.Stopper, e.logger):
+			go func(ev event.Interface) {
+				ev.RunFunction(schedCtx)
+				if once, onceErr := ev.Once(); onceErr == nil {
+					once.Do(func() {
+						cancel()
+					})
+					return
+				}
+			}(ev)
+
+		case <-isScheduledEventDone(schedCtx, intervalComponent.GetQuitChannel(), e.logger):
 			return
 		}
-	}
-}
-
-// ScheduleEvent добавляет событие в список интервальных событий. Если шедулер уже запущен до добавления - запускает
-// это событие сразу.
-// out возвращает UUID события в хранилище событий
-func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface, out chan<- uuid.UUID) error {
-	if _, err := newEvent.Interval(); err != nil {
-		e.logger.Errorw(err.Error(), "event", newEvent)
-		return err
-	}
-
-	if isContextDone(ctx) {
-		errStr := "can't schedule, context done"
-		e.logger.Warnw(errStr)
-		return errors.New(errStr)
-	}
-
-	e.addEvent(string(INTERVALED), newEvent)
-
-	if e.scheduler.IsSchedulerRunning() {
-		go e.runScheduledEvent(ctx, newEvent)
 	}
 }
 
