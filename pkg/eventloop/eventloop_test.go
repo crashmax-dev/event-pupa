@@ -26,6 +26,10 @@ type test struct {
 	want int
 }
 
+func ctxWithValueAndTimeout(key any, val any, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithValue(context.Background(), key, val), timeout)
+}
+
 func handleError(t *testing.T, err error) {
 	if err != nil {
 		t.Error(err)
@@ -41,12 +45,12 @@ func TestToggleOn(t *testing.T) {
 
 	var (
 		number int
-		execCh = make(chan string)
 		numInc = func(ctx context.Context) string {
 			number++
 			return fmt.Sprint(number)
 		}
-		ctx, cancel = context.WithTimeout(context.WithValue(context.Background(), "execCh", execCh), time.Second)
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 
