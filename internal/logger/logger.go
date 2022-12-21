@@ -141,7 +141,7 @@ func (al *apiLogger) Sync() error {
 // normalizeLevel выравнивает уровень для Dev и Prod, возвращая DebugLevel или ErrorLevel соответственно.
 func normalizeLevel(level zapcore.Level) zapcore.Level {
 	if level >= zapcore.ErrorLevel {
-		return zapcore.DebugLevel
+		return zapcore.ErrorLevel
 	}
-	return zapcore.ErrorLevel
+	return zapcore.DebugLevel
 }
