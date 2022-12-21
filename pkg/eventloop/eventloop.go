@@ -250,7 +250,7 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 			e.disabled = internal.RemoveSliceItemByIndex(e.disabled, x)
 		} else { // Выключение
 			result += fmt.Sprintf("Disabling function %v", v)
-			e.logger.Infof(result)
+			e.logger.Info(result)
 			e.disabled = append(e.disabled, v)
 		}
 	}
@@ -265,17 +265,12 @@ func isScheduledEventDone(ctx context.Context, eventCh <-chan bool, logger logge
 	select {
 	case <-ctx.Done():
 		if logger != nil {
-			logger.Warnw("Scheduler stopped because of context")
+			logger.Warnw("Scheduled event stopped because of context")
 		}
 		return result
 	case <-eventCh:
 		if logger != nil {
-			logger.Infow("Scheduler stopped because of event want to stop")
-		}
-		return result
-	case <-eventLoopCh:
-		if logger != nil {
-			logger.Infow("Scheduler stopped because of event manager commands")
+			logger.Infow("Scheduled event stopped because of event want to stop")
 		}
 		return result
 	default:
