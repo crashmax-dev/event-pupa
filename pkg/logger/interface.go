@@ -13,4 +13,5 @@ type Interface interface {
 	Warnf(template string, args ...interface{})
 	Warnw(msg string, keysAndValues ...interface{})
 	Level() string
+	Sync() error
 }

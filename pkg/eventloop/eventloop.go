@@ -229,25 +229,11 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 
 	var deferErr error
 
-	// Обработка канала, закрываем по завершении
-	if ch != nil && !ch.IsClosed() {
-		if ch.IsClosed() {
-			deferErr = errors.New("trigger accept only new channels")
-		} else {
-			defer func(ch channelEx.Interface[string]) {
-				err := ch.Close()
-				if err != nil {
-					e.logger.Warn(err)
-				}
-			}(ch)
-		}
-	}
-
-	if isContextDone(ctx) {
-		str := "can't trigger event, context is done"
-		e.logger.Warnw(str,
-			"eventname", eventName)
-		return errors.New(str)
+	if ctxErr := e.checkContext(triggerCtx,
+		"can't trigger event, context is done",
+		"triggerName", triggerName); ctxErr != nil {
+		internal.WriteToExecCh(ctx, "")
+		return ctxErr
 	}
 
 	// Выключен ли Триггер
@@ -473,4 +459,18 @@ func (e *eventLoop) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
 // GetAttachedEvents возвращает все события, прикреплённые к eventName
 func (e *eventLoop) GetAttachedEvents(eventName string) (result []uuid.UUID, err error) {
 	return e.events.GetEventIdsByName(eventName)
+}
+
+func (e *eventLoop) Sync() error {
+	return e.logger.Sync()
+}
+
+func (e *eventLoop) checkContext(ctx context.Context, message string, loggerArgs ...string) error {
+	if isContextDone(ctx) {
+		errStr := message
+		e.logger.Warnw(errStr,
+			loggerArgs)
+		return errors.New(errStr)
+	}
+	return nil
 }
