@@ -92,7 +92,9 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 // В случае передачи контекста с дедлайном или таймаутом, если контекст ещё живой, подписанные события всё равно
 // выполнятся один раз в случае триггера.
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error {
-	if isContextDone(ctx) {
+	subCtx := context.WithValue(ctx, "logger", e.logger)
+
+	if isContextDone(subCtx) {
 		errStr := "can't subscribe, context is done"
 		e.logger.Warnw(errStr,
 			"triggers", triggers,
@@ -221,7 +223,9 @@ func (e *eventLoop) OnAfter(ctx context.Context, eventName string, elFunction ev
 // поэтому синхронный вызов заблокирует родительский цикл выполнения программы.
 // В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова
 // нужно создавать новый channelEx
-func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.Interface[string]) error {
+func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
+	triggerCtx := context.WithValue(ctx, "logger", e.logger)
+
 	var deferErr error
 
 	// Обработка канала, закрываем по завершении
@@ -279,7 +283,7 @@ func (e *eventLoop) Trigger(ctx context.Context, eventName string, ch channelEx.
 		for _, loopevent := range e.events.EventName(eventName).Priority(priorIndex).List() {
 			wg.Add(1)
 
-			go e.triggerEventFunc(ctx, loopevent, &wg, ch)
+			go e.triggerEventFunc(triggerCtx, loopevent)
 
 			if once, err := loopevent.Once(); err == nil {
 				once.Do(func() {

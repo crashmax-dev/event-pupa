@@ -79,13 +79,19 @@ func (ev *event) GetPriority() int {
 }
 
 func (ev *event) RunFunction(ctx context.Context) {
+
+	logger := ctx.Value("logger").(loggerEventLoop.Interface)
+
+	logger.Debugw("Run event function", "eventId", ev.id)
 	ev.result = ev.fun(ctx)
 
 	//Отправка сообщений, подписанным на это событие, событиям
 	listener := ev.Subscriber()
 	if listenerChannels := listener.GetChannels(); len(listenerChannels) > 0 {
 		listener.LockMutex()
-		for _, chnl := range listenerChannels {
+		for i, chnl := range listenerChannels {
+			logTxt := fmt.Sprintf("Writing channel %v of %v", i+1, len(listenerChannels))
+			logger.Debugw(logTxt, "event", ev.id)
 			chnl <- 1
 		}
 		listener.UnlockMutex()
