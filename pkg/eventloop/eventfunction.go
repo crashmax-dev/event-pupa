@@ -1,7 +1,5 @@
 package eventloop
 
-import "errors"
-
 type EventFunction uint8
 
 const (
@@ -9,13 +7,13 @@ const (
 	REGISTER
 )
 
-func (ef EventFunction) String() (string, error) {
+func (ef EventFunction) String() string {
 	for k, v := range EventFunctionMapping {
 		if v == ef {
-			return k, nil
+			return k
 		}
 	}
-	return "", errors.New("no such Event Function")
+	return ""
 }
 
 var EventFunctionMapping = map[string]EventFunction{
