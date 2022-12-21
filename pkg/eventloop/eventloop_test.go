@@ -33,54 +33,62 @@ func handleError(t *testing.T, err error) {
 
 func TestToggleOn(t *testing.T) {
 	const (
-		WANT      = 2
-		EVENTNAME = "TOGGLEON"
+		WANT        = 2
+		TRIGGERNAME = "TOGGLEON"
+		TOGGLENAME  = REGISTER
 	)
 
 	var (
 		number int
+		execCh = make(chan string)
 		numInc = func(ctx context.Context) string {
 			number++
-			return ""
+			return fmt.Sprint(number)
 		}
-		eventDefault  = event.NewEvent(numInc)
-		eventDefault2 = event.NewEvent(numInc)
-		ctx, cancel   = context.WithTimeout(context.Background(), time.Second)
-		errG          = new(errgroup.Group)
+		ctx, cancel = context.WithTimeout(context.WithValue(context.Background(), "execCh", execCh), time.Second)
+		errG        = new(errgroup.Group)
+	)
+
+	var (
+		ARGS                  = event.EventArgs{Fun: numInc, TriggerName: TRIGGERNAME}
+		eventDefault, errNE1  = event.NewEvent(ARGS)
+		eventDefault2, errNE2 = event.NewEvent(ARGS)
 	)
 
 	defer cancel()
 
-	errG.Go(func() error {
-		return evLoop.On(ctx, EVENTNAME, eventDefault, nil)
-	})
-	time.Sleep(time.Millisecond * 10)
-
-	go evLoop.Toggle(ON)
-	time.Sleep(time.Millisecond * 10)
+	if errNE1 != nil || errNE2 != nil {
+		t.Error("Error creating events: ", errNE1, errNE2)
+	}
 
 	errG.Go(func() error {
-		return evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault)
 	})
-	time.Sleep(time.Millisecond * 10)
+	<-execCh
 
-	go evLoop.Toggle(ON)
-	time.Sleep(time.Millisecond * 10)
-
-	errG.Go(func() error {
-		return evLoop.On(ctx, EVENTNAME, eventDefault2, nil)
-	})
-	time.Sleep(time.Millisecond * 10)
+	evLoop.Toggle(TOGGLENAME)
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault2)
 	})
+	<-execCh
+
+	evLoop.Toggle(TOGGLENAME)
+
+	errG.Go(func() error {
+		return evLoop.RegisterEvent(ctx, eventDefault2)
+	})
+	<-execCh
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, TRIGGERNAME)
+	})
+	<-execCh
+	result, _ := strconv.Atoi(<-execCh)
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
 	}
-
-	if number != WANT {
+	if number != WANT || result != WANT {
 		t.Errorf("Number: %v; Want: %v", number, WANT)
 	}
 }
