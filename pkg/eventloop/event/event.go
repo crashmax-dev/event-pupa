@@ -87,8 +87,8 @@ func (ev *event) RunFunction(ctx context.Context) {
 
 	logger.Debugw("Run event function", "eventId", ev.id)
 	ev.result = ev.fun(ctx)
-
-	//Отправка сообщений, подписанным на это событие, событиям
+	defer internal.WriteToExecCh(ctx, ev.result)
+	// Отправка сообщений, подписанным на это событие, событиям
 	listener := ev.Subscriber()
 	if listenerChannels := listener.GetChannels(); listener.IsTrigger() && len(listenerChannels) > 0 {
 		logger.Debugw("Starting write to channels", "event", ev.id)

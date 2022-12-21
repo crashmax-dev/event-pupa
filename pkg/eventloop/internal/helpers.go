@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"sync"
 )
 
@@ -13,4 +14,10 @@ func RemoveSliceItemByIndex[T any](s []T, index int) []T {
 		return append(s[:index], s[index+1:]...)
 	}
 	return nil
+}
+
+func WriteToExecCh(ctx context.Context, result string) {
+	if ch := ctx.Value("execCh"); ch != nil {
+		ch.(chan string) <- result
+	}
 }

@@ -49,6 +49,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 	if ctxErr := e.checkContext(ctx, "can't register event, context is done",
 		"event", newEvent.GetID().String(),
 		"trigger", newEvent.GetTriggerName()); ctxErr != nil {
+		internal.WriteToExecCh(ctx, "")
 		return ctxErr
 	}
 
@@ -57,6 +58,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 		errStr := "register disabled, can't register event"
 		e.logger.Warnw(errStr,
 			"event", newEvent.GetID())
+		internal.WriteToExecCh(ctx, "")
 		return errors.New(errStr)
 	}
 
@@ -65,6 +67,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 		if slices.Contains(eventLoopEvents, eventLoopSystemEvent(triggerName)) {
 			errStr := fmt.Sprintf("Trigger name %v is reserved", triggerName)
 			e.logger.Warnf("Trigger name %v is reserved", triggerName)
+			internal.WriteToExecCh(ctx, "")
 			return errors.New(errStr)
 		}
 
@@ -85,6 +88,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 		return errors.New("event must be at least ON, INTERVAL or AFTER")
 	}
 
+	internal.WriteToExecCh(ctx, "")
 	return nil
 }
 
@@ -240,13 +244,8 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	if slices.Contains(e.disabled, TRIGGER) {
 		str := "can't trigger event, trigger is disabled"
 		e.logger.Warnw(str,
-			"eventname", eventName)
-		return errors.New(str)
-	}
-
-	if slices.Contains(eventLoopEvents, eventLoopSystemEvent(eventName)) {
-		str := fmt.Sprintf("Event name %v is reserved", eventLoopSystemEvent(eventName))
-		e.logger.Warnf(str)
+			"eventname", triggerName)
+		internal.WriteToExecCh(ctx, "")
 		return errors.New(str)
 	}
 
@@ -307,6 +306,7 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface, wg
 	if interval, err := ev.Interval(); err == nil {
 		if interval.IsRunning() {
 			interval.GetQuitChannel() <- true
+			internal.WriteToExecCh(ctx, "")
 		} else {
 			e.runScheduledEvent(ctx, ev)
 		}
