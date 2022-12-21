@@ -212,7 +212,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 
 func TestStartScheduler(t *testing.T) {
 	const (
-		WANT       = 3
+		WANT       = 4
 		INTERVALMS = time.Millisecond * 10
 		EXECUTIONS = 4
 	)
@@ -243,9 +243,9 @@ func TestStartScheduler(t *testing.T) {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
 
-	var result int
+	var result string
 	for i := 0; i < EXECUTIONS; i++ {
-		result, _ = strconv.Atoi(<-execCh)
+		result = <-execCh
 	}
 	time.Sleep(INTERVALMS * EXECUTIONS)
 	errG.Go(func() error {
@@ -256,8 +256,8 @@ func TestStartScheduler(t *testing.T) {
 		t.Log(err)
 	}
 
-	if result != WANT {
-		t.Errorf("Number = %d; WANT %d", result, WANT)
+	if intRes, _ := strconv.Atoi(result); intRes != WANT {
+		t.Errorf("Number = %d; WANT %d", intRes, WANT)
 	}
 }
 
