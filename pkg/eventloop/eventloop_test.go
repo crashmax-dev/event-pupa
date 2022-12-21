@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/internal"
 	"github.com/google/uuid"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
