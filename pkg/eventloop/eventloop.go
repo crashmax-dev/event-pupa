@@ -75,8 +75,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 		e.addEvent(newEvent.GetTriggerName(), newEvent)
 
 		e.logger.Debugw("Event added", "triggerName", newEvent.GetTriggerName())
-
-	} else if _, intervalErr := newEvent.Interval(); intervalErr != nil { // INTERVAL
+	} else if intervalComp, intervalErr := newEvent.Interval(); intervalErr == nil { // INTERVAL
 		e.addEvent(string(INTERVALED), newEvent)
 		e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
 	} else if afterComp, afterErr := newEvent.After(); afterErr == nil {
