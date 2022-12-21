@@ -5,4 +5,6 @@ type Interface interface {
 	UnlockMutex()
 	GetChannels() []chan int
 	AddChannel(chan int)
+	IsTrigger() bool
+	SetIsTrigger(b bool)
 }

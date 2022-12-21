@@ -101,38 +101,39 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 			"listeners", listeners)
 		return errors.New(errStr)
 	}
-	for _, v := range listeners {
-		trigger := v.Subscriber()
+	for _, listener := range listeners {
+		listenerSubComponent := listener.Subscriber()
 		for _, t := range triggers {
 			ch := make(chan int, 1)
-			trigger.AddChannel(ch)
-			e.logger.Infow("Event subscribed", "trigger", t.GetID(), "listener", v.GetID())
+			listenerSubComponent.AddChannel(ch)
+			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
 			tSub := t.Subscriber()
+			tSub.SetIsTrigger(true)
 			tSub.AddChannel(ch)
 		}
 
 		// Запскаем ждуна, когда триггеры сработают, и срабатываем сами
 		go func(ctx context.Context, v event.Interface) {
+			subComponent := v.Subscriber()
 			for {
 				select {
 				case <-ctx.Done():
 					e.logger.Infow("Stop listening because of context", "eventId", v.GetID())
 					return
 				default:
-					trigger.LockMutex()
-					e.logger.Debugw("Waiting for triggers...", "event", v.GetID())
-					channels := trigger.GetChannels()
-					e.logger.Debugw("Reading channels", "channels", channels, "event", v.GetID())
-					for _, ch := range channels {
-						e.logger.Debugw("Waiting for channel", "ch", ch, "event", v.GetID())
+					subComponent.LockMutex()
+					channels := subComponent.GetChannels()
+					for i, ch := range channels {
+						logTxt := fmt.Sprintf("Reading channel %v of %v", i+1, len(channels))
+						e.logger.Debugw(logTxt, "event", v.GetID())
 						<-ch
 					}
 					e.logger.Infow("Subscriber event fired", "event", v.GetID())
 					v.RunFunction(ctx)
-					trigger.UnlockMutex()
+					subComponent.UnlockMutex()
 				}
 			}
-		}(ctx, v)
+		}(subCtx, listener)
 	}
 	return nil
 }

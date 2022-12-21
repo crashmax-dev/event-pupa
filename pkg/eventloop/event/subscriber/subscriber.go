@@ -6,8 +6,9 @@ import (
 
 // eventSubscriber - событие, которое триггерит другие события и/или триггерится само по другим событиям.
 type eventSubscriber struct {
-	channels []chan int
-	mx       sync.Mutex
+	isTrigger bool
+	channels  []chan int
+	mx        sync.Mutex
 }
 
 func NewSubscriber() Interface {
@@ -30,4 +31,12 @@ func (ev *eventSubscriber) GetChannels() []chan int {
 // события слушатели.
 func (ev *eventSubscriber) AddChannel(ch chan int) {
 	ev.channels = append(ev.channels, ch)
+}
+
+func (ev *eventSubscriber) IsTrigger() bool {
+	return ev.isTrigger
+}
+
+func (ev *eventSubscriber) SetIsTrigger(b bool) {
+	ev.isTrigger = b
 }
