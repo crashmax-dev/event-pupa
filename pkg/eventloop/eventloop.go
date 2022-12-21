@@ -38,10 +38,9 @@ func NewEventLoop(level string) Interface {
 	}
 
 	return &eventLoop{
-		mx:        &sync.RWMutex{},
-		events:    eventslist.New(),
-		scheduler: scheduler.NewScheduler(),
-		logger:    elLogger,
+		mx:     &sync.RWMutex{},
+		events: eventslist.New(),
+		logger: elLogger,
 	}
 }
 
@@ -402,54 +401,6 @@ func (e *eventLoop) ScheduleEvent(ctx context.Context, newEvent event.Interface,
 	if e.scheduler.IsSchedulerRunning() {
 		go e.runScheduledEvent(ctx, newEvent)
 	}
-	if out != nil {
-		out <- newEvent.GetID()
-	}
-	return nil
-}
-
-// StartScheduler запускает выполнение ранее добавленных интервальных событий. Если вызвать ScheduleEvent после
-// StartScheduler (т.е. планировщик уже запущен), свежедобавленное событие начнёт выполняться сразу.
-func (e *eventLoop) StartScheduler(ctx context.Context) error {
-	if isContextDone(ctx) {
-		errStr := "scheduler can't start, context is done"
-		e.logger.Warnw(errStr)
-		return errors.New(errStr)
-	}
-
-	if e.scheduler.IsSchedulerRunning() {
-		errStr := "scheduler is already running"
-		e.logger.Warnw(errStr)
-		return errors.New(errStr)
-	}
-
-	e.scheduler.ResetResults()
-
-	for _, evts := range e.events.EventName(string(INTERVALED)).Priority(0).List() {
-		curEvts := evts
-		go e.runScheduledEvent(ctx, curEvts)
-	}
-
-	e.scheduler.RunSchedule(true)
-	e.logger.Infow("Scheduler started")
-	return nil
-}
-
-func (e *eventLoop) Scheduler() scheduler.Interface {
-	return &e.scheduler
-}
-
-// StopScheduler останавливает выполнение ранее добавленных интервальных событий.
-func (e *eventLoop) StopScheduler() {
-	e.logger.Infow("Scheduler stopping...")
-	e.mx.Lock()
-	defer e.mx.Unlock()
-	if len(e.events.EventName(string(INTERVALED)).Priority(0).List()) > 0 && e.scheduler.IsSchedulerRunning() {
-		e.logger.Infow("Send signal to stop")
-		e.scheduler.Stopper <- true
-	}
-	e.scheduler.RunSchedule(false)
-	e.logger.Infow("Send signal to stop")
 }
 
 func (e *eventLoop) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
