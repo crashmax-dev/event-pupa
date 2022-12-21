@@ -279,10 +279,10 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	// Run before events
 	e.triggerEventFuncList(ctx, e.events.EventName(eventName).Priority(BEFORE_PRIORITY).List())
 
-	//TODO: приоритеты не обязательно идут по порядку, переписать чтобы учитывало все приоритеты
-	for priorIndex := e.events.EventName(eventName).Len() - 1; priorIndex >= 0; priorIndex-- {
-		for _, loopevent := range e.events.EventName(eventName).Priority(priorIndex).List() {
-			wg.Add(1)
+	keys := e.events.EventName(triggerName).GetKeys()
+	for priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
+		priority := keys[priorIndex]
+		for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
 
 			go e.triggerEventFunc(triggerCtx, loopevent)
 

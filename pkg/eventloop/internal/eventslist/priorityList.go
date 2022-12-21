@@ -1,5 +1,10 @@
 package eventslist
 
+import (
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
+)
+
 type priorityList map[int]EventIdsList
 
 func (pl *priorityList) Priority(priority int) *EventIdsList {
@@ -12,4 +17,10 @@ func (pl *priorityList) Priority(priority int) *EventIdsList {
 
 func (pl *priorityList) Len() int {
 	return len(*pl)
+}
+
+func (pl *priorityList) GetKeys() (keys []int) {
+	keys = maps.Keys(*pl)
+	slices.Sort(keys)
+	return keys
 }

@@ -14,6 +14,7 @@ type Interface interface {
 type Priority interface {
 	Priority(priority int) *EventIdsList
 	Len() int
+	GetKeys() (keys []int)
 }
 
 type EventID interface {
