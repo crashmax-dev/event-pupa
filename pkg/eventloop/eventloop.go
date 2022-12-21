@@ -64,7 +64,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 
 	// ON
 	if triggerName := newEvent.GetTriggerName(); triggerName != "" {
-		if slices.Contains(eventLoopEvents, eventLoopSystemEvent(triggerName)) {
+		if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
 			errStr := fmt.Sprintf("Trigger name %v is reserved", triggerName)
 			e.logger.Warnf("Trigger name %v is reserved", triggerName)
 			internal.WriteToExecCh(ctx, "")
