@@ -56,15 +56,19 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 		Level:    atom,
 		Encoding: "json",
 		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:     "time",
-			MessageKey:  "message",
-			LevelKey:    "level",
-			NameKey:     "namekey",
-			EncodeLevel: zapcore.LowercaseLevelEncoder,
-			EncodeTime:  zapcore.ISO8601TimeEncoder},
+			TimeKey:      "time",
+			MessageKey:   "message",
+			LevelKey:     "level",
+			NameKey:      "name",
+			CallerKey:    "caller",
+			FunctionKey:  "function",
+			EncodeLevel:  zapcore.LowercaseLevelEncoder,
+			EncodeTime:   zapcore.ISO8601TimeEncoder,
+			EncodeCaller: zapcore.FullCallerEncoder},
 		OutputPaths:      []string{filename},
 		ErrorOutputPaths: []string{filename},
 	}
+
 	newWinFileSink := func(u *url.URL) (zap.Sink, error) {
 		// Remove leading slash left by url.Parse()
 		return os.OpenFile(u.Path[1:], os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
@@ -78,7 +82,7 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 		isSinkRegistered = true
 	}
 
-	logger := zap.Must(config.Build())
+	logger := zap.Must(config.Build(zap.AddCaller(), zap.AddCallerSkip(2)))
 
 	logger.Info("logger construction succeeded")
 
@@ -87,6 +91,7 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 		fmt.Println("logger sync failed: ", errSync)
 		return nil, errSync
 	}
+
 	al := apiLogger{base: logger.Sugar(), level: level}
 	return &al, nil
 }
