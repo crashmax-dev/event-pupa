@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
 	"github.com/google/uuid"
 	"go.uber.org/zap/zapcore"

@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"eventloop/pkg/eventloop/event/interval"
 	"eventloop/pkg/eventloop/event/once"
 	"eventloop/pkg/eventloop/event/subscriber"
+	"eventloop/pkg/eventloop/internal"
+	loggerEventLoop "eventloop/pkg/logger"
 	"github.com/google/uuid"
 )
 
