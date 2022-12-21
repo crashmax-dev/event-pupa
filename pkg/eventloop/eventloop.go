@@ -61,6 +61,9 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 		return errors.New(errStr)
 	}
 
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	// ON
 	if triggerName := newEvent.GetTriggerName(); triggerName != "" {
 		if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
@@ -69,10 +72,6 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 			internal.WriteToExecCh(ctx, "")
 			return errors.New(errStr)
 		}
-
-		e.mx.Lock()
-		defer e.mx.Unlock()
-
 		e.addEvent(newEvent.GetTriggerName(), newEvent)
 
 		e.logger.Debugw("Event added", "triggerName", newEvent.GetTriggerName())
