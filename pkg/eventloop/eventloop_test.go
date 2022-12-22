@@ -270,9 +270,10 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 		number int
 		numInc = func(ctx context.Context) string {
 			number++
-			return ""
+			return strconv.Itoa(number)
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 	defer cancel()
@@ -284,15 +285,18 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
-	time.Sleep(time.Millisecond * 10)
+	<-execCh
 	errG.Go(func() error {
 		return evLoop.RegisterEvent(ctx, evSched)
 	})
-	time.Sleep(time.Millisecond * 10)
+	<-execCh
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
-	time.Sleep(EXECUTIONS * INTERVALMS)
+	var result string
+	for i := 0; i < EXECUTIONS; i++ {
+		result = <-execCh
+	}
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
@@ -301,7 +305,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 		t.Log(err)
 	}
 
-	if number != WANT && number != WANT+1 {
+	if intRes, _ := strconv.Atoi(result); intRes != WANT {
 		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
 	} else {
 		t.Log(number)
