@@ -247,7 +247,6 @@ func TestStartScheduler(t *testing.T) {
 	for i := 0; i < EXECUTIONS; i++ {
 		result = <-execCh
 	}
-	time.Sleep(INTERVALMS * EXECUTIONS)
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
