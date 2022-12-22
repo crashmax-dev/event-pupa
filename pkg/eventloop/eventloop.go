@@ -95,6 +95,8 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error {
 	subCtx := context.WithValue(ctx, internal.LOGGER_CTX_KEY, e.logger)
 
+	defer internal.WriteToExecCh(ctx, "")
+
 	if isContextDone(subCtx) {
 		errStr := "can't subscribe, context is done"
 		e.logger.Warnw(errStr,
