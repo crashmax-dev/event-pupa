@@ -191,18 +191,22 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	e.triggerEventFuncList(triggerCtx, e.events.EventName(triggerName).Priority(BEFORE_PRIORITY).List())
 
 	keys := e.events.EventName(triggerName).GetKeys()
-	for priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
-		priority := keys[priorIndex]
-		for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
+	if priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0 {
+		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
+			priority := keys[priorIndex]
+			for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
 
-			go e.triggerEventFunc(triggerCtx, loopevent)
+				go e.triggerEventFunc(triggerCtx, loopevent)
 
-			if once, err := loopevent.Once(); err == nil {
-				once.Do(func() {
-					e.RemoveEventByUUIDs([]uuid.UUID{loopevent.GetID()})
-				})
+				if once, err := loopevent.Once(); err == nil {
+					once.Do(func() {
+						e.RemoveEventByUUIDs(loopevent.GetID())
+					})
+				}
 			}
 		}
+	} else {
+		internal.WriteToExecCh(triggerCtx, "")
 	}
 
 	// Run after global events
