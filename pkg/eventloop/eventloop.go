@@ -317,8 +317,8 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	}
 }
 
-func (e *eventLoop) RemoveEventByUUIDs(ids []uuid.UUID) []uuid.UUID {
-	return e.events.RemoveEventByUUIDs(ids)
+func (e *eventLoop) RemoveEventByUUIDs(ids ...uuid.UUID) []uuid.UUID {
+	return e.events.RemoveEventByUUIDs(ids...)
 }
 
 // GetAttachedEvents возвращает все события, прикреплённые к eventName

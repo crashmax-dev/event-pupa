@@ -365,14 +365,14 @@ func TestRemoveEvent(t *testing.T) {
 		<-execCh
 	}
 
-	t.Log(evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()}))
+	t.Log(evLoop.RemoveEventByUUIDs(eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()))
 
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, EVENTNAME)
 	})
 	result, _ := strconv.Atoi(<-execCh)
 
-	evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault2.GetID()})
+	evLoop.RemoveEventByUUIDs(eventDefault2.GetID())
 
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, EVENTNAME)
