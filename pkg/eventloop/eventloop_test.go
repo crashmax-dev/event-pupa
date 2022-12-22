@@ -390,7 +390,10 @@ func TestRemoveEvent(t *testing.T) {
 }
 
 func TestSubevent(t *testing.T) {
-	const WANT = 10
+	const (
+		WANT        = 10
+		TRIGGERNAME = "SUBEVENTS_TEST"
+	)
 	var (
 		mx          sync.Mutex
 		number      int
@@ -398,53 +401,62 @@ func TestSubevent(t *testing.T) {
 			mx.Lock()
 			number++
 			mx.Unlock()
-			return ""
+			return strconv.Itoa(number)
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
+		eventArgs   = event.EventArgs{Fun: numIncMutex, TriggerName: TRIGGERNAME}
+		//listenerEventArgs = event.EventArgs{Fun: numIncMutex}
 	)
 
 	defer cancel()
 
 	var (
-		evListener    = event.NewEvent(numIncMutex)
-		evListener2   = event.NewEvent(numIncMutex)
-		eventDefault  = event.NewEvent(numIncMutex)
-		eventDefault2 = event.NewEvent(numIncMutex)
-		eventDefault3 = event.NewEvent(numIncMutex)
+		evListener, neErr1    = event.NewEvent(eventArgs)
+		evListener2, neErr2   = event.NewEvent(eventArgs)
+		eventDefault, neErr3  = event.NewEvent(eventArgs)
+		eventDefault2, neErr4 = event.NewEvent(eventArgs)
+		eventDefault3, neErr5 = event.NewEvent(eventArgs)
 	)
 
+	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil || neErr5 != nil {
+		t.Error(neErr1, neErr2, neErr3, neErr4, neErr5)
+	}
+
 	errG.Go(func() error {
-		return evLoop.On(ctx, "test", eventDefault, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault)
 	})
 	errG.Go(func() error {
-		return evLoop.On(ctx, "test", eventDefault2, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault2)
 	})
 	errG.Go(func() error {
-		return evLoop.On(ctx, "test", eventDefault3, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault3)
 	})
-	time.Sleep(time.Millisecond * 20)
+	for i := 0; i < 3; i++ {
+		<-execCh
+	}
 	errG.Go(func() error {
 		return evLoop.Subscribe(ctx, []event.Interface{eventDefault, eventDefault2, eventDefault3},
 			[]event.Interface{evListener, evListener2})
 	})
-	time.Sleep(time.Millisecond * 20)
+	<-execCh
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, "test", nil)
+		return evLoop.Trigger(ctx, TRIGGERNAME)
 	})
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, "test", nil)
+		return evLoop.Trigger(ctx, TRIGGERNAME)
 	})
-
+	var result string
+	for i := 0; i < 10; i++ {
+		result = <-execCh
+	}
 	if err := errG.Wait(); err != nil {
-		t.Log(err)
+		t.Error(err)
 	}
 
-	// Нужна задержка, т.к. мы дожидаемся выполнения ивентов-тригеров, но не дожидаемся ивентов-слушателей
-	time.Sleep(time.Millisecond * 10)
-
-	if number != WANT {
-		t.Errorf("Number = %d; WANT %d", number, WANT)
+	if intRes, _ := strconv.Atoi(result); intRes != WANT {
+		t.Errorf("Number = %v; WANT %d", result, WANT)
 	}
 }
 
