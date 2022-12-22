@@ -314,7 +314,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 
 func TestRemoveEvent(t *testing.T) {
 	const (
-		WANT           = 7
+		WANT           = 6
 		EVENTNAME      = "RemoveEventRegularFirst"
 		INTERVAL_MS    = time.Millisecond * 20
 		INTERVAL_EXECS = 5
@@ -323,55 +323,69 @@ func TestRemoveEvent(t *testing.T) {
 		number int
 		numInc = func(ctx context.Context) string {
 			number++
-			return ""
+			return strconv.Itoa(number)
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 	defer cancel()
-	var (
-		evSched       = event.NewIntervalEvent(numInc, INTERVAL_MS)
-		eventDefault  = event.NewEvent(numInc)
-		eventDefault2 = event.NewEvent(numInc)
-		eventDefault3 = event.NewEvent(numInc)
-	)
-	handleError(t, evLoop.On(ctx, EVENTNAME, eventDefault, nil))
-	handleError(t, evLoop.On(ctx, EVENTNAME, eventDefault2, nil))
-	handleError(t, evLoop.On(ctx, EVENTNAME, eventDefault3, nil))
+	evSched, neErr1 := event.NewEvent(event.EventArgs{
+		Fun:          numInc,
+		IntervalTime: INTERVAL_MS})
+	eventDefault, neErr2 := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
+	eventDefault2, neErr3 := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
+	eventDefault3, neErr4 := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
+
+	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
+		t.Error("error creating events: ", neErr1, neErr2, neErr3, neErr4)
+	}
 
 	errG.Go(func() error {
-		return evLoop.ScheduleEvent(ctx, evSched, nil)
+		return evLoop.RegisterEvent(ctx, evSched)
 	})
-	time.Sleep(time.Millisecond * 10)
-
 	errG.Go(func() error {
-		return evLoop.StartScheduler(ctx)
+		return evLoop.RegisterEvent(ctx, eventDefault)
 	})
-	time.Sleep(INTERVAL_MS * INTERVAL_EXECS)
-
-	go evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()})
-	time.Sleep(time.Millisecond * 10)
-
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME, nil)
+		return evLoop.RegisterEvent(ctx, eventDefault2)
 	})
-	time.Sleep(time.Millisecond * 10)
+	errG.Go(func() error {
+		return evLoop.RegisterEvent(ctx, eventDefault3)
+	})
 
-	go evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault2.GetID()})
-	time.Sleep(time.Millisecond * 10)
+	for i := 0; i < 4; i++ {
+		<-execCh
+	}
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME, nil)
+		return evLoop.Trigger(ctx, string(INTERVALED))
+	})
+	for i := 0; i < INTERVAL_EXECS; i++ {
+		<-execCh
+	}
+
+	t.Log(evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()}))
+
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME)
+	})
+	result, _ := strconv.Atoi(<-execCh)
+
+	evLoop.RemoveEventByUUIDs([]uuid.UUID{eventDefault2.GetID()})
+
+	errG.Go(func() error {
+		return evLoop.Trigger(ctx, EVENTNAME)
 	})
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
 	}
 
-	if number < WANT || number > WANT+1 {
-		t.Errorf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+	if result != WANT {
+		t.Errorf("Number = %d; WANT %d", result, WANT)
 	} else {
-		t.Logf("Number = %d; WANT %d or %d", number, WANT, WANT+1)
+		t.Logf("Number = %d; WANT %d", result, WANT)
 	}
 }
 
