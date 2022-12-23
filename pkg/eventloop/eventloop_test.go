@@ -11,7 +11,6 @@ import (
 
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/internal"
-	"github.com/google/uuid"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 )
@@ -460,53 +459,68 @@ func TestSubevent(t *testing.T) {
 }
 
 func TestPrioritySync(t *testing.T) {
-	const WANT = 4
+	const (
+		WANT        = 4
+		TRIGGERNAME = "TestPriorSync"
+	)
 	var (
+		execs            int
 		r                = 'A'
 		defaultEventFunc = func(ctx context.Context) string {
+			execs++
 			r++
 			return string(r)
 		}
 		priorityFunc = func(ctx context.Context) string {
+			execs++
 			return "DP"
 		}
 		highPriorityFunc = func(ctx context.Context) string {
+			execs++
 			return "HP"
 		}
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-		errG        = new(errgroup.Group)
+		resultCh         = make(chan string)
+		ctx, cancel      = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, resultCh, time.Second)
+		errG             = new(errgroup.Group)
+		defaultEventArgs = event.EventArgs{Fun: defaultEventFunc, TriggerName: TRIGGERNAME}
 	)
 
 	defer cancel()
 
 	var (
-		evNormal1   = event.NewEvent(defaultEventFunc)
-		evNormal2   = event.NewEvent(defaultEventFunc)
-		evPrior     = event.NewPriorityEvent(priorityFunc, 1)
-		evHighPrior = event.NewPriorityEvent(highPriorityFunc, 2)
+		evNormal1, neErr1   = event.NewEvent(defaultEventArgs)
+		evNormal2, neErr2   = event.NewEvent(defaultEventArgs)
+		evPrior, neErr3     = event.NewEvent(event.EventArgs{Fun: priorityFunc, TriggerName: TRIGGERNAME, Priority: 1})
+		evHighPrior, neErr4 = event.NewEvent(event.EventArgs{Fun: highPriorityFunc, TriggerName: TRIGGERNAME, Priority: 2})
 	)
 
-	handleError(t, evLoop.On(ctx, "TestPriorSync", evNormal1, nil))
-	handleError(t, evLoop.On(ctx, "TestPriorSync", evNormal2, nil))
-	handleError(t, evLoop.On(ctx, "TestPriorSync", evHighPrior, nil))
-	handleError(t, evLoop.On(ctx, "TestPriorSync", evPrior, nil))
+	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
+		t.Error(neErr1, neErr2, neErr3, neErr4)
+	}
 
-	ch := channelEx.NewChannel(0)
-	var numExecs int
+	go evLoop.RegisterEvent(ctx, evNormal1)
+	go evLoop.RegisterEvent(ctx, evNormal2)
+	go evLoop.RegisterEvent(ctx, evPrior)
+	go evLoop.RegisterEvent(ctx, evHighPrior)
+
+	for i := 0; i < 4; i++ {
+		<-resultCh
+	}
+
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, "TestPriorSync", ch)
+		return evLoop.Trigger(ctx, TRIGGERNAME)
 	})
-	for data := range ch.Channel() {
-		fmt.Println(data)
-		numExecs++
+
+	for i := 0; i < 4; i++ {
+		<-resultCh
 	}
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
 	}
 
-	if numExecs != WANT {
-		t.Errorf("Number = %d; WANT %d", numExecs, WANT)
+	if execs != WANT {
+		t.Errorf("Number = %v; WANT %v", execs, WANT)
 	}
 }
 
@@ -577,5 +591,6 @@ func TestBeforeAfter(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	evLoop = NewEventLoop(zapcore.DebugLevel.String())
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }
