@@ -375,6 +375,7 @@ func TestRemoveEvent(t *testing.T) {
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, EVENTNAME)
 	})
+	<-execCh
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
