@@ -266,22 +266,27 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 // isScheduledEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
 func isScheduledEventDone(ctx context.Context, eventCh <-chan bool, logger loggerEventLoop.Interface) <-chan struct{} {
-	result := make(chan struct{}, 1)
-	result <- struct{}{}
-	select {
-	case <-ctx.Done():
-		if logger != nil {
-			logger.Warnw("Scheduled event stopped because of context")
+	waiter := make(chan struct{})
+	result := make(chan struct{})
+	go func(ch chan<- struct{}) {
+		waiter <- struct{}{}
+		for {
+			select {
+			case <-ctx.Done():
+				if logger != nil {
+					logger.Warnw("Scheduled event stopped because of context")
+				}
+				result <- struct{}{}
+			case <-eventCh:
+				if logger != nil {
+					logger.Infow("Scheduled event stopped because of event want to stop")
+				}
+				result <- struct{}{}
+			}
 		}
-		return result
-	case <-eventCh:
-		if logger != nil {
-			logger.Infow("Scheduled event stopped because of event want to stop")
-		}
-		return result
-	default:
-		return make(chan struct{})
-	}
+	}(result)
+	<-waiter
+	return result
 }
 
 func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
@@ -298,6 +303,7 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	defer intervalComponent.SetRunning(false)
 	defer ticker.Stop()
 
+	exitChan := isScheduledEventDone(schedCtx, intervalComponent.GetQuitChannel(), e.logger)
 	for {
 		select {
 		case <-ticker.C:
@@ -311,7 +317,8 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 				}
 			}(ev)
 
-		case <-isScheduledEventDone(schedCtx, intervalComponent.GetQuitChannel(), e.logger):
+		case <-exitChan:
+			fmt.Println("Boom")
 			return
 		}
 	}
