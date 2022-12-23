@@ -165,7 +165,7 @@ func TestIsContextDone(t *testing.T) {
 // Проверяет функцию isScheduledEventDone
 func TestIsScheduledEventDone(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	eventCh := make(chan bool, 1)
+	eventCh := make(chan bool)
 
 	tests := []struct {
 		init      func()
@@ -193,16 +193,18 @@ func TestIsScheduledEventDone(t *testing.T) {
 			},
 		}}
 
+	exitCh := isScheduledEventDone(ctx, eventCh, nil)
 	for _, testValue := range tests {
 		if testValue.init != nil {
 			testValue.init()
 		}
+		tick := time.NewTicker(time.Millisecond * 10)
 		select {
-		case <-isScheduledEventDone(ctx, eventCh, nil):
+		case <-exitCh:
 			if testValue.done != nil {
 				testValue.done()
 			}
-		default:
+		case <-tick.C:
 			if testValue.errorFunc != nil {
 				testValue.errorFunc()
 			}
