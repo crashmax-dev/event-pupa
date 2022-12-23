@@ -234,6 +234,7 @@ func TestStartScheduler(t *testing.T) {
 	errG.SetLimit(-1)
 
 	evSched, neErr := event.NewEvent(event.EventArgs{Fun: numInc, IntervalTime: INTERVALMS})
+	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
 	if neErr != nil {
 		t.Error(neErr)
 	}
@@ -249,9 +250,6 @@ func TestStartScheduler(t *testing.T) {
 	for i := 0; i < EXECUTIONS; i++ {
 		result = <-execCh
 	}
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, string(INTERVALED))
-	})
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
@@ -281,6 +279,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	defer cancel()
 
 	evSched, neErr := event.NewEvent(event.EventArgs{Fun: numInc, IntervalTime: INTERVALMS})
+	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
 	if neErr != nil {
 		t.Error(neErr)
 	}
@@ -299,9 +298,6 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	for i := 0; i < EXECUTIONS; i++ {
 		result = <-execCh
 	}
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, string(INTERVALED))
-	})
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
