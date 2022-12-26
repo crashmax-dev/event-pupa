@@ -45,10 +45,12 @@ func TestOnAndTrigger(t *testing.T) {
 	}
 }
 
-func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context, t *testing.T, name string, _ func(ctx context.Context) string) string {
-	ch := channelEx.NewChannel(1)
+func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context,
+	t *testing.T,
+	name string,
+	_ func(ctx context.Context) string) string {
 	go func() {
-		err := evLoop.Trigger(ctx, name, ch)
+		err := evLoop.Trigger(ctx, name)
 		if err != nil {
 			t.Error(err)
 		}
