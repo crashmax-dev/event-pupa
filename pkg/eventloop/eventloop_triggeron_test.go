@@ -149,24 +149,35 @@ func TriggerOn_Multiple(ctx context.Context,
 	return result
 }
 
-func TriggerOn_Once(ctx context.Context, _ *testing.T, eventName string, farg func(ctx context.Context) string) string {
+func TriggerOn_Once(ctx context.Context,
+	_ *testing.T,
+	triggerName string,
+	farg func(ctx context.Context) string) (result string) {
+	var (
+		errG, errCtx = errgroup.WithContext(ctx)
+		execCh       = make(chan string)
+		testCtx, _   = ctxWithValueAndTimeout(errCtx, internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+	)
 
-	errG, errCtx := errgroup.WithContext(ctx)
-
-	eventSingle := event.NewOnceEvent(farg)
-	errG.Go(func() error {
-		return evLoop.On(errCtx, eventName, eventSingle, nil)
+	eventSingle, _ := event.NewEvent(event.EventArgs{
+		Fun:         farg,
+		TriggerName: triggerName,
+		IsOnce:      true,
 	})
-	time.Sleep(time.Millisecond * 20)
-	ch := channelEx.NewChannel(1)
 	errG.Go(func() error {
-		return evLoop.Trigger(errCtx, eventName, ch)
+		return evLoop.RegisterEvent(testCtx, eventSingle)
 	})
-	time.Sleep(time.Millisecond * 10)
+	<-execCh
 	errG.Go(func() error {
-		return evLoop.Trigger(errCtx, eventName, ch)
+		return evLoop.Trigger(testCtx, triggerName)
 	})
-	time.Sleep(time.Millisecond * 20)
+	result = <-execCh
+	errG.Go(func() error {
+		return evLoop.Trigger(testCtx, triggerName)
+	})
+	<-execCh
+	return result
+}
 
 	var (
 		result string
