@@ -25,8 +25,8 @@ type test struct {
 	want int
 }
 
-func ctxWithValueAndTimeout(key any, val any, timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.WithValue(context.Background(), key, val), timeout)
+func ctxWithValueAndTimeout(ctx context.Context, key any, val any, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithValue(ctx, key, val), timeout)
 }
 
 func handleError(t *testing.T, err error) {
@@ -49,7 +49,7 @@ func TestToggleOn(t *testing.T) {
 			return fmt.Sprint(number)
 		}
 		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 
@@ -111,7 +111,7 @@ func TestToggleTrigger(t *testing.T) {
 		}
 
 		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 
@@ -224,7 +224,7 @@ func TestStartScheduler(t *testing.T) {
 			return strconv.Itoa(number)
 		}
 		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second*200)
+		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 
@@ -272,7 +272,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 			return strconv.Itoa(number)
 		}
 		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 	defer cancel()
@@ -323,7 +323,7 @@ func TestRemoveEvent(t *testing.T) {
 			return strconv.Itoa(number)
 		}
 		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 	)
 	defer cancel()
@@ -402,10 +402,9 @@ func TestSubevent(t *testing.T) {
 			return strconv.Itoa(number)
 		}
 		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
 		eventArgs   = event.EventArgs{Fun: numIncMutex, TriggerName: TRIGGERNAME}
-		//listenerEventArgs = event.EventArgs{Fun: numIncMutex}
 	)
 
 	defer cancel()
@@ -480,7 +479,7 @@ func TestPrioritySync(t *testing.T) {
 			return "HP"
 		}
 		resultCh         = make(chan string)
-		ctx, cancel      = ctxWithValueAndTimeout(internal.EXEC_CH_CTX_KEY, resultCh, time.Second)
+		ctx, cancel      = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, resultCh, time.Second)
 		errG             = new(errgroup.Group)
 		defaultEventArgs = event.EventArgs{Fun: defaultEventFunc, TriggerName: TRIGGERNAME}
 	)
