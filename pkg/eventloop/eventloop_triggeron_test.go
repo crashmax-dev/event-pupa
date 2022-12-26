@@ -52,12 +52,10 @@ func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context,
 	t *testing.T,
 	name string,
 	_ func(ctx context.Context) string) string {
-	go func() {
-		err := evLoop.Trigger(ctx, name)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	err := evLoop.Trigger(ctx, name)
+	if err != nil {
+		t.Error(err)
+	}
 	return "0"
 }
 
