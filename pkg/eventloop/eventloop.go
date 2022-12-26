@@ -339,7 +339,7 @@ func (e *eventLoop) Sync() error {
 
 func (e *eventLoop) checkContext(ctx context.Context, message string, loggerArgs ...string) error {
 	if isContextDone(ctx) {
-		errStr := message
+		errStr := fmt.Sprintf("%v (%v)", message, ctx.Err())
 		e.logger.Warnw(errStr,
 			loggerArgs)
 		return errors.New(errStr)
