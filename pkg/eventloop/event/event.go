@@ -19,7 +19,7 @@ import (
 
 // event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)
 
-type EventArgs struct {
+type Args struct {
 	TriggerName string
 	Priority    int
 	IsOnce      bool
@@ -46,7 +46,7 @@ type event struct {
 
 type EventFunc func(ctx context.Context) string
 
-func NewEvent(args EventArgs) (Interface, error) {
+func NewEvent(args Args) (Interface, error) {
 	if args.Fun == nil {
 		return nil, errors.New("no function, please add")
 	}
@@ -82,12 +82,12 @@ func (ev *event) GetPriority() int {
 }
 
 func (ev *event) RunFunction(ctx context.Context) {
-
 	logger := ctx.Value(internal.LOGGER_CTX_KEY).(loggerEventLoop.Interface)
 
 	logger.Debugw("Run event function", "eventId", ev.id)
 	ev.result = ev.fun(ctx)
 	defer internal.WriteToExecCh(ctx, ev.result)
+
 	// Отправка сообщений, подписанным на это событие, событиям
 	listener := ev.Subscriber()
 	if listenerChannels := listener.GetChannels(); listener.IsTrigger() && len(listenerChannels) > 0 {

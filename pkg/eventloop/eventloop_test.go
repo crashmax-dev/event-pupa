@@ -48,7 +48,7 @@ func TestToggleOn(t *testing.T) {
 	)
 
 	var (
-		ARGS                  = event.EventArgs{Fun: numInc, TriggerName: TRIGGERNAME}
+		ARGS                  = event.Args{Fun: numInc, TriggerName: TRIGGERNAME}
 		eventDefault, errNE1  = event.NewEvent(ARGS)
 		eventDefault2, errNE2 = event.NewEvent(ARGS)
 	)
@@ -109,7 +109,7 @@ func TestToggleTrigger(t *testing.T) {
 		errG        = new(errgroup.Group)
 	)
 
-	eventDefault, neErr := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
+	eventDefault, neErr := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
 	if neErr != nil {
 		t.Error(neErr)
 	}
@@ -226,7 +226,7 @@ func TestStartScheduler(t *testing.T) {
 
 	errG.SetLimit(-1)
 
-	evSched, neErr := event.NewEvent(event.EventArgs{Fun: numInc, IntervalTime: INTERVALMS})
+	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVALMS})
 	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
 	if neErr != nil {
 		t.Error(neErr)
@@ -271,7 +271,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	)
 	defer cancel()
 
-	evSched, neErr := event.NewEvent(event.EventArgs{Fun: numInc, IntervalTime: INTERVALMS})
+	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVALMS})
 	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
 	if neErr != nil {
 		t.Error(neErr)
@@ -321,12 +321,12 @@ func TestRemoveEvent(t *testing.T) {
 		errG        = new(errgroup.Group)
 	)
 	defer cancel()
-	evSched, neErr1 := event.NewEvent(event.EventArgs{
+	evSched, neErr1 := event.NewEvent(event.Args{
 		Fun:          numInc,
 		IntervalTime: INTERVAL_MS})
-	eventDefault, neErr2 := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
-	eventDefault2, neErr3 := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
-	eventDefault3, neErr4 := event.NewEvent(event.EventArgs{Fun: numInc, TriggerName: EVENTNAME})
+	eventDefault, neErr2 := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
+	eventDefault2, neErr3 := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
+	eventDefault3, neErr4 := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
 
 	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
 		t.Error("error creating events: ", neErr1, neErr2, neErr3, neErr4)
@@ -398,7 +398,7 @@ func TestSubevent(t *testing.T) {
 		execCh      = make(chan string)
 		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 		errG        = new(errgroup.Group)
-		eventArgs   = event.EventArgs{Fun: numIncMutex, TriggerName: TRIGGERNAME}
+		eventArgs   = event.Args{Fun: numIncMutex, TriggerName: TRIGGERNAME}
 	)
 
 	defer cancel()
@@ -475,7 +475,7 @@ func TestPrioritySync(t *testing.T) {
 		resultCh         = make(chan string)
 		ctx, cancel      = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, resultCh, time.Second)
 		errG             = new(errgroup.Group)
-		defaultEventArgs = event.EventArgs{Fun: defaultEventFunc, TriggerName: TRIGGERNAME}
+		defaultEventArgs = event.Args{Fun: defaultEventFunc, TriggerName: TRIGGERNAME}
 	)
 
 	defer cancel()
@@ -483,8 +483,8 @@ func TestPrioritySync(t *testing.T) {
 	var (
 		evNormal1, neErr1   = event.NewEvent(defaultEventArgs)
 		evNormal2, neErr2   = event.NewEvent(defaultEventArgs)
-		evPrior, neErr3     = event.NewEvent(event.EventArgs{Fun: priorityFunc, TriggerName: TRIGGERNAME, Priority: 1})
-		evHighPrior, neErr4 = event.NewEvent(event.EventArgs{Fun: highPriorityFunc, TriggerName: TRIGGERNAME, Priority: 2})
+		evPrior, neErr3     = event.NewEvent(event.Args{Fun: priorityFunc, TriggerName: TRIGGERNAME, Priority: 1})
+		evHighPrior, neErr4 = event.NewEvent(event.Args{Fun: highPriorityFunc, TriggerName: TRIGGERNAME, Priority: 2})
 	)
 
 	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
@@ -531,18 +531,18 @@ func TestBeforeAfter(t *testing.T) {
 		}
 		ctx, cancel           = context.WithTimeout(context.Background(), time.Second)
 		errG                  = new(errgroup.Group)
-		globalBeforeEventArgs = event.EventArgs{Fun: defaultEventFunc,
+		globalBeforeEventArgs = event.Args{Fun: defaultEventFunc,
 			TriggerName: string(BEFORE_TRIGGER),
 			Priority:    BEFORE_PRIORITY}
-		globalAfterEventArgs = event.EventArgs{Fun: defaultEventFunc,
+		globalAfterEventArgs = event.Args{Fun: defaultEventFunc,
 			TriggerName: string(AFTER_TRIGGER),
 			Priority:    AFTER_PRIORITY}
-		beforeEventArgs = event.EventArgs{
+		beforeEventArgs = event.Args{
 			Fun:         defaultEventFunc,
 			TriggerName: EVENTNAME,
 			Priority:    BEFORE_PRIORITY,
 		}
-		afterEventArgs = event.EventArgs{
+		afterEventArgs = event.Args{
 			Fun:         defaultEventFunc,
 			TriggerName: EVENTNAME,
 			Priority:    AFTER_PRIORITY,

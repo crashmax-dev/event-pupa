@@ -77,7 +77,7 @@ func TriggerOn_Simple(ctx context.Context,
 	triggerName string,
 	farg func(ctx context.Context) string) string {
 	var (
-		eventDefault, _ = event.NewEvent(event.EventArgs{
+		eventDefault, _ = event.NewEvent(event.Args{
 			Fun:         farg,
 			TriggerName: triggerName,
 		})
@@ -111,7 +111,7 @@ func TriggerOn_Multiple(ctx context.Context,
 	farg func(ctx context.Context) string) (result string) {
 
 	var (
-		eventArgs = event.EventArgs{
+		eventArgs = event.Args{
 			Fun:         farg,
 			TriggerName: triggerName,
 		}
@@ -159,7 +159,7 @@ func TriggerOn_Once(ctx context.Context,
 		testCtx, _   = ctxWithValueAndTimeout(errCtx, internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 	)
 
-	eventSingle, _ := event.NewEvent(event.EventArgs{
+	eventSingle, _ := event.NewEvent(event.Args{
 		Fun:         farg,
 		TriggerName: triggerName,
 		IsOnce:      true,
@@ -184,12 +184,12 @@ func TriggerOn_MultipleDefaultAndOnce(ctx context.Context,
 	triggerName string,
 	farg func(ctx context.Context) string) (result string) {
 	var (
-		evArgs = event.EventArgs{Fun: farg,
+		evArgs = event.Args{Fun: farg,
 			TriggerName: triggerName,
 		}
 		eventFirst, _  = event.NewEvent(evArgs)
 		eventSecond, _ = event.NewEvent(evArgs)
-		eventOnce, _   = event.NewEvent(event.EventArgs{Fun: farg,
+		eventOnce, _   = event.NewEvent(event.Args{Fun: farg,
 			TriggerName: triggerName,
 			IsOnce:      true})
 		execCh       = make(chan string)
