@@ -29,12 +29,6 @@ func ctxWithValueAndTimeout(ctx context.Context, key any, val any, timeout time.
 	return context.WithTimeout(context.WithValue(ctx, key, val), timeout)
 }
 
-func handleError(t *testing.T, err error) {
-	if err != nil {
-		t.Error(err)
-	}
-}
-
 func TestToggleOn(t *testing.T) {
 	const (
 		WANT        = 2
