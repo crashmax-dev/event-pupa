@@ -29,20 +29,23 @@ func TestOnAndTrigger(t *testing.T) {
 				return strconv.Itoa(number)
 			}
 		}
-		ctx, _ = context.WithTimeout(context.Background(), time.Second*10)
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	)
+	defer cancel()
 
-	for _, tst := range tests {
-		curTest := tst
-		t.Run(curTest.name, func(t *testing.T) {
-			t.Parallel()
-			result, _ := strconv.Atoi(curTest.f(ctx, t, curTest.name, workFunc(ctx)))
+	t.Run("Outer test", func(t *testing.T) {
+		for _, tst := range tests {
+			curTest := tst
+			t.Run(curTest.name, func(t *testing.T) {
+				t.Parallel()
+				result, _ := strconv.Atoi(curTest.f(ctx, t, curTest.name, workFunc(ctx)))
 
-			if result != curTest.want {
-				t.Errorf("test %s Number = %d; WANT %d", curTest.name, result, curTest.want)
-			}
-		})
-	}
+				if result != curTest.want {
+					t.Errorf("test %s Number = %d; WANT %d", curTest.name, result, curTest.want)
+				}
+			})
+		}
+	})
 }
 
 func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context,
@@ -58,8 +61,11 @@ func TriggerOn_NoEventsTriggerWithChannel(ctx context.Context,
 	return "0"
 }
 
-func TriggerOn_NoEventsTrigger(ctx context.Context, t *testing.T, name string, _ func(ctx context.Context) string) string {
-	err := evLoop.Trigger(ctx, name, nil)
+func TriggerOn_NoEventsTrigger(ctx context.Context,
+	t *testing.T,
+	name string,
+	_ func(ctx context.Context) string) string {
+	err := evLoop.Trigger(ctx, name)
 
 	if err != nil {
 		t.Errorf("Empty trigger failed: %v", err)
