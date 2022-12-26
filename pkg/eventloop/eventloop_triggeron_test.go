@@ -24,8 +24,8 @@ func TestOnAndTrigger(t *testing.T) {
 		workFunc = func(ctx context.Context) func(ctx context.Context) string {
 			var number int
 			return func(ctx context.Context) string {
-				fmt.Printf("Current number: %d \n", number)
 				number++
+				fmt.Printf("Current number: %d \n", number)
 				return strconv.Itoa(number)
 			}
 		}
