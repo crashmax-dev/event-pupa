@@ -23,7 +23,7 @@ type Args struct {
 	TriggerName string
 	Priority    int
 	IsOnce      bool
-	Fun         EventFunc
+	Fun         Func
 
 	IntervalTime time.Duration
 	after.DateAfter
@@ -33,7 +33,7 @@ type event struct {
 	id          uuid.UUID
 	triggerName string
 	priority    int
-	fun         EventFunc
+	fun         Func
 	result      string
 
 	mx sync.Mutex
@@ -44,7 +44,7 @@ type event struct {
 	after      after.Interface
 }
 
-type EventFunc func(ctx context.Context) string
+type Func func(ctx context.Context) string
 
 func NewEvent(args Args) (Interface, error) {
 	if args.Fun == nil {
