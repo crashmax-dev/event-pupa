@@ -72,23 +72,31 @@ func TriggerOn_NoEventsTrigger(ctx context.Context,
 	return "0"
 }
 
-func TriggerOn_Simple(ctx context.Context, t *testing.T, eventName string, farg func(ctx context.Context) string) string {
+func TriggerOn_Simple(ctx context.Context,
+	t *testing.T,
+	triggerName string,
+	farg func(ctx context.Context) string) string {
 	var (
-		eventDefault = event.NewEvent(farg)
+		eventDefault, _ = event.NewEvent(event.EventArgs{
+			Fun:         farg,
+			TriggerName: triggerName,
+		})
+
+		execCh       = make(chan string)
 		errG, errCtx = errgroup.WithContext(ctx)
+		testCtx, _   = ctxWithValueAndTimeout(errCtx, internal.EXEC_CH_CTX_KEY, execCh, time.Second)
 	)
 
 	errG.Go(func() error {
-		return evLoop.On(errCtx, eventName, eventDefault, nil)
+		return evLoop.RegisterEvent(testCtx, eventDefault)
 	})
-	time.Sleep(time.Millisecond * 20)
+	<-execCh
 
-	ch := channelEx.NewChannel(1)
 	errG.Go(func() error {
-		return evLoop.Trigger(errCtx, eventName, ch)
+		return evLoop.Trigger(testCtx, triggerName)
 	})
 
-	result := <-ch.Channel()
+	result := <-execCh
 
 	if err := errG.Wait(); err != nil {
 		t.Log(err)
