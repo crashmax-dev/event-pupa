@@ -562,6 +562,8 @@ func TestBeforeAfter(t *testing.T) {
 	laEvent, neErr3 := event.NewEvent(afterEventArgs)
 	lbEvent, neErr4 := event.NewEvent(beforeEventArgs)
 
+	defer evLoop.RemoveEventByUUIDs(gaEvent.GetID(), gbEvent.GetID(), laEvent.GetID(), lbEvent.GetID())
+
 	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
 		t.Error(neErr1, neErr2, neErr3, neErr4)
 	}
