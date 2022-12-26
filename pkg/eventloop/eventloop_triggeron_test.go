@@ -179,56 +179,55 @@ func TriggerOn_Once(ctx context.Context,
 	return result
 }
 
+func TriggerOn_MultipleDefaultAndOnce(ctx context.Context,
+	t *testing.T,
+	triggerName string,
+	farg func(ctx context.Context) string) (result string) {
 	var (
-		result string
-		chnl   = ch.Channel()
-	)
-	for elem := range chnl {
-		result = elem
-	}
-	return result
-}
-
-func TriggerOn_MultipleDefaultAndOnce(ctx context.Context, t *testing.T, eventName string, farg func(ctx context.Context) string) string {
-
-	var (
-		eventFirst   = event.NewEvent(farg)
-		eventSecond  = event.NewEvent(farg)
-		eventOnce    = event.NewOnceEvent(farg)
-		ch           = channelEx.NewChannel(1)
+		evArgs = event.EventArgs{Fun: farg,
+			TriggerName: triggerName,
+		}
+		eventFirst, _  = event.NewEvent(evArgs)
+		eventSecond, _ = event.NewEvent(evArgs)
+		eventOnce, _   = event.NewEvent(event.EventArgs{Fun: farg,
+			TriggerName: triggerName,
+			IsOnce:      true})
+		execCh       = make(chan string)
 		errG, errCtx = errgroup.WithContext(ctx)
+		testCtx, _   = ctxWithValueAndTimeout(errCtx, internal.EXEC_CH_CTX_KEY, execCh,
+			time.Second)
 	)
 
 	errG.Go(func() error {
-		return evLoop.On(errCtx, eventName, eventFirst, nil)
+		return evLoop.RegisterEvent(testCtx, eventFirst)
 	})
 	errG.Go(func() error {
-		return evLoop.On(errCtx, eventName, eventSecond, nil)
+		return evLoop.RegisterEvent(testCtx, eventSecond)
 	})
 	errG.Go(func() error {
-		return evLoop.On(errCtx, eventName, eventOnce, nil)
+		return evLoop.RegisterEvent(testCtx, eventOnce)
 	})
+	for i := 0; i < 3; i++ {
+		<-execCh
+	}
 
-	time.Sleep(time.Millisecond * 20)
 	errG.Go(func() error {
-		return evLoop.Trigger(errCtx, eventName, nil)
+		return evLoop.Trigger(testCtx, triggerName)
 	})
-	time.Sleep(time.Millisecond * 20)
+	for i := 0; i < 3; i++ {
+		<-execCh
+	}
 	errG.Go(func() error {
-		return evLoop.Trigger(errCtx, eventName, nil)
+		return evLoop.Trigger(testCtx, triggerName)
 	})
-	time.Sleep(time.Millisecond * 20)
+	for i := 0; i < 2; i++ {
+		<-execCh
+	}
 	errG.Go(func() error {
-		return evLoop.Trigger(errCtx, eventName, ch)
+		return evLoop.Trigger(testCtx, triggerName)
 	})
-	time.Sleep(time.Millisecond * 20)
-
-	var (
-		result string
-		chnl   = ch.Channel()
-	)
-	for elem := range chnl {
-		result = elem
+	for i := 0; i < 2; i++ {
+		result = <-execCh
 	}
 
 	if err := errG.Wait(); err != nil {
