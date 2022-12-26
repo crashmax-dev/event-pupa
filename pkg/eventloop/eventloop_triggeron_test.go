@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"eventloop/pkg/channelEx"
 	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/internal"
 	"golang.org/x/sync/errgroup"
 )
 
