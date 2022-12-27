@@ -195,7 +195,6 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
 			priority := keys[priorIndex]
 			for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
-
 				go e.triggerEventFunc(triggerCtx, loopevent)
 
 				if once, err := loopevent.Once(); err == nil {
@@ -219,13 +218,12 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 }
 
 func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.EventIdsList) {
-	for _, event := range list {
-		event.RunFunction(ctx)
+	for _, listItem := range list {
+		listItem.RunFunction(ctx)
 	}
 }
 
 func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
-
 	if after, afterErr := ev.After(); afterErr == nil {
 		after.Wait()
 	}

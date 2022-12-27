@@ -208,7 +208,7 @@ func TestIsScheduledEventDone(t *testing.T) {
 func TestStartScheduler(t *testing.T) {
 	const (
 		WANT       = 4
-		INTERVALMS = time.Millisecond * 10
+		INTERVAL   = time.Millisecond * 10
 		EXECUTIONS = 4
 	)
 	var (
@@ -226,7 +226,7 @@ func TestStartScheduler(t *testing.T) {
 
 	errG.SetLimit(-1)
 
-	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVALMS})
+	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL})
 	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
 	if neErr != nil {
 		t.Error(neErr)
@@ -256,7 +256,7 @@ func TestStartScheduler(t *testing.T) {
 func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	const (
 		WANT       = 4
-		INTERVALMS = time.Millisecond * 20
+		INTERVAL   = time.Millisecond * 20
 		EXECUTIONS = 4
 	)
 	var (
@@ -271,7 +271,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	)
 	defer cancel()
 
-	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVALMS})
+	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL})
 	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
 	if neErr != nil {
 		t.Error(neErr)
@@ -305,10 +305,10 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 
 func TestRemoveEvent(t *testing.T) {
 	const (
-		WANT           = 6
-		EVENTNAME      = "RemoveEventRegularFirst"
-		INTERVAL_MS    = time.Millisecond * 20
-		INTERVAL_EXECS = 5
+		WANT          = 6
+		TriggerName   = "RemoveEventRegularFirst"
+		Interval      = time.Millisecond * 20
+		IntervalExecs = 5
 	)
 	var (
 		number int
@@ -323,27 +323,19 @@ func TestRemoveEvent(t *testing.T) {
 	defer cancel()
 	evSched, neErr1 := event.NewEvent(event.Args{
 		Fun:          numInc,
-		IntervalTime: INTERVAL_MS})
-	eventDefault, neErr2 := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
-	eventDefault2, neErr3 := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
-	eventDefault3, neErr4 := event.NewEvent(event.Args{Fun: numInc, TriggerName: EVENTNAME})
+		IntervalTime: Interval})
+	eventDefault, neErr2 := event.NewEvent(event.Args{Fun: numInc, TriggerName: TriggerName})
+	eventDefault2, neErr3 := event.NewEvent(event.Args{Fun: numInc, TriggerName: TriggerName})
+	eventDefault3, neErr4 := event.NewEvent(event.Args{Fun: numInc, TriggerName: TriggerName})
 
 	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
 		t.Error("error creating events: ", neErr1, neErr2, neErr3, neErr4)
 	}
 
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, evSched)
-	})
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault)
-	})
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault2)
-	})
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault3)
-	})
+	registerErrGo(ctx, errG, evSched)
+	registerErrGo(ctx, errG, eventDefault)
+	registerErrGo(ctx, errG, eventDefault2)
+	registerErrGo(ctx, errG, eventDefault3)
 
 	for i := 0; i < 4; i++ {
 		<-execCh
@@ -352,21 +344,21 @@ func TestRemoveEvent(t *testing.T) {
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, string(INTERVALED))
 	})
-	for i := 0; i < INTERVAL_EXECS; i++ {
+	for i := 0; i < IntervalExecs; i++ {
 		<-execCh
 	}
 
 	t.Log(evLoop.RemoveEventByUUIDs(eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()))
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME)
+		return evLoop.Trigger(ctx, TriggerName)
 	})
 	result, _ := strconv.Atoi(<-execCh)
 
 	evLoop.RemoveEventByUUIDs(eventDefault2.GetID())
 
 	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME)
+		return evLoop.Trigger(ctx, TriggerName)
 	})
 	<-execCh
 
@@ -415,15 +407,10 @@ func TestSubevent(t *testing.T) {
 		t.Error(neErr1, neErr2, neErr3, neErr4, neErr5)
 	}
 
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault)
-	})
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault2)
-	})
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault3)
-	})
+	registerErrGo(ctx, errG, eventDefault)
+	registerErrGo(ctx, errG, eventDefault2)
+	registerErrGo(ctx, errG, eventDefault3)
+
 	for i := 0; i < 3; i++ {
 		<-execCh
 	}
@@ -491,10 +478,10 @@ func TestPrioritySync(t *testing.T) {
 		t.Error(neErr1, neErr2, neErr3, neErr4)
 	}
 
-	go evLoop.RegisterEvent(ctx, evNormal1)
-	go evLoop.RegisterEvent(ctx, evNormal2)
-	go evLoop.RegisterEvent(ctx, evPrior)
-	go evLoop.RegisterEvent(ctx, evHighPrior)
+	registerErrGo(ctx, errG, evNormal1)
+	registerErrGo(ctx, errG, evNormal2)
+	registerErrGo(ctx, errG, evPrior)
+	registerErrGo(ctx, errG, evHighPrior)
 
 	for i := 0; i < 4; i++ {
 		<-resultCh

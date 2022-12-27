@@ -109,7 +109,6 @@ func TriggerOn_Multiple(ctx context.Context,
 	t *testing.T,
 	triggerName string,
 	farg func(ctx context.Context) string) (result string) {
-
 	var (
 		eventArgs = event.Args{
 			Fun:         farg,
@@ -235,4 +234,10 @@ func TriggerOn_MultipleDefaultAndOnce(ctx context.Context,
 	}
 
 	return result
+}
+
+func registerErrGo(ctx context.Context, errG *errgroup.Group, event event.Interface) {
+	errG.Go(func() error {
+		return evLoop.RegisterEvent(ctx, event)
+	})
 }
