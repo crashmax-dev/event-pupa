@@ -152,8 +152,8 @@ func isContextDone(ctx context.Context) bool {
 	}
 }
 
-func (e *eventLoop) addEvent(eventName string, newEvent event.Interface) {
-	e.events.EventName(eventName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
+func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
+	e.events.EventName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
 }
 
 // Trigger вызывает событие с определённым eventName. Функция ждёт выполнения всех добавленных на событие функций,
