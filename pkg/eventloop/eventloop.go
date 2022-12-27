@@ -108,13 +108,12 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		listenerSubComponent := listener.Subscriber()
 		for _, t := range triggers {
 			ch := make(chan int, 1)
-			listenerSubComponent.AddChannel(ch)
+			listenerSubComponent.AddChannel(t.GetID(), ch)
 			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
 			tSub := t.Subscriber()
 			tSub.SetIsTrigger(true)
-			tSub.AddChannel(ch)
+			tSub.AddChannel(listener.GetID(), ch)
 		}
-
 		// Запскаем ждуна, когда триггеры сработают, и срабатываем сами
 		go func(ctx context.Context, v event.Interface) {
 			subComponent := v.Subscriber()
@@ -126,10 +125,13 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 				default:
 					subComponent.LockMutex()
 					channels := subComponent.GetChannels()
-					for i, ch := range channels {
-						logTxt := fmt.Sprintf("Reading channel %v of %v", i+1, len(channels))
+					i := 1
+					for id, ch := range channels {
+						logTxt := fmt.Sprintf("Reading channel from %v [%v/%v]", id, i,
+							len(channels))
 						e.logger.Debugw(logTxt, "event", v.GetID())
 						<-ch
+						i++
 					}
 					e.logger.Infow("Subscriber event fired", "event", v.GetID())
 					v.RunFunction(ctx)

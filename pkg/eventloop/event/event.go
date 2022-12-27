@@ -93,10 +93,12 @@ func (ev *event) RunFunction(ctx context.Context) {
 	if listenerChannels := listener.GetChannels(); listener.IsTrigger() && len(listenerChannels) > 0 {
 		logger.Debugw("Starting write to channels", "event", ev.id)
 		listener.LockMutex()
-		for i, chnl := range listenerChannels {
-			logTxt := fmt.Sprintf("Writing channel %v of %v", i+1, len(listenerChannels))
+		i := 1
+		for id, chnl := range listenerChannels {
+			logTxt := fmt.Sprintf("Writing channel for %v [%v/%v]", id, i, len(listenerChannels))
 			logger.Debugw(logTxt, "event", ev.id)
 			chnl <- 1
+			i++
 		}
 		listener.UnlockMutex()
 	}
