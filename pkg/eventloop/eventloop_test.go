@@ -155,51 +155,68 @@ func TestIsContextDone(t *testing.T) {
 	}
 }
 
-// Проверяет функцию isScheduledEventDone
+// Проверяет функцию isEventDone
 func TestIsScheduledEventDone(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	eventCh := make(chan bool)
-
 	tests := []struct {
-		init      func()
+		name      string
+		init      func() <-chan struct{}
 		done      func()
 		errorFunc func()
-	}{{ // Незаканчивающееся событие
+	}{{
+		name: "No cancel event",
 		done: func() {
-			t.Errorf("isScheduledEventDone: true; Want: false")
+			t.Errorf("isEventDone: true; Want: false")
 		},
 	},
-		{ // ====
-			init: func() {
-				eventCh <- true
+		{
+			name: "Event channel cancel",
+			init: func() <-chan struct{} {
+				ctx := context.Background()
+				eventCh := make(chan bool)
+				exitCh := isEventDone(ctx, eventCh, nil)
+				go func() {
+					eventCh <- true
+				}()
+				return exitCh
 			},
 			errorFunc: func() {
-				t.Errorf("isScheduledEventDone by event channel: false; Want: true")
+				t.Errorf("isEventDone by event channel: false; Want: true")
 			},
 		},
-		{ // =====
-			init: func() {
-				cancel()
+		{
+			name: "Context cancel",
+			init: func() <-chan struct{} {
+				ctx, cancel := context.WithCancel(context.Background())
+				eventCh := make(chan bool)
+				exitCh := isEventDone(ctx, eventCh, nil)
+				go func() {
+					cancel()
+				}()
+				return exitCh
 			},
 			errorFunc: func() {
-				t.Errorf("isScheduledEventDone by context: false; Want: true")
+				t.Errorf("isEventDone by context: false; Want: true")
 			},
 		}}
 
-	exitCh := isScheduledEventDone(ctx, eventCh, nil)
 	for _, testValue := range tests {
+		var exitCh <-chan struct{}
 		if testValue.init != nil {
-			testValue.init()
+			exitCh = testValue.init()
 		}
-		tick := time.NewTicker(time.Millisecond * 10)
+		tick := time.NewTicker(time.Millisecond)
 		select {
 		case <-exitCh:
 			if testValue.done != nil {
 				testValue.done()
+			} else {
+				t.Log(testValue.name, ": CLOSE BY CHANNEL OK")
 			}
 		case <-tick.C:
 			if testValue.errorFunc != nil {
 				testValue.errorFunc()
+			} else {
+				t.Log(testValue.name, ": OK")
 			}
 		}
 	}
