@@ -30,7 +30,10 @@ func NewSubscriberEvent() Interface {
 }
 
 func NewTriggerEvent() Interface {
-	return &eventSubscriber{channels: make(channelCollection), isTrigger: true}
+	return &eventSubscriber{channels: make(channelCollection),
+		trigger:   make(chan struct{}),
+		exit:      make(chan struct{}),
+		isTrigger: true}
 }
 
 func (ev *eventSubscriber) LockMutex() {
@@ -55,12 +58,7 @@ func (ev *eventSubscriber) IsTrigger() bool {
 	return ev.isTrigger
 }
 
-func (ev *eventSubscriber) SetIsTrigger(b bool) {
-	ev.isTrigger = b
-	ev.trigger = make(chan struct{})
-}
-
-func (ev *eventSubscriber) Trigger() chan struct{} {
+func (ev *eventSubscriber) ChanTrigger() chan struct{} {
 	return ev.trigger
 }
 

@@ -9,10 +9,9 @@ type Interface interface {
 	UnlockMutex()
 	AddChannel(eventID uuid.UUID, infoCh chan SubChInfo, b *bool)
 	Channels() channelCollection
-	Trigger() chan struct{}
+	ChanTrigger() chan struct{}
 	Exit() chan struct{}
 	IsTrigger() bool
-	SetIsTrigger(b bool)
 }
 
 type InterfaceSubChannels interface {

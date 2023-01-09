@@ -69,8 +69,8 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 	// ON
 	if triggerName := newEvent.GetTriggerName(); triggerName != "" {
 		if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
-			errStr := fmt.Sprintf("Trigger name %v is reserved", triggerName)
-			e.logger.Warnf("Trigger name %v is reserved", triggerName)
+			errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
+			e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
 			internal.WriteToExecCh(ctx, "")
 			return errors.New(errStr)
 		}
@@ -116,8 +116,7 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 			generalClosedInfo := false
 			listenerSubComponent.AddChannel(t.GetID(), ch, &generalClosedInfo)
 			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
-			tSub := t.Subscriber()
-			tSub.SetIsTrigger(true)
+			tSub := t.Trigger()
 			tSub.AddChannel(listener.GetID(), ch, &generalClosedInfo)
 		}
 		e.addEvent("", listener)
@@ -181,7 +180,7 @@ func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 // Горутина события-триггера
 func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 	var (
-		subComponent = v.Subscriber()
+		subComponent = v.Trigger()
 		channels     = subComponent.Channels()
 	)
 
@@ -193,7 +192,7 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 				closeCh.SetIsClosed()
 			}
 			return
-		case <-subComponent.Trigger():
+		case <-subComponent.ChanTrigger():
 			e.logger.Debugw("TriggerEvent activated", "eventId", v.GetID())
 			subComponent.LockMutex()
 			i := 1
@@ -245,7 +244,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	e.logger.Infow("Trigger event", "triggerName", triggerName)
+	e.logger.Infow("ChanTrigger event", "triggerName", triggerName)
 
 	// Run before global events
 	e.triggerEventFuncList(triggerCtx, e.events.EventName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())

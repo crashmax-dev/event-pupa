@@ -87,11 +87,11 @@ func (ev *event) RunFunction(ctx context.Context) {
 	ev.result = ev.fun(ctx)
 	defer internal.WriteToExecCh(ctx, ev.result)
 
-	// Отправка сообщений, подписанным на это событие, событиям
+	// Активация горутины этого триггера
 	subber := ev.Subscriber()
 	if subber.IsTrigger() {
 		logger.Debugw("Activating trigger goroutine", "eventId", ev.id)
-		subber.Trigger() <- struct{}{}
+		subber.ChanTrigger() <- struct{}{}
 	}
 }
 
@@ -99,6 +99,13 @@ func (ev *event) RunFunction(ctx context.Context) {
 func (ev *event) Subscriber() subscriber.Interface {
 	if ev.subscriber == nil {
 		ev.subscriber = subscriber.NewSubscriberEvent()
+	}
+	return ev.subscriber
+}
+
+func (ev *event) Trigger() subscriber.Interface {
+	if ev.subscriber == nil {
+		ev.subscriber = subscriber.NewTriggerEvent()
 	}
 	return ev.subscriber
 }

@@ -17,6 +17,7 @@ type Interface interface {
 	RunFunction(ctx context.Context)
 	After() (after.Interface, error)
 	Subscriber() subscriber.Interface
+	Trigger() subscriber.Interface
 	Interval() (interval.Interface, error)
 	Once() (once.Interface, error)
 }
