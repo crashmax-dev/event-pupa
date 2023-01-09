@@ -147,11 +147,11 @@ func TestToggleTrigger(t *testing.T) {
 func TestIsContextDone(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	if isContextDone(ctx) {
-		t.Errorf("Context isScheduledEventDone: true; Want: false")
+		t.Errorf("Context isEventDone: true; Want: false")
 	}
 	cancel()
 	if !isContextDone(ctx) {
-		t.Errorf("Context isScheduledEventDone: false; Want: true")
+		t.Errorf("Context isEventDone: false; Want: true")
 	}
 }
 
