@@ -112,33 +112,14 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
 			tSub := t.Subscriber()
 			tSub.SetIsTrigger(true)
-			tSub.AddChannel(listener.GetID(), ch)
+			tSub.AddChannel(listener.GetID(), ch, &generalClosedInfo)
 		}
-		// Запскаем ждуна, когда триггеры сработают, и срабатываем сами
-		go func(ctx context.Context, v event.Interface) {
-			subComponent := v.Subscriber()
-			for {
-				select {
-				case <-ctx.Done():
-					e.logger.Infow("Stop listening because of context", "eventId", v.GetID())
-					return
-				default:
-					subComponent.LockMutex()
-					channels := subComponent.GetChannels()
-					i := 1
-					for id, ch := range channels {
-						logTxt := fmt.Sprintf("Reading channel from %v [%v/%v]", id, i,
-							len(channels))
-						e.logger.Debugw(logTxt, "event", v.GetID())
-						<-ch
-						i++
-					}
-					e.logger.Infow("Subscriber event fired", "event", v.GetID())
-					v.RunFunction(ctx)
-					subComponent.UnlockMutex()
-				}
-			}
-		}(subCtx, listener)
+		e.addEvent("", listener)
+		// Запскаем ждуна для слушателя, когда триггеры сработают, и срабатываем сами
+		go e.runnerListener(subCtx, listener)
+	}
+	for _, t := range triggers {
+		go e.runnerTrigger(subCtx, t)
 	}
 	return nil
 }
@@ -149,6 +130,79 @@ func isContextDone(ctx context.Context) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// Горутина события-слушателя
+func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
+	var (
+		subComponent = v.Subscriber()
+		channels     = subComponent.Channels()
+	)
+
+	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
+	for {
+		i := len(channels)
+		subComponent.LockMutex()
+		for id, ch := range channels {
+			select {
+			case <-exitChan:
+				for _, closeCh := range channels {
+					closeCh.SetIsClosed()
+				}
+				return
+			case <-ch.GetInfoCh():
+				if ch.IsCLosed() {
+					delete(channels, id)
+				}
+				logTxt := fmt.Sprintf("Reading channel from %v [%v/%v]", id, i,
+					len(channels))
+				e.logger.Debugw(logTxt, "event", v.GetID())
+				i--
+			}
+			if i <= 0 {
+				if i < 0 {
+					panic("too much channels waited")
+				}
+				e.logger.Infow("Subscriber event fired", "event", v.GetID())
+				v.RunFunction(ctx)
+			}
+		}
+		subComponent.UnlockMutex()
+	}
+}
+
+// Горутина события-триггера
+func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
+	var (
+		subComponent = v.Subscriber()
+		channels     = subComponent.Channels()
+	)
+
+	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
+	for {
+		select {
+		case <-exitChan:
+			for _, closeCh := range channels {
+				closeCh.SetIsClosed()
+			}
+			return
+		case <-subComponent.Trigger():
+			e.logger.Debugw("TriggerEvent activated", "eventId", v.GetID())
+			subComponent.LockMutex()
+			i := 1
+			for id, chnl := range channels {
+				if chnl.IsCLosed() {
+					delete(channels, id)
+				}
+				logTxt := fmt.Sprintf("Writing channel for %v [%v/%v]", id, i,
+					len(channels))
+				e.logger.Debugw(logTxt, "event", v.GetID())
+				chnl.GetInfoCh() <- subscriber.TriggerListener
+				i++
+			}
+			subComponent.UnlockMutex()
+		}
 	}
 }
 

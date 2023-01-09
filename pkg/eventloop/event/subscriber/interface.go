@@ -7,8 +7,16 @@ import (
 type Interface interface {
 	LockMutex()
 	UnlockMutex()
-	GetChannels() channelCollection
-	AddChannel(eventID uuid.UUID, ch chan int)
+	AddChannel(eventID uuid.UUID, infoCh chan SubChInfo, b *bool)
+	Channels() channelCollection
+	Trigger() chan struct{}
+	Exit() chan struct{}
 	IsTrigger() bool
 	SetIsTrigger(b bool)
+}
+
+type InterfaceSubChannels interface {
+	IsCLosed() bool
+	SetIsClosed()
+	GetInfoCh() chan SubChInfo
 }
