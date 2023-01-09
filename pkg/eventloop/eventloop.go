@@ -112,8 +112,9 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 	for _, listener := range listeners {
 		listenerSubComponent := listener.Subscriber()
 		for _, t := range triggers {
-			ch := make(chan int, 1)
-			listenerSubComponent.AddChannel(t.GetID(), ch)
+			ch := make(chan subscriber.SubChInfo, 1)
+			generalClosedInfo := false
+			listenerSubComponent.AddChannel(t.GetID(), ch, &generalClosedInfo)
 			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
 			tSub := t.Subscriber()
 			tSub.SetIsTrigger(true)
