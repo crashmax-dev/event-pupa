@@ -3,7 +3,6 @@ package event
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -99,7 +98,7 @@ func (ev *event) RunFunction(ctx context.Context) {
 // Subscriber
 func (ev *event) Subscriber() subscriber.Interface {
 	if ev.subscriber == nil {
-		ev.subscriber = subscriber.NewSubscriber()
+		ev.subscriber = subscriber.NewSubscriberEvent()
 	}
 	return ev.subscriber
 }

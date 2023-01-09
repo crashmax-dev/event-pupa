@@ -25,8 +25,12 @@ type eventSubscriber struct {
 	mx       sync.Mutex
 }
 
-func NewSubscriber() Interface {
-	return &eventSubscriber{}
+func NewSubscriberEvent() Interface {
+	return &eventSubscriber{channels: make(channelCollection), exit: make(chan struct{})}
+}
+
+func NewTriggerEvent() Interface {
+	return &eventSubscriber{channels: make(channelCollection), isTrigger: true}
 }
 
 func (ev *eventSubscriber) LockMutex() {
