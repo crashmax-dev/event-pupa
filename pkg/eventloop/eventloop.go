@@ -74,13 +74,16 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface)
 		}
 		e.addEvent(newEvent.GetTriggerName(), newEvent)
 
-		e.logger.Debugw("Event added", "triggerName", newEvent.GetTriggerName())
+		e.logger.Debugw("Event added", "triggerName", newEvent.GetTriggerName(), "eventId",
+			newEvent.GetID())
 	} else if intervalComp, intervalErr := newEvent.Interval(); intervalErr == nil { // INTERVAL
 		e.addEvent(string(INTERVALED), newEvent)
 		e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
 	} else if afterComp, afterErr := newEvent.After(); afterErr == nil {
 		e.addEvent(string(AFTER), newEvent)
-		e.logger.Debugw("Event added", "start_time", afterComp.GetDuration())
+		e.logger.Debugw("Event added", "start_time", afterComp.GetDuration(),
+			"eventId",
+			newEvent.GetID())
 	} else {
 		return errors.New("event must be at least ON, INTERVAL or AFTER")
 	}
@@ -235,6 +238,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		return errors.New(str)
 	}
 
+	e.logger.Debugw("Trying to get mutex", "triggerName", triggerName)
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
@@ -251,6 +255,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
 			priority := keys[priorIndex]
 			for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
+				e.logger.Debugw("Start runFunc goroutine", "eventId", loopevent.GetID())
 				go e.triggerEventFunc(triggerCtx, loopevent)
 
 				if once, err := loopevent.Once(); err == nil {
@@ -281,6 +286,7 @@ func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.Ev
 
 func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 	if after, afterErr := ev.After(); afterErr == nil {
+		e.logger.Debugw("Waiting for start", "eventId", ev.GetID(), "time", after.GetDuration())
 		after.Wait()
 	}
 
@@ -289,6 +295,7 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 			interval.GetQuitChannel() <- true
 			internal.WriteToExecCh(ctx, "")
 		} else {
+			e.logger.Debugw("Run scheduled", "eventId", ev.GetID())
 			e.runScheduledEvent(ctx, ev)
 		}
 	} else {
