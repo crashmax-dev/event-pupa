@@ -185,6 +185,7 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 	)
 
 	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
+	e.logger.Debugw("Runner trigger started", "eventId", v.GetID())
 	for {
 		select {
 		case <-exitChan:
