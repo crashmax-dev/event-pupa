@@ -9,6 +9,7 @@ import (
 
 	"eventloop/internal/logger"
 	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/event/subscriber"
 	"eventloop/pkg/eventloop/internal"
 	"eventloop/pkg/eventloop/internal/eventslist"
 	loggerEventLoop "eventloop/pkg/logger"
@@ -38,6 +39,7 @@ func NewEventLoop(level string) Interface {
 	}
 
 	return &eventLoop{
+
 		mx:     &sync.RWMutex{},
 		events: eventslist.New(),
 		logger: elLogger,
