@@ -54,10 +54,6 @@ func (ev *eventSubscriber) AddChannel(eventID uuid.UUID, infoCh chan SubChInfo, 
 	ev.channels[eventID] = &SubChannel{infoCh: infoCh, isClosed: b}
 }
 
-func (ev *eventSubscriber) IsTrigger() bool {
-	return ev.isTrigger
-}
-
 func (ev *eventSubscriber) ChanTrigger() chan struct{} {
 	return ev.trigger
 }

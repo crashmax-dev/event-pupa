@@ -26,6 +26,7 @@ type Args struct {
 
 	IntervalTime time.Duration
 	after.DateAfter
+	subscriber subscriber.Type
 }
 
 type event struct {
@@ -65,6 +66,13 @@ func NewEvent(args Args) (Interface, error) {
 		newEvent.after = after.New(args.DateAfter)
 	}
 
+	switch args.subscriber {
+	case subscriber.Listener:
+		newEvent.subscriber = subscriber.NewSubscriberEvent()
+	case subscriber.Trigger:
+		newEvent.subscriber = subscriber.NewTriggerEvent()
+	}
+
 	return newEvent, nil
 }
 
@@ -88,26 +96,16 @@ func (ev *event) RunFunction(ctx context.Context) {
 	defer internal.WriteToExecCh(ctx, ev.result)
 
 	// Активация горутины этого триггера
-	subber := ev.Subscriber()
-	if subber.IsTrigger() {
+
+	if subber, err := ev.Subscriber(); err == nil && subber.GetType() == TRIGGER {
 		logger.Debugw("Activating trigger goroutine", "eventId", ev.id)
 		subber.ChanTrigger() <- struct{}{}
 	}
 }
 
 // Subscriber
-func (ev *event) Subscriber() subscriber.Interface {
-	if ev.subscriber == nil {
-		ev.subscriber = subscriber.NewSubscriberEvent()
-	}
-	return ev.subscriber
-}
-
-func (ev *event) Trigger() subscriber.Interface {
-	if ev.subscriber == nil {
-		ev.subscriber = subscriber.NewTriggerEvent()
-	}
-	return ev.subscriber
+func (ev *event) Subscriber() (subscriber.Interface, error) {
+	return getSubInterface(ev.subscriber, "it is not an interval event")
 }
 
 func (ev *event) Interval() (interval.Interface, error) {

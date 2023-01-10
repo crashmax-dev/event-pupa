@@ -110,13 +110,13 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		return errors.New(errStr)
 	}
 	for _, listener := range listeners {
-		listenerSubComponent := listener.Subscriber()
+		listenerSubComponent, _ := listener.Subscriber()
 		for _, t := range triggers {
 			ch := make(chan subscriber.SubChInfo, 1)
 			generalClosedInfo := false
 			listenerSubComponent.AddChannel(t.GetID(), ch, &generalClosedInfo)
 			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
-			tSub := t.Trigger()
+			tSub, _ := t.Subscriber()
 			tSub.AddChannel(listener.GetID(), ch, &generalClosedInfo)
 		}
 		e.addEvent("", listener)
@@ -141,8 +141,8 @@ func isContextDone(ctx context.Context) bool {
 // Горутина события-слушателя
 func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 	var (
-		subComponent = v.Subscriber()
-		channels     = subComponent.Channels()
+		subComponent, _ = v.Subscriber()
+		channels        = subComponent.Channels()
 	)
 
 	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
@@ -180,8 +180,8 @@ func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 // Горутина события-триггера
 func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 	var (
-		subComponent = v.Trigger()
-		channels     = subComponent.Channels()
+		subComponent, _ = v.Subscriber()
+		channels        = subComponent.Channels()
 	)
 
 	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)

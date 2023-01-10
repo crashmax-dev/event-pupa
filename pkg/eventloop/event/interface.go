@@ -16,8 +16,7 @@ type Interface interface {
 	GetTriggerName() string
 	RunFunction(ctx context.Context)
 	After() (after.Interface, error)
-	Subscriber() subscriber.Interface
-	Trigger() subscriber.Interface
+	Subscriber() (subscriber.Interface, error)
 	Interval() (interval.Interface, error)
 	Once() (once.Interface, error)
 }
