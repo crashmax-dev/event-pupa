@@ -123,9 +123,8 @@ func (ev *event) After() (after.Interface, error) {
 }
 
 func getSubInterface[T any](i T, errMsg string) (T, error) {
-	var nilRes T
-	if reflect.ValueOf(&i).Elem().IsZero() {
-		return nilRes, errors.New(errMsg)
+	if i == nil {
+		return *new(T), errors.New(errMsg)
 	}
 	return i, nil
 }
