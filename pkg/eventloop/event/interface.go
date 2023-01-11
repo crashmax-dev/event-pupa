@@ -19,4 +19,5 @@ type Interface interface {
 	Subscriber() (subscriber.Interface, error)
 	Interval() (interval.Interface, error)
 	Once() (once.Interface, error)
+	GetTypes() (out []Type)
 }

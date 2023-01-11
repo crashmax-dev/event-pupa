@@ -3,7 +3,6 @@ package event
 import (
 	"context"
 	"errors"
-	"reflect"
 	"sync"
 	"time"
 
@@ -17,6 +16,15 @@ import (
 )
 
 // event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)
+
+type Type string
+
+const (
+	TRIGGER  Type = "TRIGGER"
+	ONCE     Type = "ONCE"
+	INTERVAL Type = "INTERVAL"
+	AFTER    Type = "AFTER"
+)
 
 type Args struct {
 	TriggerName string
@@ -78,6 +86,22 @@ func NewEvent(args Args) (Interface, error) {
 
 func (ev *event) GetID() uuid.UUID {
 	return ev.id
+}
+
+func (ev *event) GetTypes() (out []Type) {
+	if ev.triggerName != "" {
+		out = append(out, TRIGGER)
+	}
+	if ev.once != nil {
+		out = append(out, ONCE)
+	}
+	if ev.after != nil {
+		out = append(out, AFTER)
+	}
+	if ev.interval != nil {
+		out = append(out, INTERVAL)
+	}
+	return
 }
 
 func (ev *event) GetTriggerName() string {
