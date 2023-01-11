@@ -15,6 +15,6 @@ type Interface interface {
 	// не были удалены
 	RemoveEventByUUIDs(id ...uuid.UUID) []uuid.UUID
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
-	GetAttachedEvents(eventName string) (result []uuid.UUID, err error)
+	GetAttachedEvents(triggerName string) (result []uuid.UUID, err error)
 	Sync() error
 }

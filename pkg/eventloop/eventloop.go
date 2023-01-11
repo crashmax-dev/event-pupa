@@ -223,7 +223,7 @@ func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
 	e.events.EventName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
 }
 
-// Trigger вызывает событие с определённым eventName. Функция ждёт выполнения всех добавленных на событие функций,
+// Trigger вызывает событие с определённым triggerName. Функция ждёт выполнения всех добавленных на событие функций,
 // поэтому синхронный вызов заблокирует родительский цикл выполнения программы.
 // В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова
 // нужно создавать новый channelEx
@@ -396,9 +396,9 @@ func (e *eventLoop) RemoveEventByUUIDs(ids ...uuid.UUID) []uuid.UUID {
 	return e.events.RemoveEventByUUIDs(ids...)
 }
 
-// GetAttachedEvents возвращает все события, прикреплённые к eventName
-func (e *eventLoop) GetAttachedEvents(eventName string) (result []uuid.UUID, err error) {
-	return e.events.GetEventIdsByName(eventName)
+// GetAttachedEvents возвращает все события, прикреплённые к triggerName
+func (e *eventLoop) GetAttachedEvents(triggerName string) (result []uuid.UUID, err error) {
+	return e.events.GetEventIdsByName(triggerName)
 }
 
 func (e *eventLoop) Sync() error {
