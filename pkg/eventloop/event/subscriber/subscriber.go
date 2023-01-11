@@ -8,6 +8,8 @@ import (
 
 type SubChInfo int
 
+type Type string
+
 type channelCollection map[uuid.UUID]InterfaceSubChannels
 
 const (
@@ -15,25 +17,32 @@ const (
 	DeleteChannel   SubChInfo = -1
 )
 
+const (
+	Listener Type = "LISTENER"
+	Trigger  Type = "TRIGGER"
+)
+
 // eventSubscriber - событие, которое триггерит другие события и/или триггерится само по другим событиям.
 type eventSubscriber struct {
-	isTrigger bool
-	trigger   chan struct{}
+	trigger chan struct{}
 
 	channels channelCollection
 	exit     chan struct{}
 	mx       sync.Mutex
+	esType   Type
 }
 
 func NewSubscriberEvent() Interface {
-	return &eventSubscriber{channels: make(channelCollection), exit: make(chan struct{})}
+	return &eventSubscriber{channels: make(channelCollection),
+		exit:   make(chan struct{}),
+		esType: Listener}
 }
 
 func NewTriggerEvent() Interface {
 	return &eventSubscriber{channels: make(channelCollection),
-		trigger:   make(chan struct{}),
-		exit:      make(chan struct{}),
-		isTrigger: true}
+		trigger: make(chan struct{}),
+		exit:    make(chan struct{}),
+		esType:  Trigger}
 }
 
 func (ev *eventSubscriber) LockMutex() {
@@ -60,4 +69,8 @@ func (ev *eventSubscriber) ChanTrigger() chan struct{} {
 
 func (ev *eventSubscriber) Exit() chan struct{} {
 	return ev.exit
+}
+
+func (ev *eventSubscriber) GetType() Type {
+	return ev.esType
 }

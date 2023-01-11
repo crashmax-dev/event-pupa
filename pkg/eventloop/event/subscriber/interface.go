@@ -11,7 +11,7 @@ type Interface interface {
 	Channels() channelCollection
 	ChanTrigger() chan struct{}
 	Exit() chan struct{}
-	IsTrigger() bool
+	GetType() Type
 }
 
 type InterfaceSubChannels interface {

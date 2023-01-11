@@ -97,7 +97,7 @@ func (ev *event) RunFunction(ctx context.Context) {
 
 	// Активация горутины этого триггера
 
-	if subber, err := ev.Subscriber(); err == nil && subber.GetType() == TRIGGER {
+	if subber, err := ev.Subscriber(); err == nil && subber.GetType() == subscriber.Trigger {
 		logger.Debugw("Activating trigger goroutine", "eventId", ev.id)
 		subber.ChanTrigger() <- struct{}{}
 	}
