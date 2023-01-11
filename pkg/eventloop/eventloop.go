@@ -46,58 +46,62 @@ func NewEventLoop(level string) Interface {
 	}
 
 	return &eventLoop{
-
 		mx:     &sync.RWMutex{},
 		events: eventslist.New(),
 		logger: elLogger,
 	}
 }
 
-func (e *eventLoop) RegisterEvent(ctx context.Context, newEvent event.Interface) error {
-	if ctxErr := e.checkContext(ctx, "can't register event, context is done",
-		"event", newEvent.GetID().String(),
-		"trigger", newEvent.GetTriggerName()); ctxErr != nil {
-		internal.WriteToExecCh(ctx, "")
-		return ctxErr
-	}
-
-	// Если выключено добавление - не добавляем
-	if slices.Contains(e.disabled, REGISTER) {
-		errStr := "register disabled, can't register event"
-		e.logger.Warnw(errStr,
-			"event", newEvent.GetID())
-		internal.WriteToExecCh(ctx, "")
-		return errors.New(errStr)
-	}
+func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interface) error {
+	// var eventsAdded = make([]event.Interface, len(newEvents))
 
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
-	// ON
-	if triggerName := newEvent.GetTriggerName(); triggerName != "" {
-		if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
-			errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
-			e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
+	for _, evnt := range newEvents {
+		// TODO: выводить в логгер ивенты, неуспевшие зарегистрироваться и успевшие тоже
+		if ctxErr := e.checkContext(ctx, "can't register event, context is done",
+			"events", evnt.GetID().String(),
+			"trigger", evnt.GetTriggerName()); ctxErr != nil {
+			internal.WriteToExecCh(ctx, "")
+			return ctxErr
+		}
+
+		// Если выключено добавление - не добавляем
+		if slices.Contains(e.disabled, REGISTER) {
+			errStr := "register disabled, can't register event"
+			e.logger.Warnw(errStr,
+				"event", evnt.GetID())
 			internal.WriteToExecCh(ctx, "")
 			return errors.New(errStr)
 		}
-		e.addEvent(newEvent.GetTriggerName(), newEvent)
 
-		e.logger.Debugw("Event added", "triggerName", newEvent.GetTriggerName(), "eventId",
-			newEvent.GetID())
-	} else if intervalComp, intervalErr := newEvent.Interval(); intervalErr == nil { // INTERVAL
-		e.addEvent(string(INTERVALED), newEvent)
-		e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
-	} else if afterComp, afterErr := newEvent.After(); afterErr == nil {
-		e.addEvent(string(AFTER), newEvent)
-		e.logger.Debugw("Event added", "start_time", afterComp.GetDuration(),
-			"eventId",
-			newEvent.GetID())
-	} else {
-		return errors.New("event must be at least ON, INTERVAL or AFTER")
+		// ON
+		if triggerName := evnt.GetTriggerName(); triggerName != "" {
+			if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
+				errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
+				e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
+				internal.WriteToExecCh(ctx, "")
+				return errors.New(errStr)
+			}
+			e.addEvent(evnt.GetTriggerName(), evnt)
+
+			e.logger.Debugw("Event added", "triggerName", evnt.GetTriggerName(), "eventId",
+				evnt.GetID())
+		} else if intervalComp, intervalErr := evnt.Interval(); intervalErr == nil { // INTERVAL
+			e.addEvent(string(INTERVALED), evnt)
+			e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
+		} else if afterComp, afterErr := evnt.After(); afterErr == nil {
+			e.addEvent(string(AFTER), evnt)
+			e.logger.Debugw("Event added", "start_time", afterComp.GetDuration(),
+				"eventId",
+				evnt.GetID())
+		} else {
+			return errors.New("event must be at least ON, INTERVAL or AFTER")
+		}
+
+		internal.WriteToExecCh(ctx, "")
 	}
-
-	internal.WriteToExecCh(ctx, "")
 	return nil
 }
 

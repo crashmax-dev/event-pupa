@@ -8,7 +8,7 @@ import (
 )
 
 type Interface interface {
-	RegisterEvent(ctx context.Context, newEvent event.Interface) error
+	RegisterEvent(ctx context.Context, newEvent ...event.Interface) error
 	Trigger(ctx context.Context, triggerName string) error
 	Toggle(eventFunc ...EventFunction) string
 	// RemoveEventByUUIDs удаляет событие по срезу идентификаторов. Возвращает срез оставшихся событий из запроса, которые
