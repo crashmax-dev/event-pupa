@@ -127,26 +127,35 @@ func (ev *event) RunFunction(ctx context.Context) {
 	}
 }
 
+var subError = errors.New("subscriber")
+
 // Subscriber
 func (ev *event) Subscriber() (subscriber.Interface, error) {
-	return getSubInterface(ev.subscriber, "it is not an interval event")
+	return getSubInterface(ev.subscriber, subError)
 }
+
+var intError = errors.New("interval")
 
 func (ev *event) Interval() (interval.Interface, error) {
-	return getSubInterface(ev.interval, "it is not an interval event")
+	return getSubInterface(ev.interval, intError)
 }
+
+var onceError = errors.New("once")
 
 func (ev *event) Once() (once.Interface, error) {
-	return getSubInterface(ev.once, "it is not an once event")
+	return getSubInterface(ev.once, onceError)
 }
+
+var afterError = errors.New("after")
 
 func (ev *event) After() (after.Interface, error) {
-	return getSubInterface(ev.after, "it is not an after event")
+	return getSubInterface(ev.after, afterError)
 }
 
-func getSubInterface[T any](i T, errMsg string) (T, error) {
-	if i == nil {
-		return *new(T), errors.New(errMsg)
+func getSubInterface[T any](i T, err error) (T, error) {
+	if reflect.ValueOf(i).IsValid() && !reflect.ValueOf(i).IsZero() {
+		return i, nil
 	}
-	return i, nil
+	err = fmt.Errorf("it is not an event type: %w", err)
+	return *new(T), err
 }
