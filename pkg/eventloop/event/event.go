@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -34,7 +36,7 @@ type Args struct {
 	Fun         Func
 
 	IntervalTime time.Duration
-	after.DateAfter
+	after.DateAfterArgs
 	subscriber subscriber.Type
 }
 
@@ -80,8 +82,8 @@ func NewEvent(args Args) (Interface, error) {
 	if args.IntervalTime.String() != "0s" {
 		newEvent.interval = interval.NewIntervalEvent(args.IntervalTime)
 	}
-	if args.DateAfter != (after.DateAfter{}) {
-		newEvent.after = after.New(args.DateAfter)
+	if args.DateAfterArgs != (after.DateAfterArgs{}) {
+		newEvent.after = after.New(args.DateAfterArgs)
 	}
 
 	switch args.subscriber {
@@ -133,7 +135,6 @@ func (ev *event) RunFunction(ctx context.Context) {
 	defer internal.WriteToExecCh(ctx, ev.result)
 
 	// Активация горутины этого триггера
-
 	if subber, err := ev.Subscriber(); err == nil && subber.GetType() == subscriber.Trigger {
 		logger.Debugw("Activating trigger goroutine", "eventId", ev.id)
 		subber.ChanTrigger() <- struct{}{}
