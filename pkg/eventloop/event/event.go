@@ -101,6 +101,9 @@ func (ev *event) GetTypes() (out []Type) {
 	if ev.interval != nil {
 		out = append(out, INTERVAL)
 	}
+	if ev.subscriber != nil {
+		out = append(out, SUBSCRIBER)
+	}
 	return
 }
 
