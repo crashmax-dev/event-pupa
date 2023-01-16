@@ -14,7 +14,7 @@ func (sc *SubChannel) GetInfoCh() chan SubChInfo {
 	return sc.infoCh
 }
 
-func (sc *SubChannel) IsCLosed() bool {
+func (sc *SubChannel) IsClosed() bool {
 	sc.mx.RLock()
 	defer sc.mx.RUnlock()
 	return *sc.isClosed
