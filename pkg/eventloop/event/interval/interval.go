@@ -4,30 +4,30 @@ import (
 	"time"
 )
 
-// eventSchedule - событие, запускаемое с определённым интервалом. Имеет собственный канал, с помощью которого можно
+// eventInterval - событие, запускаемое с определённым интервалом. Имеет собственный канал, с помощью которого можно
 // прервать работу события.
-type eventSchedule struct {
+type eventInterval struct {
 	interval  time.Duration
 	isRunning bool
 	quit      chan bool
 }
 
 func NewIntervalEvent(interval time.Duration) Interface {
-	return &eventSchedule{interval: interval, quit: make(chan bool)}
+	return &eventInterval{interval: interval, quit: make(chan bool)}
 }
 
-func (e *eventSchedule) GetDuration() time.Duration {
+func (e *eventInterval) GetDuration() time.Duration {
 	return e.interval
 }
 
-func (e *eventSchedule) GetQuitChannel() chan bool {
+func (e *eventInterval) GetQuitChannel() chan bool {
 	return e.quit
 }
 
-func (e *eventSchedule) IsRunning() bool {
+func (e *eventInterval) IsRunning() bool {
 	return e.isRunning
 }
 
-func (e *eventSchedule) SetRunning(run bool) {
+func (e *eventInterval) SetRunning(run bool) {
 	e.isRunning = run
 }
