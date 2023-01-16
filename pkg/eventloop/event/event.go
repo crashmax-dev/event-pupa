@@ -20,10 +20,11 @@ import (
 type Type string
 
 const (
-	TRIGGER  Type = "TRIGGER"
-	ONCE     Type = "ONCE"
-	INTERVAL Type = "INTERVAL"
-	AFTER    Type = "AFTER"
+	TRIGGER    Type = "TRIGGER"
+	ONCE       Type = "ONCE"
+	INTERVAL   Type = "INTERVAL"
+	AFTER      Type = "AFTER"
+	SUBSCRIBER Type = "SUBSCRIBER"
 )
 
 type Args struct {
@@ -56,7 +57,16 @@ type Func func(ctx context.Context) string
 
 func NewEvent(args Args) (Interface, error) {
 	if args.Fun == nil {
-		return nil, errors.New("no function, please add")
+		return nil, errors.New("no run function")
+	}
+
+	// У ивента нет никаких условий для триггера
+	if args.TriggerName == "" &&
+		!args.IsOnce &&
+		args.IntervalTime.String() == "0s" &&
+		args.DateAfterArgs == (after.DateAfterArgs{}) &&
+		args.subscriber == "" {
+		return nil, errors.New("no event type, event will never trigger")
 	}
 
 	newEvent := &event{id: uuid.New(),
