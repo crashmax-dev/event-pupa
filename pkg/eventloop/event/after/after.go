@@ -4,19 +4,19 @@ import (
 	"time"
 )
 
-type DateAfter struct {
-	date       time.Time
-	isRelative bool
+type DateAfterArgs struct {
+	Date       time.Time
+	IsRelative bool
 }
 
 type eventAfter struct {
-	date    DateAfter
+	date    DateAfterArgs
 	breakCh chan bool
 	isDone  bool
 }
 
-func New(after DateAfter) Interface {
-	after.date = after.date.AddDate(-1, -1, -1)
+func New(after DateAfterArgs) Interface {
+	after.Date = after.Date.AddDate(-1, -1, -1)
 	return &eventAfter{
 		date:    after,
 		breakCh: make(chan bool),
@@ -24,10 +24,10 @@ func New(after DateAfter) Interface {
 }
 
 func (e *eventAfter) GetDuration() time.Duration {
-	if e.date.isRelative {
-		return e.date.date.Sub(time.Time{})
+	if e.date.IsRelative {
+		return e.date.Date.Sub(time.Time{})
 	}
-	return time.Until(e.date.date)
+	return time.Until(e.date.Date)
 }
 
 func (e *eventAfter) GetBreakChannel() chan bool {
