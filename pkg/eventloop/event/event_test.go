@@ -96,6 +96,14 @@ func TestNewEvent(t *testing.T) {
 			},
 		},
 		{
+			name: "Listener",
+			args: Args{Fun: testData.F, subscriber: subscriber.Listener},
+			want: func(id string) Interface {
+				return &event{uuid: id, fun: testData.F,
+					subscriber: subscriber.NewSubscriberEvent()}
+			},
+		},
+		{
 			name: "Trigger+Once",
 			args: Args{Fun: testData.F,
 				TriggerName: testData.TRIGGER,
@@ -424,31 +432,53 @@ func Test_event_Once(t *testing.T) {
 }
 
 func Test_event_RunFunction(t *testing.T) {
-	var lgger, _ = logger.NewLogger("DEBUG", "logs", "")
+	var (
+		lgger, _ = logger.NewLogger("DEBUG", "logs", "test")
+		ctx      = context.WithValue(context.Background(), internal.LOGGER_CTX_KEY, lgger)
+	)
 	type fields struct {
-		fun Func
+		fun        Func
+		subscriber subscriber.Interface
 	}
 	type args struct {
 		ctx context.Context
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   string
+		name       string
+		fields     fields
+		args       args
+		needHelper bool
 	}{
 		{
 			name: "With function",
 			fields: fields{fun: func(ctx context.Context) string {
 				return "OK"
 			}},
-			args: args{ctx: context.WithValue(context.Background(), internal.LOGGER_CTX_KEY, lgger)},
+			args: args{ctx},
+		},
+		{
+			name: "Subscriber",
+			fields: fields{
+				fun: func(ctx context.Context) string {
+					return "OK"
+				},
+				subscriber: subscriber.NewSubscriberEvent(),
+			},
+			args:       args{ctx},
+			needHelper: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ev := &event{
-				fun: tt.fields.fun,
+				fun:        tt.fields.fun,
+				subscriber: tt.fields.subscriber,
+			}
+			if tt.needHelper {
+				go func() {
+					sub, _ := ev.Subscriber()
+					<-sub.ChanTrigger()
+				}()
 			}
 			ev.RunFunction(tt.args.ctx)
 		})
