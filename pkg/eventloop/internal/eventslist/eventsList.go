@@ -54,7 +54,7 @@ func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) []string {
 				afterComp.GetBreakChannel() <- true
 			}
 
-			if sub, subErr := ev.Subscriber(); subErr != nil {
+			if sub, subErr := ev.Subscriber(); subErr == nil {
 				sub.Exit() <- struct{}{}
 			}
 
