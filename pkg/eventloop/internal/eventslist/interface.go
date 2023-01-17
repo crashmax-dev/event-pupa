@@ -12,13 +12,13 @@ type Interface interface {
 }
 
 type Priority interface {
-	Priority(priority int) *EventIdsList
+	Priority(priority int) *EventsByUuidString
 	Len() int
 	GetKeys() (keys []int)
 }
 
 type EventID interface {
-	List() EventIdsList
+	List() EventsByUuidString
 	EventID(eventID string) event.Interface
 	AddEvent(newEvent event.Interface)
 }
