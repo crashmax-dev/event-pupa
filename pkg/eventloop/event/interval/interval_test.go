@@ -20,8 +20,8 @@ func TestNewIntervalEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewIntervalEvent(tt.interval); got.IsRunning() != tt.want.IsRunning() &&
-				got.GetDuration() == tt.want.GetDuration() {
+			if got := NewIntervalEvent(tt.interval); got.IsRunning() != tt.want.IsRunning() ||
+				got.GetDuration() != tt.want.GetDuration() {
 				t.Errorf("NewIntervalEvent() = %v, want %v", got, tt.want)
 			}
 		})
