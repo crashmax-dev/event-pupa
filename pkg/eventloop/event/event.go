@@ -141,29 +141,33 @@ func (ev *event) RunFunction(ctx context.Context) {
 	}
 }
 
-var subError = errors.New("subscriber")
+var eventErrors = struct {
+	subscriber error
+	interval   error
+	once       error
+	after      error
+}{
+	subscriber: errors.New("subscriber"),
+	interval:   errors.New("interval"),
+	once:       errors.New("once"),
+	after:      errors.New("after"),
+}
 
 // Subscriber
 func (ev *event) Subscriber() (subscriber.Interface, error) {
-	return getSubInterface(ev.subscriber, subError)
+	return getSubInterface(ev.subscriber, eventErrors.subscriber)
 }
-
-var intError = errors.New("interval")
 
 func (ev *event) Interval() (interval.Interface, error) {
-	return getSubInterface(ev.interval, intError)
+	return getSubInterface(ev.interval, eventErrors.interval)
 }
-
-var onceError = errors.New("once")
 
 func (ev *event) Once() (once.Interface, error) {
-	return getSubInterface(ev.once, onceError)
+	return getSubInterface(ev.once, eventErrors.once)
 }
 
-var afterError = errors.New("after")
-
 func (ev *event) After() (after.Interface, error) {
-	return getSubInterface(ev.after, afterError)
+	return getSubInterface(ev.after, eventErrors.after)
 }
 
 func getSubInterface[T any](i T, err error) (T, error) {
