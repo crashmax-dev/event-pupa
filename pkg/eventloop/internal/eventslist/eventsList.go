@@ -47,11 +47,11 @@ func (eil *EventsByUuidString) iterateDeletionEvents(ids []uuid.UUID) []uuid.UUI
 			ids[index] = ids[len(ids)-1]
 			ids = ids[:len(ids)-1]
 
-			if intervalComp, errInterval := eventIDValue.Interval(); errInterval == nil && intervalComp.IsRunning() {
+			if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
 				intervalComp.GetQuitChannel() <- true
 			}
 
-			if afterComp, afterErr := eventIDValue.After(); afterErr == nil {
+			if afterComp, afterErr := ev.After(); afterErr == nil {
 				afterComp.GetBreakChannel() <- true
 			}
 
@@ -63,9 +63,9 @@ func (eil *EventsByUuidString) iterateDeletionEvents(ids []uuid.UUID) []uuid.UUI
 	return ids
 }
 
-func (pl *priorityList) iteratePriorities(ids []uuid.UUID) []uuid.UUID {
+func (pl *priorityList) iterateDeletionPriorities(ids []uuid.UUID) []uuid.UUID {
 	for priorKey, priorValue := range *pl {
-		if modIds := priorValue.iterateEvents(ids); len(modIds) != len(ids) {
+		if modIds := priorValue.iterateDeletionEvents(ids); len(modIds) != len(ids) {
 			if len(priorValue) == 0 {
 				delete(*pl, priorKey)
 			}
@@ -84,7 +84,7 @@ func (el *eventsList) RemoveEventByUUIDs(ids ...uuid.UUID) []uuid.UUID {
 	el.mx.Lock()
 	defer el.mx.Unlock()
 	for eventNameKey, eventNameValue := range el.priorities {
-		if modIds := eventNameValue.iteratePriorities(ids); len(modIds) != len(ids) {
+		if modIds := eventNameValue.iterateDeletionPriorities(ids); len(modIds) != len(ids) {
 			if len(eventNameValue) == 0 {
 				delete(el.priorities, eventNameKey)
 			}
