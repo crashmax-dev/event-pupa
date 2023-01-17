@@ -13,7 +13,6 @@ import (
 	"eventloop/pkg/eventloop/internal"
 	"eventloop/pkg/eventloop/internal/eventslist"
 	loggerEventLoop "eventloop/pkg/logger"
-	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 )
 
@@ -61,7 +60,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 	for _, evnt := range newEvents {
 		// TODO: выводить в логгер ивенты, неуспевшие зарегистрироваться и успевшие тоже
 		if ctxErr := e.checkContext(ctx, "can't register event, context is done",
-			"events", evnt.GetID().String(),
+			"events", evnt.GetUUID(),
 			"trigger", evnt.GetTriggerName()); ctxErr != nil {
 			internal.WriteToExecCh(ctx, "")
 			return ctxErr
@@ -71,7 +70,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 		if slices.Contains(e.disabled, REGISTER) {
 			errStr := "register disabled, can't register event"
 			e.logger.Warnw(errStr,
-				"event", evnt.GetID())
+				"event", evnt.GetUUID())
 			internal.WriteToExecCh(ctx, "")
 			return errors.New(errStr)
 		}
@@ -87,7 +86,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 			e.addEvent(evnt.GetTriggerName(), evnt)
 
 			e.logger.Debugw("Event added", "triggerName", evnt.GetTriggerName(), "eventId",
-				evnt.GetID())
+				evnt.GetUUID())
 		} else if intervalComp, intervalErr := evnt.Interval(); intervalErr == nil { // INTERVAL
 			e.addEvent(string(INTERVALED), evnt)
 			e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
@@ -95,7 +94,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 			e.addEvent(string(AFTER), evnt)
 			e.logger.Debugw("Event added", "start_time", afterComp.GetDuration(),
 				"eventId",
-				evnt.GetID())
+				evnt.GetUUID())
 		} else {
 			return errors.New("event must be at least ON, INTERVAL or AFTER")
 		}
@@ -125,10 +124,10 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		for _, t := range triggers {
 			ch := make(chan subscriber.SubChInfo, 1)
 			generalClosedInfo := false
-			listenerSubComponent.AddChannel(t.GetID(), ch, &generalClosedInfo)
-			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetID(), "listener", listener.GetID())
+			listenerSubComponent.AddChannel(t.GetUUID(), ch, &generalClosedInfo)
+			e.logger.Infow("Event subscribed", "listenerSubComponent", t.GetUUID(), "listener", listener.GetUUID())
 			tSub, _ := t.Subscriber()
-			tSub.AddChannel(listener.GetID(), ch, &generalClosedInfo)
+			tSub.AddChannel(listener.GetUUID(), ch, &generalClosedInfo)
 		}
 		e.addEvent("", listener)
 		// Запскаем ждуна для слушателя, когда триггеры сработают, и срабатываем сами
@@ -168,19 +167,19 @@ func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 				}
 				return
 			case <-ch.GetInfoCh():
-				if ch.IsCLosed() {
+				if ch.IsClosed() {
 					delete(channels, id)
 				}
 				logTxt := fmt.Sprintf("Reading channel from %v [%v/%v]", id, i,
 					len(channels))
-				e.logger.Debugw(logTxt, "event", v.GetID())
+				e.logger.Debugw(logTxt, "event", v.GetUUID())
 				i--
 			}
 			if i <= 0 {
 				if i < 0 {
 					panic("too much channels waited")
 				}
-				e.logger.Infow("Subscriber event fired", "event", v.GetID())
+				e.logger.Infow("Subscriber event fired", "event", v.GetUUID())
 				v.RunFunction(ctx)
 			}
 		}
@@ -196,7 +195,7 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 	)
 
 	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
-	e.logger.Debugw("Runner trigger started", "eventId", v.GetID())
+	e.logger.Debugw("Runner trigger started", "eventId", v.GetUUID())
 	for {
 		select {
 		case <-exitChan:
@@ -205,16 +204,16 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 			}
 			return
 		case <-subComponent.ChanTrigger():
-			e.logger.Debugw("TriggerEvent activated", "eventId", v.GetID())
+			e.logger.Debugw("TriggerEvent activated", "eventId", v.GetUUID())
 			subComponent.LockMutex()
 			i := 1
 			for id, chnl := range channels {
-				if chnl.IsCLosed() {
+				if chnl.IsClosed() {
 					delete(channels, id)
 				}
 				logTxt := fmt.Sprintf("Writing channel for %v [%v/%v]", id, i,
 					len(channels))
-				e.logger.Debugw(logTxt, "event", v.GetID())
+				e.logger.Debugw(logTxt, "event", v.GetUUID())
 				chnl.GetInfoCh() <- subscriber.TriggerListener
 				i++
 			}
@@ -269,12 +268,12 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
 			priority := keys[priorIndex]
 			for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
-				e.logger.Debugw("Start runFunc goroutine", "eventId", loopevent.GetID())
+				e.logger.Debugw("Start runFunc goroutine", "eventId", loopevent.GetUUID())
 				go e.triggerEventFunc(triggerCtx, loopevent)
 
 				if once, err := loopevent.Once(); err == nil {
 					once.Do(func() {
-						e.RemoveEventByUUIDs(loopevent.GetID())
+						e.RemoveEventByUUIDs(loopevent.GetUUID())
 					})
 				}
 			}
@@ -292,7 +291,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	return deferErr
 }
 
-func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.EventIdsList) {
+func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.EventsByUUIDString) {
 	for _, listItem := range list {
 		listItem.RunFunction(ctx)
 	}
@@ -300,7 +299,7 @@ func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.Ev
 
 func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 	if after, afterErr := ev.After(); afterErr == nil {
-		e.logger.Debugw("Waiting for start", "eventId", ev.GetID(), "time", after.GetDuration())
+		e.logger.Debugw("Waiting for start", "eventId", ev.GetUUID(), "time", after.GetDuration())
 		after.Wait()
 	}
 
@@ -309,7 +308,7 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 			interval.GetQuitChannel() <- true
 			internal.WriteToExecCh(ctx, "")
 		} else {
-			e.logger.Debugw("Run scheduled", "eventId", ev.GetID())
+			e.logger.Debugw("Run scheduled", "eventId", ev.GetUUID())
 			e.runScheduledEvent(ctx, ev)
 		}
 	} else {
@@ -366,7 +365,7 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	intervalComponent, _ := ev.Interval()
 	evntInterval := intervalComponent.GetDuration()
 	e.logger.Infow("Scheduled ev starting with interval",
-		"ev", ev.GetID(),
+		"ev", ev.GetUUID(),
 		"interval", evntInterval)
 	ticker := time.NewTicker(evntInterval)
 	intervalComponent.SetRunning(true)
@@ -396,13 +395,13 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	}
 }
 
-func (e *eventLoop) RemoveEventByUUIDs(ids ...uuid.UUID) []uuid.UUID {
-	return e.events.RemoveEventByUUIDs(ids...)
+func (e *eventLoop) RemoveEventByUUIDs(UUIDs ...string) []string {
+	return e.events.RemoveEventByUUIDs(UUIDs...)
 }
 
 // GetAttachedEvents возвращает все события, прикреплённые к triggerName
-func (e *eventLoop) GetAttachedEvents(triggerName string) (result []uuid.UUID, err error) {
-	return e.events.GetEventIdsByName(triggerName)
+func (e *eventLoop) GetAttachedEvents(triggerName string) (result []string, err error) {
+	return e.events.GetEventIdsByTriggerName(triggerName)
 }
 
 func (e *eventLoop) Sync() error {

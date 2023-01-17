@@ -7,11 +7,10 @@ import (
 	"eventloop/pkg/eventloop/event/interval"
 	"eventloop/pkg/eventloop/event/once"
 	"eventloop/pkg/eventloop/event/subscriber"
-	"github.com/google/uuid"
 )
 
 type Interface interface {
-	GetID() uuid.UUID
+	GetUUID() string
 	GetPriority() int
 	GetTriggerName() string
 	RunFunction(ctx context.Context)

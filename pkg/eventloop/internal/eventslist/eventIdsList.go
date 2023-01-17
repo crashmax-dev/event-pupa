@@ -4,16 +4,16 @@ import (
 	"eventloop/pkg/eventloop/event"
 )
 
-type EventsByUuidString map[string]event.Interface
+type EventsByUUIDString map[string]event.Interface
 
-func (eil *EventsByUuidString) List() EventsByUuidString {
+func (eil *EventsByUUIDString) List() EventsByUUIDString {
 	return *eil
 }
 
-func (eil *EventsByUuidString) AddEvent(newEvent event.Interface) {
-	(*eil)[newEvent.GetID().String()] = newEvent
+func (eil *EventsByUUIDString) AddEvent(newEvent event.Interface) {
+	(*eil)[newEvent.GetUUID()] = newEvent
 }
 
-func (eil *EventsByUuidString) EventID(eventUuidString string) event.Interface {
-	return (*eil)[eventUuidString]
+func (eil *EventsByUUIDString) EventID(eventUUIDString string) event.Interface {
+	return (*eil)[eventUUIDString]
 }

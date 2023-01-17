@@ -5,11 +5,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type priorityList map[int]EventsByUuidString
+type priorityList map[int]EventsByUUIDString
 
-func (pl *priorityList) Priority(priority int) *EventsByUuidString {
+func (pl *priorityList) Priority(priority int) *EventsByUUIDString {
 	if (*pl)[priority] == nil {
-		(*pl)[priority] = make(EventsByUuidString)
+		(*pl)[priority] = make(EventsByUUIDString)
 	}
 	result := (*pl)[priority]
 	return &result

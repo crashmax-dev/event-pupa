@@ -2,15 +2,13 @@ package subscriber
 
 import (
 	"sync"
-
-	"github.com/google/uuid"
 )
 
 type SubChInfo int
 
 type Type string
 
-type channelCollection map[uuid.UUID]InterfaceSubChannels
+type channelsByUUIDString map[string]InterfaceSubChannels
 
 const (
 	TriggerListener SubChInfo = 1
@@ -26,20 +24,20 @@ const (
 type eventSubscriber struct {
 	trigger chan struct{}
 
-	channels channelCollection
+	channels channelsByUUIDString
 	exit     chan struct{}
 	mx       sync.Mutex
 	esType   Type
 }
 
 func NewSubscriberEvent() Interface {
-	return &eventSubscriber{channels: make(channelCollection),
+	return &eventSubscriber{channels: make(channelsByUUIDString),
 		exit:   make(chan struct{}),
 		esType: Listener}
 }
 
 func NewTriggerEvent() Interface {
-	return &eventSubscriber{channels: make(channelCollection),
+	return &eventSubscriber{channels: make(channelsByUUIDString),
 		trigger: make(chan struct{}),
 		exit:    make(chan struct{}),
 		esType:  Trigger}
@@ -53,14 +51,14 @@ func (ev *eventSubscriber) UnlockMutex() {
 	ev.mx.Unlock()
 }
 
-func (ev *eventSubscriber) Channels() channelCollection {
+func (ev *eventSubscriber) Channels() channelsByUUIDString {
 	return ev.channels
 }
 
 // AddChannel добавляет каналы, по которым тригеррится событие, и по этим же каналам событие-триггер триггерит
 // события слушатели.
-func (ev *eventSubscriber) AddChannel(eventID uuid.UUID, infoCh chan SubChInfo, b *bool) {
-	ev.channels[eventID] = &SubChannel{infoCh: infoCh, isClosed: b}
+func (ev *eventSubscriber) AddChannel(eventUUID string, infoCh chan SubChInfo, b *bool) {
+	ev.channels[eventUUID] = &SubChannel{infoCh: infoCh, isClosed: b}
 }
 
 func (ev *eventSubscriber) ChanTrigger() chan struct{} {

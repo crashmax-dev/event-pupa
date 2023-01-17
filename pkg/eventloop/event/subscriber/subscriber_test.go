@@ -57,13 +57,13 @@ func Test_eventSubscriber_AddChannel(t *testing.T) {
 	var b = true
 	type fields struct {
 		trigger  chan struct{}
-		channels channelCollection
+		channels channelsByUUIDString
 		exit     chan struct{}
 		mx       sync.Mutex
 		esType   Type
 	}
 	type args struct {
-		eventID uuid.UUID
+		eventID string
 		infoCh  chan SubChInfo
 		b       *bool
 	}
@@ -74,8 +74,8 @@ func Test_eventSubscriber_AddChannel(t *testing.T) {
 	}{
 		{
 			name:   "Default",
-			fields: fields{channels: make(channelCollection)},
-			args:   args{eventID: uuid.New(), infoCh: make(chan SubChInfo), b: &b},
+			fields: fields{channels: make(channelsByUUIDString)},
+			args:   args{eventID: uuid.NewString(), infoCh: make(chan SubChInfo), b: &b},
 		},
 	}
 	for _, tt := range tests { //nolint:govet
@@ -101,7 +101,7 @@ func Test_eventSubscriber_ChanTrigger(t *testing.T) {
 	var trig = make(chan struct{})
 	type fields struct {
 		trigger  chan struct{}
-		channels channelCollection
+		channels channelsByUUIDString
 		exit     chan struct{}
 		mx       sync.Mutex
 		esType   Type
@@ -139,14 +139,14 @@ func Test_eventSubscriber_ChanTrigger(t *testing.T) {
 
 func Test_eventSubscriber_Channels(t *testing.T) {
 	var (
-		id       = uuid.New()
+		id       = uuid.NewString()
 		b        = true
-		channels = channelCollection{id: &SubChannel{infoCh: make(chan SubChInfo),
+		channels = channelsByUUIDString{id: &SubChannel{infoCh: make(chan SubChInfo),
 			isClosed: &b}}
 	)
 	type fields struct {
 		trigger  chan struct{}
-		channels channelCollection
+		channels channelsByUUIDString
 		exit     chan struct{}
 		mx       sync.Mutex
 		esType   Type
@@ -154,7 +154,7 @@ func Test_eventSubscriber_Channels(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   channelCollection
+		want   channelsByUUIDString
 	}{
 		{
 			name:   "Default",
@@ -187,7 +187,7 @@ func Test_eventSubscriber_Exit(t *testing.T) {
 	var ch = make(chan struct{})
 	type fields struct {
 		trigger  chan struct{}
-		channels channelCollection
+		channels channelsByUUIDString
 		exit     chan struct{}
 		mx       sync.Mutex
 		esType   Type
@@ -227,7 +227,7 @@ func Test_eventSubscriber_Exit(t *testing.T) {
 func Test_eventSubscriber_GetType(t *testing.T) {
 	type fields struct {
 		trigger  chan struct{}
-		channels channelCollection
+		channels channelsByUUIDString
 		exit     chan struct{}
 		mx       sync.Mutex
 		esType   Type
@@ -272,7 +272,7 @@ func Test_eventSubscriber_GetType(t *testing.T) {
 func Test_eventSubscriber_LockMutex(t *testing.T) {
 	type fields struct {
 		trigger  chan struct{}
-		channels channelCollection
+		channels channelsByUUIDString
 		exit     chan struct{}
 		mx       sync.Mutex
 		esType   Type

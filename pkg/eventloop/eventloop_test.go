@@ -244,7 +244,7 @@ func TestStartScheduler(t *testing.T) {
 	errG.SetLimit(-1)
 
 	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL})
-	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
+	defer evLoop.RemoveEventByUUIDs(evSched.GetUUID())
 	if neErr != nil {
 		t.Error(neErr)
 	}
@@ -289,7 +289,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	defer cancel()
 
 	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL})
-	defer evLoop.RemoveEventByUUIDs(evSched.GetID())
+	defer evLoop.RemoveEventByUUIDs(evSched.GetUUID())
 	if neErr != nil {
 		t.Error(neErr)
 	}
@@ -365,14 +365,14 @@ func TestRemoveEvent(t *testing.T) {
 		<-execCh
 	}
 
-	t.Log(evLoop.RemoveEventByUUIDs(eventDefault3.GetID(), evSched.GetID(), eventDefault.GetID()))
+	t.Log(evLoop.RemoveEventByUUIDs(eventDefault3.GetUUID(), evSched.GetUUID(), eventDefault.GetUUID()))
 
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, TriggerName)
 	})
 	result, _ := strconv.Atoi(<-execCh)
 
-	evLoop.RemoveEventByUUIDs(eventDefault2.GetID())
+	evLoop.RemoveEventByUUIDs(eventDefault2.GetUUID())
 
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, TriggerName)
@@ -560,7 +560,7 @@ func TestBeforeAfter(t *testing.T) {
 	laEvent, neErr3 := event.NewEvent(afterEventArgs)
 	lbEvent, neErr4 := event.NewEvent(beforeEventArgs)
 
-	defer evLoop.RemoveEventByUUIDs(gaEvent.GetID(), gbEvent.GetID(), laEvent.GetID(), lbEvent.GetID())
+	defer evLoop.RemoveEventByUUIDs(gaEvent.GetUUID(), gbEvent.GetUUID(), laEvent.GetUUID(), lbEvent.GetUUID())
 
 	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil {
 		t.Error(neErr1, neErr2, neErr3, neErr4)

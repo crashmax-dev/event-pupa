@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"eventloop/pkg/eventloop/event"
-	"github.com/google/uuid"
 )
 
 type Interface interface {
@@ -13,8 +12,8 @@ type Interface interface {
 	Toggle(eventFunc ...EventFunction) string
 	// RemoveEventByUUIDs удаляет событие по срезу идентификаторов. Возвращает срез оставшихся событий из запроса, которые
 	// не были удалены
-	RemoveEventByUUIDs(id ...uuid.UUID) []uuid.UUID
+	RemoveEventByUUIDs(UUIDs ...string) []string
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
-	GetAttachedEvents(triggerName string) (result []uuid.UUID, err error)
+	GetAttachedEvents(triggerName string) (result []string, err error)
 	Sync() error
 }

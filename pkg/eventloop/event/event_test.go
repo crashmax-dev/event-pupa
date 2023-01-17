@@ -56,7 +56,7 @@ func deepEqual(one Interface, two Interface) bool {
 		return errors.Is(errors.Unwrap(result1.err), errors.Unwrap(result2.err))
 	}
 
-	if one.GetID() == two.GetID() &&
+	if one.GetUUID() == two.GetUUID() &&
 		one.GetTriggerName() == two.GetTriggerName() &&
 		one.GetPriority() == two.GetPriority() &&
 		isSame(one.After, two.After, "after") &&
@@ -73,7 +73,7 @@ func TestNewEvent(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    Args
-		want    func(id uuid.UUID) Interface
+		want    func(id string) Interface
 		isWant  bool
 		wantErr bool
 	}{
@@ -91,8 +91,8 @@ func TestNewEvent(t *testing.T) {
 			name: "Trigger",
 			args: Args{Fun: testData.F,
 				TriggerName: testData.TRIGGER},
-			want: func(id uuid.UUID) Interface {
-				return &event{id: id, fun: testData.F, triggerName: testData.TRIGGER}
+			want: func(id string) Interface {
+				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER}
 			},
 		},
 		{
@@ -100,8 +100,8 @@ func TestNewEvent(t *testing.T) {
 			args: Args{Fun: testData.F,
 				TriggerName: testData.TRIGGER,
 				IsOnce:      true},
-			want: func(id uuid.UUID) Interface {
-				return &event{id: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce()}
+			want: func(id string) Interface {
+				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce()}
 			},
 		},
 		{
@@ -110,8 +110,8 @@ func TestNewEvent(t *testing.T) {
 				TriggerName:  testData.TRIGGER,
 				IsOnce:       true,
 				IntervalTime: time.Minute},
-			want: func(id uuid.UUID) Interface {
-				return &event{id: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
+			want: func(id string) Interface {
+				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
 					interval: interval.NewIntervalEvent(time.Minute)}
 			},
 		},
@@ -122,8 +122,8 @@ func TestNewEvent(t *testing.T) {
 				IsOnce:        true,
 				IntervalTime:  time.Minute,
 				DateAfterArgs: testData.Daa},
-			want: func(id uuid.UUID) Interface {
-				return &event{id: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
+			want: func(id string) Interface {
+				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
 					interval: interval.NewIntervalEvent(time.Minute), after: after.New(testData.Daa)}
 			},
 		},
@@ -135,8 +135,8 @@ func TestNewEvent(t *testing.T) {
 				IntervalTime:  time.Minute,
 				DateAfterArgs: testData.Daa,
 				subscriber:    subscriber.Trigger},
-			want: func(id uuid.UUID) Interface {
-				return &event{id: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
+			want: func(id string) Interface {
+				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
 					interval: interval.NewIntervalEvent(time.Minute), after: after.New(testData.Daa),
 					subscriber: subscriber.NewTriggerEvent()}
 			},
@@ -153,7 +153,7 @@ func TestNewEvent(t *testing.T) {
 				t.Errorf("NewEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if want := tt.want(got.GetID()); deepEqual(got, want) == false {
+			if want := tt.want(got.GetUUID()); deepEqual(got, want) == false {
 				t.Errorf("NewEvent() got = %v,\n want %v", got, want)
 			}
 		})
@@ -162,12 +162,12 @@ func TestNewEvent(t *testing.T) {
 
 func Test_event_After(t *testing.T) {
 	var (
-		id  = uuid.New()
+		id  = uuid.NewString()
 		aft = after.New(testData.Daa)
 	)
 
 	type fields struct {
-		id    uuid.UUID
+		id    string
 		fun   Func
 		after after.Interface
 	}
@@ -191,7 +191,7 @@ func Test_event_After(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ev := &event{
-				id:    tt.fields.id,
+				uuid:  tt.fields.id,
 				fun:   tt.fields.fun,
 				after: tt.fields.after,
 			}
@@ -208,15 +208,15 @@ func Test_event_After(t *testing.T) {
 }
 
 func Test_event_GetID(t *testing.T) {
-	var id = uuid.New()
+	var id = uuid.NewString()
 
 	type fields struct {
-		id uuid.UUID
+		id string
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   uuid.UUID
+		want   string
 	}{
 		{
 			"Default",
@@ -227,10 +227,10 @@ func Test_event_GetID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ev := &event{
-				id: tt.fields.id,
+				uuid: tt.fields.id,
 			}
-			if got := ev.GetID(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetID() = %v, want %v", got, tt.want)
+			if got := ev.GetUUID(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetUUID() = %v, want %v", got, tt.want)
 			}
 		})
 	}

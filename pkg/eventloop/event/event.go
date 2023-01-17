@@ -41,7 +41,7 @@ type Args struct {
 }
 
 type event struct {
-	id          uuid.UUID
+	uuid        string
 	triggerName string
 	priority    int
 	fun         Func
@@ -71,7 +71,7 @@ func NewEvent(args Args) (Interface, error) {
 		return nil, errors.New("no event type, event will never trigger")
 	}
 
-	newEvent := &event{id: uuid.New(),
+	newEvent := &event{uuid: uuid.NewString(),
 		fun:         args.Fun,
 		triggerName: args.TriggerName,
 		priority:    args.Priority}
@@ -96,8 +96,8 @@ func NewEvent(args Args) (Interface, error) {
 	return newEvent, nil
 }
 
-func (ev *event) GetID() uuid.UUID {
-	return ev.id
+func (ev *event) GetUUID() string {
+	return ev.uuid
 }
 
 func (ev *event) GetTypes() (out []Type) {
@@ -130,13 +130,13 @@ func (ev *event) GetPriority() int {
 func (ev *event) RunFunction(ctx context.Context) {
 	logger := ctx.Value(internal.LOGGER_CTX_KEY).(loggerEventLoop.Interface)
 
-	logger.Debugw("Run event function", "eventId", ev.id)
+	logger.Debugw("Run event function", "eventId", ev.uuid)
 	ev.result = ev.fun(ctx)
 	defer internal.WriteToExecCh(ctx, ev.result)
 
 	// Активация горутины этого триггера
 	if subber, err := ev.Subscriber(); err == nil && subber.GetType() == subscriber.Trigger {
-		logger.Debugw("Activating trigger goroutine", "eventId", ev.id)
+		logger.Debugw("Activating trigger goroutine", "eventId", ev.uuid)
 		subber.ChanTrigger() <- struct{}{}
 	}
 }

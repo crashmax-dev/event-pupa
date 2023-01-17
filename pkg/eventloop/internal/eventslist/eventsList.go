@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 )
 
@@ -20,32 +19,32 @@ func New() Interface {
 
 func (el *eventsList) EventName(triggerName string) Priority {
 	if el.priorities[triggerName] == nil {
-		el.priorities[triggerName] = make(map[int]EventsByUuidString)
+		el.priorities[triggerName] = make(map[int]EventsByUUIDString)
 	}
 	result := el.priorities[triggerName]
 	return &result
 }
 
 // GetEventIdsByName возвращает из eventloop список айдишек событий, повешенных на событие eventName
-func (el *eventsList) GetEventIdsByTriggerName(triggerName string) (result []uuid.UUID, err error) {
+func (el *eventsList) GetEventIdsByTriggerName(triggerName string) (result []string, err error) {
 	pl := el.priorities[triggerName]
 	if pl.Len() == 0 {
 		return nil, fmt.Errorf("no such event name: %v", triggerName)
 	}
 	for _, priors := range el.priorities[triggerName] {
 		for _, evnt := range priors {
-			result = append(result, evnt.GetID())
+			result = append(result, evnt.GetUUID())
 		}
 	}
 	return result, nil
 }
 
-func (eil *EventsByUuidString) iterateDeletionEvents(ids []uuid.UUID) []uuid.UUID {
+func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) []string {
 	for id, ev := range *eil {
-		if index := slices.Index(ids, ev.GetID()); index != -1 {
+		if index := slices.Index(uuids, ev.GetUUID()); index != -1 {
 			delete(*eil, id)
-			ids[index] = ids[len(ids)-1]
-			ids = ids[:len(ids)-1]
+			uuids[index] = uuids[len(uuids)-1]
+			uuids = uuids[:len(uuids)-1]
 
 			if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
 				intervalComp.GetQuitChannel() <- true
@@ -59,32 +58,32 @@ func (eil *EventsByUuidString) iterateDeletionEvents(ids []uuid.UUID) []uuid.UUI
 				sub.Exit() <- struct{}{}
 			}
 
-			if len(ids) == 0 {
-				return ids
+			if len(uuids) == 0 {
+				return uuids
 			}
 		}
 	}
-	return ids
+	return uuids
 }
 
-func (pl *priorityList) iterateDeletionPriorities(ids []uuid.UUID) []uuid.UUID {
+func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
 	for priorKey, priorValue := range *pl {
-		if modIds := priorValue.iterateDeletionEvents(ids); len(modIds) != len(ids) {
+		if modIds := priorValue.iterateDeletionEvents(uuids); len(modIds) != len(uuids) {
 			if len(priorValue) == 0 {
 				delete(*pl, priorKey)
 			}
-			ids = modIds
-			if len(ids) == 0 {
-				return ids
+			uuids = modIds
+			if len(uuids) == 0 {
+				return uuids
 			}
 		}
 	}
-	return ids
+	return uuids
 }
 
 // RemoveEventByUUIDs удаляет события. Возвращает пустой срез, если всё удалено, или срез айдишек, которые не были
 // найдены и не удалены.
-func (el *eventsList) RemoveEventByUUIDs(ids ...uuid.UUID) []uuid.UUID {
+func (el *eventsList) RemoveEventByUUIDs(ids ...string) []string {
 	el.mx.Lock()
 	defer el.mx.Unlock()
 	for eventNameKey, eventNameValue := range el.priorities {
