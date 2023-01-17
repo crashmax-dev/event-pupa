@@ -15,7 +15,7 @@ type Interface interface {
 }
 
 type InterfaceSubChannels interface {
-	IsCLosed() bool
+	IsClosed() bool
 	SetIsClosed()
 	GetInfoCh() chan SubChInfo
 }

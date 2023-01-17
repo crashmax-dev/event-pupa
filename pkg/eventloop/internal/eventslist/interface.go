@@ -8,7 +8,7 @@ import (
 type Interface interface {
 	EventName(eventName string) Priority
 	RemoveEventByUUIDs(ids ...uuid.UUID) []uuid.UUID
-	GetEventIdsByName(eventName string) (result []uuid.UUID, err error)
+	GetEventIdsByTriggerName(triggerName string) (result []uuid.UUID, err error)
 }
 
 type Priority interface {
