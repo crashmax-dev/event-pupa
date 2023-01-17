@@ -20,7 +20,7 @@ func New() Interface {
 
 func (el *eventsList) EventName(triggerName string) Priority {
 	if el.priorities[triggerName] == nil {
-		el.priorities[triggerName] = make(map[int]EventIdsList)
+		el.priorities[triggerName] = make(map[int]EventsByUuidString)
 	}
 	result := el.priorities[triggerName]
 	return &result
@@ -40,10 +40,10 @@ func (el *eventsList) GetEventIdsByTriggerName(triggerName string) (result []uui
 	return result, nil
 }
 
-func (eil *EventIdsList) iterateEvents(ids []uuid.UUID) []uuid.UUID {
-	for eventIDKey, eventIDValue := range *eil {
-		if index := slices.Index(ids, eventIDValue.GetID()); index != -1 {
-			delete(*eil, eventIDKey)
+func (eil *EventsByUuidString) iterateDeletionEvents(ids []uuid.UUID) []uuid.UUID {
+	for id, ev := range *eil {
+		if index := slices.Index(ids, ev.GetID()); index != -1 {
+			delete(*eil, id)
 			ids[index] = ids[len(ids)-1]
 			ids = ids[:len(ids)-1]
 

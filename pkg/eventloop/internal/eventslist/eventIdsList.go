@@ -1,17 +1,19 @@
 package eventslist
 
-import "eventloop/pkg/eventloop/event"
+import (
+	"eventloop/pkg/eventloop/event"
+)
 
-type EventIdsList map[string]event.Interface
+type EventsByUuidString map[string]event.Interface
 
-func (eil *EventIdsList) List() EventIdsList {
+func (eil *EventsByUuidString) List() EventsByUuidString {
 	return *eil
 }
 
-func (eil *EventIdsList) AddEvent(newEvent event.Interface) {
+func (eil *EventsByUuidString) AddEvent(newEvent event.Interface) {
 	(*eil)[newEvent.GetID().String()] = newEvent
 }
 
-func (eil *EventIdsList) EventID(eventID string) event.Interface {
-	return (*eil)[eventID]
+func (eil *EventsByUuidString) EventID(eventUuidString string) event.Interface {
+	return (*eil)[eventUuidString]
 }
