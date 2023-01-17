@@ -62,7 +62,7 @@ func TestNew(t *testing.T) {
 			got := New(tt.args)
 			tt.want = &eventAfter{date: DateAfterArgs{Date: currentDate, IsRelative: true},
 				breakCh: got.GetBreakChannel()}
-			if got.IsDone() != tt.want.IsDone() && got.GetDuration() != tt.want.GetDuration() && got.GetBreakChannel() != got.GetBreakChannel() {
+			if got.IsDone() != tt.want.IsDone() || got.GetDuration() != tt.want.GetDuration() || got.GetBreakChannel() != got.GetBreakChannel() {
 				t.Errorf("New() = %v, want %v", got, tt.want)
 			}
 		})
