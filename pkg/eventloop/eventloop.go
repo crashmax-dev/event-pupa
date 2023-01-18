@@ -43,7 +43,6 @@ func NewEventLoop(level string) Interface {
 	if err != nil {
 		fmt.Printf("logger init error: %v", err)
 	}
-
 	return &eventLoop{
 		mx:     &sync.RWMutex{},
 		events: eventslist.New(),
@@ -55,37 +54,36 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 	newEvents ...event.Interface) (errReturn error) {
 	e.mx.Lock()
 	defer e.mx.Unlock()
-
 	for _, evnt := range newEvents {
 		if ctxErr := e.checkContext(ctx, "can't register event, context is done",
 			"events", evnt.GetUUID(),
 			"trigger", evnt.GetTriggerName()); ctxErr != nil {
 			internal.WriteToExecCh(ctx, "")
-			errReturn = fmt.Errorf("%w, %v", errReturn, ctxErr)
+			errReturn = internal.WrapError(errReturn, ctxErr)
 			continue
 		}
-
 		// Если выключено добавление - не добавляем
 		if slices.Contains(e.disabled, REGISTER) {
 			errStr := "register disabled, can't register event"
 			e.logger.Warnw(errStr,
 				"event", evnt.GetUUID())
 			internal.WriteToExecCh(ctx, "")
-			errReturn = fmt.Errorf("%w, %v", errReturn, errStr)
+			errReturn = internal.WrapError(errReturn, errors.New(errStr))
 			continue
 		}
 
 		// ON
 		if triggerName := evnt.GetTriggerName(); triggerName != "" {
+			fmt.Println("OK TRIGGER ", triggerName)
 			if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
+				fmt.Println("OK3")
 				errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
 				e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
 				internal.WriteToExecCh(ctx, "")
-				errReturn = fmt.Errorf("%w, %v", errReturn, errStr)
+				errReturn = internal.WrapError(errReturn, errors.New(errStr))
 				continue
 			}
 			e.addEvent(evnt.GetTriggerName(), evnt)
-
 			e.logger.Debugw("Event added", "triggerName", evnt.GetTriggerName(), "eventId",
 				evnt.GetUUID())
 		} else if intervalComp, intervalErr := evnt.Interval(); intervalErr == nil { // INTERVAL
@@ -97,10 +95,11 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 				"eventId",
 				evnt.GetUUID())
 		} else {
+			fmt.Println("OK2")
 			errStr := "event must be at least ON, INTERVAL or AFTER"
 			errNew := fmt.Errorf(errStr)
 			e.logger.Debugw(errStr, "eventId", evnt.GetUUID())
-			errReturn = fmt.Errorf("%w, %v", errReturn, errNew)
+			errReturn = internal.WrapError(errReturn, errNew)
 			continue
 		}
 

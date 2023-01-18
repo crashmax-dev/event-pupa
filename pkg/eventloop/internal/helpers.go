@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
@@ -27,4 +28,11 @@ func WriteToExecCh(ctx context.Context, result string) {
 	if ch := ctx.Value(EXEC_CH_CTX_KEY); ch != nil {
 		ch.(chan string) <- result
 	}
+}
+
+func WrapError(dest error, source error) error {
+	if dest == nil {
+		return source
+	}
+	return fmt.Errorf("%w, %v", dest, source)
 }
