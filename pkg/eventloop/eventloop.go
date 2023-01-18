@@ -51,19 +51,18 @@ func NewEventLoop(level string) Interface {
 	}
 }
 
-func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interface) error {
-	// var eventsAdded = make([]event.Interface, len(newEvents))
-
+func (e *eventLoop) RegisterEvent(ctx context.Context,
+	newEvents ...event.Interface) (errReturn error) {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
 	for _, evnt := range newEvents {
-		// TODO: выводить в логгер ивенты, неуспевшие зарегистрироваться и успевшие тоже
 		if ctxErr := e.checkContext(ctx, "can't register event, context is done",
 			"events", evnt.GetUUID(),
 			"trigger", evnt.GetTriggerName()); ctxErr != nil {
 			internal.WriteToExecCh(ctx, "")
-			return ctxErr
+			errReturn = fmt.Errorf("%w, %v", errReturn, ctxErr)
+			continue
 		}
 
 		// Если выключено добавление - не добавляем
@@ -72,7 +71,8 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 			e.logger.Warnw(errStr,
 				"event", evnt.GetUUID())
 			internal.WriteToExecCh(ctx, "")
-			return errors.New(errStr)
+			errReturn = fmt.Errorf("%w, %v", errReturn, errStr)
+			continue
 		}
 
 		// ON
@@ -81,7 +81,8 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 				errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
 				e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
 				internal.WriteToExecCh(ctx, "")
-				return errors.New(errStr)
+				errReturn = fmt.Errorf("%w, %v", errReturn, errStr)
+				continue
 			}
 			e.addEvent(evnt.GetTriggerName(), evnt)
 
@@ -96,12 +97,16 @@ func (e *eventLoop) RegisterEvent(ctx context.Context, newEvents ...event.Interf
 				"eventId",
 				evnt.GetUUID())
 		} else {
-			return errors.New("event must be at least ON, INTERVAL or AFTER")
+			errStr := "event must be at least ON, INTERVAL or AFTER"
+			errNew := fmt.Errorf(errStr)
+			e.logger.Debugw(errStr, "eventId", evnt.GetUUID())
+			errReturn = fmt.Errorf("%w, %v", errReturn, errNew)
+			continue
 		}
 
 		internal.WriteToExecCh(ctx, "")
 	}
-	return nil
+	return errReturn
 }
 
 // Subscribe подписывает список событий listeners на список событий triggers. Само событие триггерится с помощью Trigger/
