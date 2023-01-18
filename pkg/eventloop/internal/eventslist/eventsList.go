@@ -3,8 +3,6 @@ package eventslist
 import (
 	"fmt"
 	"sync"
-
-	"golang.org/x/exp/slices"
 )
 
 type eventsList struct {
@@ -17,6 +15,7 @@ func New() Interface {
 	return &result
 }
 
+// EventName
 func (el *eventsList) EventName(triggerName string) Priority {
 	if el.priorities[triggerName] == nil {
 		el.priorities[triggerName] = make(map[int]EventsByUUIDString)
@@ -29,7 +28,7 @@ func (el *eventsList) EventName(triggerName string) Priority {
 func (el *eventsList) GetEventIdsByTriggerName(triggerName string) (result []string, err error) {
 	pl := el.priorities[triggerName]
 	if pl.Len() == 0 {
-		return nil, fmt.Errorf("no such event name: %v", triggerName)
+		return nil, fmt.Errorf("no such trigger name: %v", triggerName)
 	}
 	for _, priors := range el.priorities[triggerName] {
 		for _, evnt := range priors {
