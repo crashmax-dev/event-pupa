@@ -38,31 +38,29 @@ func (el *eventsList) GetEventIdsByTriggerName(triggerName string) (result []str
 	return result, nil
 }
 
-func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) []string {
-	for id, ev := range *eil {
-		if index := slices.Index(uuids, ev.GetUUID()); index != -1 {
-			delete(*eil, id)
-			uuids[index] = uuids[len(uuids)-1]
-			uuids = uuids[:len(uuids)-1]
+func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings []string) {
+	remainings = uuids[:0]
+	for _, id := range uuids {
+		ev := eil.EventID(id)
+		if ev == nil {
+			remainings = append(remainings, id)
+			continue
+		}
+		delete(*eil, id)
 
-			if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
-				intervalComp.GetQuitChannel() <- true
-			}
+		if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
+			intervalComp.GetQuitChannel() <- true
+		}
 
-			if afterComp, afterErr := ev.After(); afterErr == nil {
-				afterComp.GetBreakChannel() <- true
-			}
+		if afterComp, afterErr := ev.After(); afterErr == nil {
+			afterComp.GetBreakChannel() <- true
+		}
 
-			if sub, subErr := ev.Subscriber(); subErr == nil {
-				sub.Exit() <- struct{}{}
-			}
-
-			if len(uuids) == 0 {
-				return uuids
-			}
+		if sub, subErr := ev.Subscriber(); subErr == nil {
+			sub.Exit() <- struct{}{}
 		}
 	}
-	return uuids
+	return remainings
 }
 
 func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
