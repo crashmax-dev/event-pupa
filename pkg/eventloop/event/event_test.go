@@ -97,7 +97,7 @@ func TestNewEvent(t *testing.T) {
 		},
 		{
 			name: "Listener",
-			args: Args{Fun: testData.F, subscriber: subscriber.Listener},
+			args: Args{Fun: testData.F, Subscriber: subscriber.Listener},
 			want: func(id string) Interface {
 				return &event{uuid: id, fun: testData.F,
 					subscriber: subscriber.NewSubscriberEvent()}
@@ -126,10 +126,10 @@ func TestNewEvent(t *testing.T) {
 		{
 			name: "Trigger+Once+Interval+After",
 			args: Args{Fun: testData.F,
-				TriggerName:   testData.TRIGGER,
-				IsOnce:        true,
-				IntervalTime:  time.Minute,
-				DateAfterArgs: testData.Daa},
+				TriggerName:  testData.TRIGGER,
+				IsOnce:       true,
+				IntervalTime: time.Minute,
+				DateAfter:    testData.Daa},
 			want: func(id string) Interface {
 				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
 					interval: interval.NewIntervalEvent(time.Minute), after: after.New(testData.Daa)}
@@ -138,11 +138,11 @@ func TestNewEvent(t *testing.T) {
 		{
 			name: "Trigger+Once+Interval+After+Subscriber",
 			args: Args{Fun: testData.F,
-				TriggerName:   testData.TRIGGER,
-				IsOnce:        true,
-				IntervalTime:  time.Minute,
-				DateAfterArgs: testData.Daa,
-				subscriber:    subscriber.Trigger},
+				TriggerName:  testData.TRIGGER,
+				IsOnce:       true,
+				IntervalTime: time.Minute,
+				DateAfter:    testData.Daa,
+				Subscriber:   subscriber.Trigger},
 			want: func(id string) Interface {
 				return &event{uuid: id, fun: testData.F, triggerName: testData.TRIGGER, once: once.NewOnce(),
 					interval: interval.NewIntervalEvent(time.Minute), after: after.New(testData.Daa),
