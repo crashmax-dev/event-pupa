@@ -19,6 +19,7 @@ func (pl *priorityList) Len() int {
 	return len(*pl)
 }
 
+// GetKeys выводит все приоритеты по возрастанию
 func (pl *priorityList) GetKeys() (keys []int) {
 	keys = maps.Keys(*pl)
 	slices.Sort(keys)
