@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -98,6 +99,36 @@ func TestWriteToExecCh(t *testing.T) {
 			}
 			if result != tt.want {
 				t.Errorf("RemoveSliceItemByIndex() = %v, want %v", result, tt.want)
+			}
+		})
+	}
+}
+
+func TestWrapError(t *testing.T) {
+	type args struct {
+		dest   error
+		source error
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Default",
+			args: args{dest: errors.New("Dest"), source: errors.New("Source")},
+			want: "Dest, Source",
+		},
+		{
+			name: "Source nil",
+			args: args{dest: nil, source: errors.New("Source")},
+			want: "Source",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := WrapError(tt.args.dest, tt.args.source); err.Error() != tt.want {
+				t.Errorf("WrapError() error = %v, wantErr %v", err, tt.want)
 			}
 		})
 	}
