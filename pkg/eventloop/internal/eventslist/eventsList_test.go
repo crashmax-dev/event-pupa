@@ -5,8 +5,11 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/event/after"
+	"eventloop/pkg/eventloop/event/subscriber"
 )
 
 func TestEventIdsList_AddEvent(t *testing.T) {
@@ -108,16 +111,22 @@ func TestEventIdsList_iterateDeletionEvents(t *testing.T) {
 		ev, _ = event.NewEvent(event.Args{Fun: func(ctx context.Context) string {
 			return ""
 		}, TriggerName: "TRIGGER"})
+		evChannelled, _ = event.NewEvent(event.Args{Fun: func(ctx context.Context) string {
+			return ""
+		}, DateAfter: after.DateAfterArgs{Date: time.Now().Add(time.
+			Minute)}, Subscriber: subscriber.Listener, IntervalTime: time.Minute})
 	)
 	type args struct {
 		ids []string
 	}
 	tests := []struct {
-		name       string
-		eil        EventsByUUIDString
-		args       args
-		wantResult []string
-		want       EventsByUUIDString
+		name            string
+		eil             EventsByUUIDString
+		args            args
+		wantResult      []string
+		want            EventsByUUIDString
+		init            func(container EventsByUUIDString, id string)
+		initContainerId string
 	}{
 		{
 			name:       "Empty with index",
@@ -139,6 +148,37 @@ func TestEventIdsList_iterateDeletionEvents(t *testing.T) {
 			args:       args{ids: []string{"1"}},
 			wantResult: []string{},
 			want:       EventsByUUIDString{},
+		},
+		{
+			name:       "Single",
+			eil:        EventsByUUIDString{"1": ev},
+			args:       args{ids: []string{"1"}},
+			wantResult: []string{},
+			want:       EventsByUUIDString{},
+		},
+		{
+			name:            "Single After+Subscriber",
+			eil:             EventsByUUIDString{"1": evChannelled},
+			args:            args{ids: []string{"1"}},
+			wantResult:      []string{},
+			want:            EventsByUUIDString{},
+			initContainerId: "1",
+			init: func(container EventsByUUIDString, id string) {
+				evnt := container[id]
+				interval, _ := evnt.Interval()
+				interval.SetRunning(true)
+				go func() {
+					sub, _ := evnt.Subscriber()
+					<-sub.Exit()
+				}()
+				go func() {
+					aft, _ := evnt.After()
+					<-aft.GetBreakChannel()
+				}()
+				go func() {
+					<-interval.GetQuitChannel()
+				}()
+			},
 		},
 		{
 			name:       "First of two",
@@ -178,6 +218,9 @@ func TestEventIdsList_iterateDeletionEvents(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.init != nil {
+				tt.init(tt.eil, tt.initContainerId)
+			}
 			if got := tt.eil.iterateDeletionEvents(tt.args.ids); !reflect.DeepEqual(got,
 				tt.wantResult) || !reflect.DeepEqual(tt.want, tt.eil) {
 				t.Errorf("iterateDeletionEvents() = %v, wantResult %v;\nmodified container %v, "+
