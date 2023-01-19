@@ -80,19 +80,19 @@ func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
 
 // RemoveEventByUUIDs удаляет события. Возвращает пустой срез, если всё удалено, или срез айдишек, которые не были
 // найдены и не удалены.
-func (el *eventsList) RemoveEventByUUIDs(ids ...string) []string {
+func (el *eventsList) RemoveEventByUUIDs(uuids ...string) []string {
 	el.mx.Lock()
 	defer el.mx.Unlock()
 	for eventNameKey, eventNameValue := range el.priorities {
-		if modIds := eventNameValue.iterateDeletionPriorities(ids); len(modIds) != len(ids) {
+		if modIds := eventNameValue.iterateDeletionPriorities(uuids); len(modIds) != len(uuids) {
 			if len(eventNameValue) == 0 {
 				delete(el.priorities, eventNameKey)
 			}
-			ids = modIds
-			if len(ids) == 0 {
-				return ids
+			uuids = modIds
+			if len(uuids) == 0 {
+				return uuids
 			}
 		}
 	}
-	return ids
+	return uuids
 }
