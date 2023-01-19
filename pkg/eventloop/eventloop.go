@@ -112,7 +112,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 // В случае передачи контекста с дедлайном или таймаутом, если контекст ещё живой, подписанные события всё равно
 // выполнятся один раз в случае триггера.
 func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error {
-	subCtx := context.WithValue(ctx, internal.LOGGER_CTX_KEY, e.logger)
+	subCtx := loggerEventLoop.WithLogger(ctx, e.logger)
 
 	defer internal.WriteToExecCh(ctx, "")
 
@@ -235,7 +235,7 @@ func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
 // В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова
 // нужно создавать новый channelEx
 func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
-	triggerCtx := context.WithValue(ctx, internal.LOGGER_CTX_KEY, e.logger)
+	triggerCtx := loggerEventLoop.WithLogger(ctx, e.logger)
 
 	var deferErr error
 
