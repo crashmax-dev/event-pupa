@@ -128,7 +128,7 @@ func (ev *event) GetPriority() int {
 }
 
 func (ev *event) RunFunction(ctx context.Context) {
-	logger := ctx.Value(internal.LOGGER_CTX_KEY).(loggerEventLoop.Interface)
+	logger := loggerEventLoop.FromContext(ctx)
 
 	logger.Debugw("Run event function", "eventId", ev.uuid)
 	ev.result = ev.fun(ctx)

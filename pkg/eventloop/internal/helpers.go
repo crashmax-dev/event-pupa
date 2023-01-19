@@ -9,7 +9,6 @@ import (
 type eventLoopContextKey string
 
 const (
-	LOGGER_CTX_KEY  eventLoopContextKey = "logger"
 	EXEC_CH_CTX_KEY eventLoopContextKey = "execCh"
 )
 
