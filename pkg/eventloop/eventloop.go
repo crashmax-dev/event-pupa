@@ -329,11 +329,11 @@ func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
 		}
 		// Включение
 		if x := slices.Index(e.disabled, v); x != -1 {
-			result += fmt.Sprintf("Enabling function %v", v)
+			result += fmt.Sprintf("Enabling %v", v)
 			e.logger.Info(result)
 			e.disabled = internal.RemoveSliceItemByIndex(e.disabled, x)
 		} else { // Выключение
-			result += fmt.Sprintf("Disabling function %v", v)
+			result += fmt.Sprintf("Disabling %v", v)
 			e.logger.Info(result)
 			e.disabled = append(e.disabled, v)
 		}
