@@ -393,7 +393,6 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 			}(ev)
 
 		case <-exitChan:
-			fmt.Println("Boom")
 			return
 		}
 	}
