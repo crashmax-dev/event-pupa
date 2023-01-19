@@ -8,6 +8,8 @@ type Interface interface {
 	ChanTrigger() chan struct{}
 	Exit() chan struct{}
 	GetType() Type
+	IsRunning() bool
+	SetIsRunning(b bool)
 }
 
 type InterfaceSubChannels interface {

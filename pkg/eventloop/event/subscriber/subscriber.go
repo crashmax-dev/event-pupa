@@ -22,7 +22,8 @@ const (
 
 // eventSubscriber - событие, которое триггерит другие события и/или триггерится само по другим событиям.
 type eventSubscriber struct {
-	trigger chan struct{}
+	trigger   chan struct{}
+	isRunning bool
 
 	channels channelsByUUIDString
 	exit     chan struct{}
@@ -71,4 +72,12 @@ func (ev *eventSubscriber) Exit() chan struct{} {
 
 func (ev *eventSubscriber) GetType() Type {
 	return ev.esType
+}
+
+func (ev *eventSubscriber) IsRunning() bool {
+	return ev.isRunning
+}
+
+func (ev *eventSubscriber) SetIsRunning(b bool) {
+	ev.isRunning = b
 }

@@ -159,9 +159,18 @@ func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 		channels        = subComponent.Channels()
 	)
 
+	if subComponent.IsRunning() {
+		return
+	}
+	subComponent.SetIsRunning(true)
+
 	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
 	for {
 		i := len(channels)
+		if i == 0 {
+			subComponent.SetIsRunning(false)
+			return
+		}
 		subComponent.LockMutex()
 		for id, ch := range channels {
 			select {
@@ -169,6 +178,7 @@ func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 				for _, closeCh := range channels {
 					closeCh.SetIsClosed()
 				}
+				subComponent.SetIsRunning(false)
 				return
 			case <-ch.GetInfoCh():
 				if ch.IsClosed() {
@@ -198,6 +208,12 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 		channels        = subComponent.Channels()
 	)
 
+	if subComponent.IsRunning() {
+		return
+	}
+
+	subComponent.SetIsRunning(true)
+
 	exitChan := isEventDone(ctx, subComponent.Exit(), e.logger)
 	e.logger.Debugw("Runner trigger started", "eventId", v.GetUUID())
 	for {
@@ -206,6 +222,7 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 			for _, closeCh := range channels {
 				closeCh.SetIsClosed()
 			}
+			subComponent.SetIsRunning(false)
 			return
 		case <-subComponent.ChanTrigger():
 			e.logger.Debugw("TriggerEvent activated", "eventId", v.GetUUID())
