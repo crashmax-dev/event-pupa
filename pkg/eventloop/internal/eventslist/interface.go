@@ -5,7 +5,7 @@ import (
 )
 
 type Interface interface {
-	EventName(eventName string) Priority
+	TriggerName(triggerName string) Priority
 	RemoveEventByUUIDs(uuids ...string) []string
 	GetEventIdsByTriggerName(triggerName string) (result []string, err error)
 }

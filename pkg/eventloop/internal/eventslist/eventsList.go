@@ -16,7 +16,7 @@ func New() Interface {
 }
 
 // EventName
-func (el *eventsList) EventName(triggerName string) Priority {
+func (el *eventsList) TriggerName(triggerName string) Priority {
 	if el.priorities[triggerName] == nil {
 		el.priorities[triggerName] = make(map[int]EventsByUUIDString)
 	}

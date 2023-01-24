@@ -244,7 +244,7 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 }
 
 func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
-	e.events.EventName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
+	e.events.TriggerName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
 }
 
 // Trigger вызывает событие с определённым triggerName. Функция ждёт выполнения всех добавленных на событие функций,
@@ -279,16 +279,16 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	e.logger.Infow("ChanTrigger event", "triggerName", triggerName)
 
 	// Run before global events
-	e.triggerEventFuncList(triggerCtx, e.events.EventName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())
 
 	// Run before events
-	e.triggerEventFuncList(triggerCtx, e.events.EventName(triggerName).Priority(BEFORE_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(triggerName).Priority(BEFORE_PRIORITY).List())
 
-	keys := e.events.EventName(triggerName).GetKeys()
+	keys := e.events.TriggerName(triggerName).GetKeys()
 	if priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0 {
 		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
 			priority := keys[priorIndex]
-			for _, loopevent := range e.events.EventName(triggerName).Priority(priority).List() {
+			for _, loopevent := range e.events.TriggerName(triggerName).Priority(priority).List() {
 				e.logger.Debugw("Start runFunc goroutine", "eventId", loopevent.GetUUID())
 				go e.triggerEventFunc(triggerCtx, loopevent)
 
@@ -304,10 +304,10 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	}
 
 	// Run after global events
-	e.triggerEventFuncList(triggerCtx, e.events.EventName(string(AFTER_TRIGGER)).Priority(AFTER_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(string(AFTER_TRIGGER)).Priority(AFTER_PRIORITY).List())
 
 	// Run after events
-	e.triggerEventFuncList(triggerCtx, e.events.EventName(triggerName).Priority(AFTER_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(triggerName).Priority(AFTER_PRIORITY).List())
 
 	return deferErr
 }

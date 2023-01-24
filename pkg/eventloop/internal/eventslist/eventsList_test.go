@@ -277,7 +277,7 @@ func Test_eventsList_EventName(t *testing.T) {
 			name:   "No priority",
 			fields: fields{priorities: make(map[string]priorityList)},
 			args:   args{eventName: "BIBA"},
-			want:   &priorityList{},
+			want:   &emptyList,
 		},
 	}
 	for _, tt := range tests { //nolint:govet
@@ -286,14 +286,14 @@ func Test_eventsList_EventName(t *testing.T) {
 				priorities: tt.fields.priorities,
 				mx:         tt.fields.mx, //nolint:govet
 			}
-			if got := el.EventName(tt.args.eventName); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("EventName() = %v, wantResult %v", got, tt.want)
+			if got := el.TriggerName(tt.args.eventName); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TriggerName() = %v, wantResult %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_eventsList_GetEventIdsByName(t *testing.T) {
+func Test_priorityList_GetAllEvents(t *testing.T) {
 	var (
 		ev, _ = event.NewEvent(event.Args{Fun: func(ctx context.Context) string {
 			return ""
@@ -307,7 +307,7 @@ func Test_eventsList_GetEventIdsByName(t *testing.T) {
 		mx         sync.Mutex
 	}
 	type args struct {
-		eventName string
+		triggerName string
 	}
 	tests := []struct {
 		name       string
@@ -335,7 +335,7 @@ func Test_eventsList_GetEventIdsByName(t *testing.T) {
 			fields:     fields{priorities: container},
 			args:       args{"TRIG3"},
 			wantResult: nil,
-			wantErr:    false,
+			wantErr:    true,
 		},
 	}
 	for _, tt := range tests { //nolint:govet
@@ -344,7 +344,7 @@ func Test_eventsList_GetEventIdsByName(t *testing.T) {
 				priorities: tt.fields.priorities,
 				mx:         tt.fields.mx, //nolint:govet
 			}
-			gotResult, err := el.GetEventIdsByTriggerName(tt.args.eventName)
+			gotResult, err := el.TriggerName(tt.args.triggerName).GetAllEvents()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetEventIdsByTriggerName() error = %v, wantErr %v", err, tt.wantErr)
 				return
