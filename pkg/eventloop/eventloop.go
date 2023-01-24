@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"eventloop/internal/logger"
+	"eventloop/internal/loggerImplementation"
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"eventloop/pkg/eventloop/internal"
@@ -39,7 +39,7 @@ type eventLoop struct {
 // Для level рекомендуются DebugLevel для Dev, и ErrorLevel для Prod. Можно указать любой уровень, он нормализуется в
 // Debug и Error, в зависимости от велчины уровня.
 func NewEventLoop(level string) Interface {
-	elLogger, err := logger.NewLogger(level, "logs", "")
+	elLogger, err := loggerImplementation.NewLogger(level, "logs", "")
 	if err != nil {
 		fmt.Printf("logger init error: %v", err)
 	}

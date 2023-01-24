@@ -4,30 +4,30 @@ import (
 	"time"
 )
 
-// eventInterval - событие, запускаемое с определённым интервалом. Имеет собственный канал, с помощью которого можно
+// component - событие, запускаемое с определённым интервалом. Имеет собственный канал, с помощью которого можно
 // прервать работу события.
-type eventInterval struct {
+type component struct {
 	interval  time.Duration
 	isRunning bool
 	quit      chan bool
 }
 
 func NewIntervalEvent(interval time.Duration) Interface {
-	return &eventInterval{interval: interval, quit: make(chan bool)}
+	return &component{interval: interval, quit: make(chan bool)}
 }
 
-func (e *eventInterval) GetDuration() time.Duration {
+func (e *component) GetDuration() time.Duration {
 	return e.interval
 }
 
-func (e *eventInterval) GetQuitChannel() chan bool {
+func (e *component) GetQuitChannel() chan bool {
 	return e.quit
 }
 
-func (e *eventInterval) IsRunning() bool {
+func (e *component) IsRunning() bool {
 	return e.isRunning
 }
 
-func (e *eventInterval) SetRunning(run bool) {
+func (e *component) SetRunning(run bool) {
 	e.isRunning = run
 }

@@ -113,7 +113,7 @@ func TestEventIdsList_iterateDeletionEvents(t *testing.T) {
 		}, TriggerName: "TRIGGER"})
 		evChannelled, _ = event.NewEvent(event.Args{Fun: func(ctx context.Context) string {
 			return ""
-		}, DateAfter: after.DateAfterArgs{Date: time.Now().Add(time.
+		}, DateAfter: after.Args{Date: time.Now().Add(time.
 			Minute)}, Subscriber: subscriber.Listener, IntervalTime: time.Minute})
 	)
 	type args struct {

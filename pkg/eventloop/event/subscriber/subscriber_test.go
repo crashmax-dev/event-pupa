@@ -20,7 +20,7 @@ func TestNewSubscriberEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewSubscriberEvent()
-			tt.want = &eventSubscriber{channels: got.Channels(),
+			tt.want = &component{channels: got.Channels(),
 				exit:   got.Exit(),
 				esType: Listener}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -42,7 +42,7 @@ func TestNewTriggerEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewTriggerEvent()
-			tt.want = &eventSubscriber{channels: got.Channels(),
+			tt.want = &component{channels: got.Channels(),
 				trigger: got.ChanTrigger(),
 				exit:    got.Exit(),
 				esType:  Trigger}
@@ -80,7 +80,7 @@ func Test_eventSubscriber_AddChannel(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventSubscriber{
+			ev := &component{
 				trigger:  tt.fields.trigger,
 				channels: tt.fields.channels,
 				exit:     tt.fields.exit,
@@ -123,7 +123,7 @@ func Test_eventSubscriber_ChanTrigger(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventSubscriber{
+			ev := &component{
 				trigger:  tt.fields.trigger,
 				channels: tt.fields.channels,
 				exit:     tt.fields.exit,
@@ -169,7 +169,7 @@ func Test_eventSubscriber_Channels(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventSubscriber{
+			ev := &component{
 				trigger:  tt.fields.trigger,
 				channels: tt.fields.channels,
 				exit:     tt.fields.exit,
@@ -210,7 +210,7 @@ func Test_eventSubscriber_Exit(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventSubscriber{
+			ev := &component{
 				trigger:  tt.fields.trigger,
 				channels: tt.fields.channels,
 				exit:     tt.fields.exit,
@@ -255,7 +255,7 @@ func Test_eventSubscriber_GetType(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventSubscriber{
+			ev := &component{
 				trigger:  tt.fields.trigger,
 				channels: tt.fields.channels,
 				exit:     tt.fields.exit,
@@ -288,7 +288,7 @@ func Test_eventSubscriber_LockMutex(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventSubscriber{
+			ev := &component{
 				trigger:  tt.fields.trigger,
 				channels: tt.fields.channels,
 				exit:     tt.fields.exit,

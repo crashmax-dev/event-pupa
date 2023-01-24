@@ -8,7 +8,7 @@ import (
 
 func Test_eventAfter_GetDurationSec(t *testing.T) {
 	type fields struct {
-		date DateAfterArgs
+		date Args
 	}
 	want1, _ := time.ParseDuration("3s")
 	want2, _ := time.ParseDuration("1m")
@@ -20,20 +20,20 @@ func Test_eventAfter_GetDurationSec(t *testing.T) {
 	}{
 		{name: "Absolute",
 			fields: fields{
-				DateAfterArgs{Date: time.Now().Add(time.Second * 3)},
+				Args{Date: time.Now().Add(time.Second * 3)},
 			},
 			want: want1,
 		},
 		{
 			name: "Relative",
-			fields: fields{DateAfterArgs{Date: time.Time{}.Add(time.Minute),
+			fields: fields{Args{Date: time.Time{}.Add(time.Minute),
 				IsRelative: true}},
 			want: want2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := eventAfter{
+			e := component{
 				date: tt.fields.date,
 			}
 			if got := e.GetDuration(); got != tt.want {
@@ -49,18 +49,18 @@ func TestNew(t *testing.T) {
 	var currentDate = time.Now()
 	tests := []struct {
 		name string
-		args DateAfterArgs
+		args Args
 		want Interface
 	}{
 		{
 			name: "Default",
-			args: DateAfterArgs{Date: currentDate.UTC(), IsRelative: true},
+			args: Args{Date: currentDate.UTC(), IsRelative: true},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := New(tt.args)
-			tt.want = &eventAfter{date: DateAfterArgs{Date: currentDate, IsRelative: true},
+			tt.want = &component{date: Args{Date: currentDate, IsRelative: true},
 				breakCh: got.GetBreakChannel()}
 			if got.IsDone() != tt.want.IsDone() || got.GetDuration() != tt.want.GetDuration() || got.GetBreakChannel() != got.GetBreakChannel() {
 				t.Errorf("New() = %v, want %v", got, tt.want)
@@ -72,7 +72,7 @@ func TestNew(t *testing.T) {
 func Test_eventAfter_GetBreakChannel(t *testing.T) {
 	var ch = make(chan bool)
 	type fields struct {
-		date    DateAfterArgs
+		date    Args
 		breakCh chan bool
 		isDone  bool
 	}
@@ -83,13 +83,13 @@ func Test_eventAfter_GetBreakChannel(t *testing.T) {
 	}{
 		{
 			name:   "Default",
-			fields: fields{date: DateAfterArgs{Date: time.Now()}, breakCh: ch},
+			fields: fields{date: Args{Date: time.Now()}, breakCh: ch},
 			want:   ch,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventAfter{
+			e := &component{
 				date:    tt.fields.date,
 				breakCh: tt.fields.breakCh,
 				isDone:  tt.fields.isDone,
@@ -103,7 +103,7 @@ func Test_eventAfter_GetBreakChannel(t *testing.T) {
 
 func Test_eventAfter_IsDone(t *testing.T) {
 	type fields struct {
-		date    DateAfterArgs
+		date    Args
 		breakCh chan bool
 		isDone  bool
 	}
@@ -113,12 +113,12 @@ func Test_eventAfter_IsDone(t *testing.T) {
 		want   bool
 	}{
 		{name: "Default",
-			fields: fields{date: DateAfterArgs{Date: time.Now()}, breakCh: make(chan bool), isDone: true},
+			fields: fields{date: Args{Date: time.Now()}, breakCh: make(chan bool), isDone: true},
 			want:   true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventAfter{
+			e := &component{
 				date:    tt.fields.date,
 				breakCh: tt.fields.breakCh,
 				isDone:  tt.fields.isDone,
@@ -132,7 +132,7 @@ func Test_eventAfter_IsDone(t *testing.T) {
 
 func Test_eventAfter_Wait(t *testing.T) {
 	type fields struct {
-		date    DateAfterArgs
+		date    Args
 		breakCh chan bool
 		isDone  bool
 	}
@@ -143,17 +143,17 @@ func Test_eventAfter_Wait(t *testing.T) {
 	}{
 		{
 			name: "Absolute",
-			fields: fields{date: DateAfterArgs{Date: time.Now().Add(time.Millisecond * 20)},
+			fields: fields{date: Args{Date: time.Now().Add(time.Millisecond * 20)},
 				breakCh: make(chan bool)},
 		},
 		{
 			name: "Relative",
-			fields: fields{date: DateAfterArgs{Date: time.Time{}.Add(time.Millisecond * 20), IsRelative: true},
+			fields: fields{date: Args{Date: time.Time{}.Add(time.Millisecond * 20), IsRelative: true},
 				breakCh: make(chan bool)},
 		},
 		{
 			name: "Break by channel",
-			fields: fields{date: DateAfterArgs{Date: time.Now().Add(time.Second * 3)},
+			fields: fields{date: Args{Date: time.Now().Add(time.Second * 3)},
 				breakCh: make(chan bool)},
 			breakFunc: func(ch chan bool) {
 				ch <- true
@@ -162,7 +162,7 @@ func Test_eventAfter_Wait(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventAfter{
+			e := &component{
 				date:    tt.fields.date,
 				breakCh: tt.fields.breakCh,
 				isDone:  tt.fields.isDone,

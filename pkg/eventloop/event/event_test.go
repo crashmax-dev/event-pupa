@@ -7,21 +7,21 @@ import (
 	"testing"
 	"time"
 
-	"eventloop/internal/logger"
+	"eventloop/internal/loggerImplementation"
 	"eventloop/pkg/eventloop/event/after"
 	"eventloop/pkg/eventloop/event/interval"
 	"eventloop/pkg/eventloop/event/once"
 	"eventloop/pkg/eventloop/event/subscriber"
-	"eventloop/pkg/eventloop/internal"
+	"eventloop/pkg/logger"
 	"github.com/google/uuid"
 )
 
 var testData = struct {
 	TRIGGER string
-	Daa     after.DateAfterArgs
+	Daa     after.Args
 	F       func(ctx context.Context) string
 }{TRIGGER: "TRIGGER",
-	Daa: after.DateAfterArgs{Date: time.Now(), IsRelative: true},
+	Daa: after.Args{Date: time.Now(), IsRelative: true},
 	F: func(ctx context.Context) string {
 		return ""
 	},
@@ -328,7 +328,7 @@ func Test_event_GetTypes(t *testing.T) {
 				subscriber:  subscriber.NewSubscriberEvent(),
 				interval:    interval.NewIntervalEvent(time.Second),
 				once:        once.NewOnce(),
-				after:       after.New(after.DateAfterArgs{Date: time.Now()}),
+				after:       after.New(after.Args{Date: time.Now()}),
 			},
 			wantOut: []Type{TRIGGER, ONCE, AFTER, INTERVAL, SUBSCRIBER},
 		},
@@ -433,8 +433,8 @@ func Test_event_Once(t *testing.T) {
 
 func Test_event_RunFunction(t *testing.T) {
 	var (
-		lgger, _ = logger.NewLogger("DEBUG", "logs", "test")
-		ctx      = context.WithValue(context.Background(), internal.LOGGER_CTX_KEY, lgger)
+		lgger, _ = loggerImplementation.NewLogger("DEBUG", "logs", "test")
+		ctx      = logger.WithLogger(context.Background(), lgger)
 	)
 	type fields struct {
 		fun        Func

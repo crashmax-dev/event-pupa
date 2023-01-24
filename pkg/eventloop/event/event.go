@@ -36,7 +36,7 @@ type Args struct {
 	Fun         Func
 
 	IntervalTime time.Duration
-	DateAfter    after.DateAfterArgs
+	DateAfter    after.Args
 	Subscriber   subscriber.Type
 }
 
@@ -66,7 +66,7 @@ func NewEvent(args Args) (Interface, error) {
 	if args.TriggerName == "" &&
 		!args.IsOnce &&
 		args.IntervalTime.String() == "0s" &&
-		args.DateAfter == (after.DateAfterArgs{}) &&
+		args.DateAfter == (after.Args{}) &&
 		args.Subscriber == "" {
 		return nil, errors.New("no event type, event will never trigger")
 	}
@@ -82,7 +82,7 @@ func NewEvent(args Args) (Interface, error) {
 	if args.IntervalTime.String() != "0s" {
 		newEvent.interval = interval.NewIntervalEvent(args.IntervalTime)
 	}
-	if args.DateAfter != (after.DateAfterArgs{}) {
+	if args.DateAfter != (after.Args{}) {
 		newEvent.after = after.New(args.DateAfter)
 	}
 

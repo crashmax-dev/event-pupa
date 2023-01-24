@@ -46,7 +46,7 @@ func Test_eventOnce_Do(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ev := &eventOnce{
+			ev := &component{
 				Once: tt.fields.Once,
 			}
 			ev.Do(tt.args.f)

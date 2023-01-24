@@ -20,8 +20,8 @@ const (
 	Trigger  Type = "TRIGGER"
 )
 
-// eventSubscriber - событие, которое триггерит другие события и/или триггерится само по другим событиям.
-type eventSubscriber struct {
+// component - событие, которое триггерит другие события и/или триггерится само по другим событиям.
+type component struct {
 	trigger   chan struct{}
 	isRunning bool
 
@@ -32,52 +32,52 @@ type eventSubscriber struct {
 }
 
 func NewSubscriberEvent() Interface {
-	return &eventSubscriber{channels: make(channelsByUUIDString),
+	return &component{channels: make(channelsByUUIDString),
 		exit:   make(chan struct{}),
 		esType: Listener}
 }
 
 func NewTriggerEvent() Interface {
-	return &eventSubscriber{channels: make(channelsByUUIDString),
+	return &component{channels: make(channelsByUUIDString),
 		trigger: make(chan struct{}),
 		exit:    make(chan struct{}),
 		esType:  Trigger}
 }
 
-func (ev *eventSubscriber) LockMutex() {
+func (ev *component) LockMutex() {
 	ev.mx.Lock()
 }
 
-func (ev *eventSubscriber) UnlockMutex() {
+func (ev *component) UnlockMutex() {
 	ev.mx.Unlock()
 }
 
-func (ev *eventSubscriber) Channels() channelsByUUIDString {
+func (ev *component) Channels() channelsByUUIDString {
 	return ev.channels
 }
 
 // AddChannel добавляет каналы, по которым тригеррится событие, и по этим же каналам событие-триггер триггерит
 // события слушатели.
-func (ev *eventSubscriber) AddChannel(eventUUID string, infoCh chan SubChInfo, b *bool) {
+func (ev *component) AddChannel(eventUUID string, infoCh chan SubChInfo, b *bool) {
 	ev.channels[eventUUID] = &SubChannel{infoCh: infoCh, isClosed: b}
 }
 
-func (ev *eventSubscriber) ChanTrigger() chan struct{} {
+func (ev *component) ChanTrigger() chan struct{} {
 	return ev.trigger
 }
 
-func (ev *eventSubscriber) Exit() chan struct{} {
+func (ev *component) Exit() chan struct{} {
 	return ev.exit
 }
 
-func (ev *eventSubscriber) GetType() Type {
+func (ev *component) GetType() Type {
 	return ev.esType
 }
 
-func (ev *eventSubscriber) IsRunning() bool {
+func (ev *component) IsRunning() bool {
 	return ev.isRunning
 }
 
-func (ev *eventSubscriber) SetIsRunning(b bool) {
+func (ev *component) SetIsRunning(b bool) {
 	ev.isRunning = b
 }

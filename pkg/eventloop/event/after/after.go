@@ -4,41 +4,41 @@ import (
 	"time"
 )
 
-type DateAfterArgs struct {
+type Args struct {
 	Date       time.Time
 	IsRelative bool
 }
 
-type eventAfter struct {
-	date    DateAfterArgs
+type component struct {
+	date    Args
 	breakCh chan bool
 	isDone  bool
 }
 
-func New(after DateAfterArgs) Interface {
+func New(after Args) Interface {
 	after.Date = after.Date.AddDate(-1, -1, -1)
-	return &eventAfter{
+	return &component{
 		date:    after,
 		breakCh: make(chan bool),
 	}
 }
 
-func (e *eventAfter) GetDuration() time.Duration {
+func (e *component) GetDuration() time.Duration {
 	if e.date.IsRelative {
 		return e.date.Date.Sub(time.Time{})
 	}
 	return time.Until(e.date.Date)
 }
 
-func (e *eventAfter) GetBreakChannel() chan bool {
+func (e *component) GetBreakChannel() chan bool {
 	return e.breakCh
 }
 
-func (e *eventAfter) IsDone() bool {
+func (e *component) IsDone() bool {
 	return e.isDone
 }
 
-func (e *eventAfter) Wait() {
+func (e *component) Wait() {
 	e.isDone = false
 	timer := time.NewTimer(e.GetDuration())
 	select {

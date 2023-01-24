@@ -15,7 +15,7 @@ func TestNewIntervalEvent(t *testing.T) {
 		{
 			name:     "Default",
 			interval: time.Second,
-			want:     &eventInterval{interval: time.Second},
+			want:     &component{interval: time.Second},
 		},
 	}
 	for _, tt := range tests {
@@ -52,7 +52,7 @@ func Test_eventSchedule_GetDuration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventInterval{
+			e := &component{
 				interval:  tt.fields.interval,
 				isRunning: tt.fields.isRunning,
 				quit:      tt.fields.quit,
@@ -89,7 +89,7 @@ func Test_eventSchedule_GetQuitChannel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventInterval{
+			e := &component{
 				interval:  tt.fields.interval,
 				isRunning: tt.fields.isRunning,
 				quit:      tt.fields.quit,
@@ -120,7 +120,7 @@ func Test_eventSchedule_IsRunning(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventInterval{
+			e := &component{
 				interval:  tt.fields.interval,
 				isRunning: tt.fields.isRunning,
 				quit:      tt.fields.quit,
@@ -151,7 +151,7 @@ func Test_eventSchedule_SetRunning(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &eventInterval{
+			e := &component{
 				interval:  tt.fields.interval,
 				isRunning: tt.fields.isRunning,
 				quit:      tt.fields.quit,
