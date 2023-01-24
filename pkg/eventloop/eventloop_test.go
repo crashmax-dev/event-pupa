@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"eventloop/pkg/eventloop/event"
+	"eventloop/pkg/eventloop/event/subscriber"
 	"eventloop/pkg/eventloop/internal"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
@@ -404,20 +405,24 @@ func TestSubevent(t *testing.T) {
 			mx.Unlock()
 			return strconv.Itoa(number)
 		}
-		execCh      = make(chan string)
-		ctx, cancel = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
-		errG        = new(errgroup.Group)
-		eventArgs   = event.Args{Fun: numIncMutex, TriggerName: TRIGGERNAME}
+		execCh                    = make(chan string)
+		ctx, cancel               = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		errG                      = new(errgroup.Group)
+		eventArgs                 = event.Args{Fun: numIncMutex, TriggerName: TRIGGERNAME}
+		argsListener, argsTrigger = eventArgs, eventArgs
 	)
+
+	argsTrigger.Subscriber = subscriber.Trigger
+	argsListener.Subscriber = subscriber.Listener
 
 	defer cancel()
 
 	var (
-		evListener, neErr1    = event.NewEvent(eventArgs)
-		evListener2, neErr2   = event.NewEvent(eventArgs)
-		eventDefault, neErr3  = event.NewEvent(eventArgs)
-		eventDefault2, neErr4 = event.NewEvent(eventArgs)
-		eventDefault3, neErr5 = event.NewEvent(eventArgs)
+		evListener, neErr1    = event.NewEvent(argsListener)
+		evListener2, neErr2   = event.NewEvent(argsListener)
+		eventDefault, neErr3  = event.NewEvent(argsTrigger)
+		eventDefault2, neErr4 = event.NewEvent(argsTrigger)
+		eventDefault3, neErr5 = event.NewEvent(argsTrigger)
 	)
 
 	if neErr1 != nil || neErr2 != nil || neErr3 != nil || neErr4 != nil || neErr5 != nil {
