@@ -284,7 +284,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	// Run before events
 	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(triggerName).Priority(BEFORE_PRIORITY).List())
 
-	keys := e.events.TriggerName(triggerName).GetKeys()
+	keys := e.events.TriggerName(triggerName).GetSortedPriorityNums()
 	if priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0 {
 		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
 			priority := keys[priorIndex]

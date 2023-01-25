@@ -442,8 +442,8 @@ func Test_priorityList_GetKeys(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotKeys := tt.pl.GetKeys(); !reflect.DeepEqual(gotKeys, tt.wantKeys) {
-				t.Errorf("GetKeys() = %v, wantResult %v", gotKeys, tt.wantKeys)
+			if gotKeys := tt.pl.GetSortedPriorityNums(); !reflect.DeepEqual(gotKeys, tt.wantKeys) {
+				t.Errorf("GetSortedPriorityNums() = %v, wantResult %v", gotKeys, tt.wantKeys)
 			}
 		})
 	}
