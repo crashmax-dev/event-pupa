@@ -339,48 +339,6 @@ func Test_eventLoop_Sync(t *testing.T) {
 	}
 }
 
-func Test_eventLoop_Toggle(t *testing.T) {
-	var (
-		lgger, _ = loggerImplementation.NewLogger("Debug", "test", "test")
-	)
-	type fields struct {
-		events   eventslist.Interface
-		mx       *sync.RWMutex
-		disabled []EventFunction
-		logger   logger.Interface
-	}
-	type args struct {
-		eventFuncs []EventFunction
-	}
-	tests := []struct {
-		name       string
-		fields     fields
-		args       args
-		wantResult string
-	}{
-		{
-			name: "Disable and Enable",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{},
-				disabled: []EventFunction{REGISTER}, logger: lgger},
-			args:       args{eventFuncs: []EventFunction{REGISTER, TRIGGER}},
-			wantResult: "Enabling REGISTER | Disabling TRIGGER",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := &eventLoop{
-				events:   tt.fields.events,
-				mx:       tt.fields.mx,
-				disabled: tt.fields.disabled,
-				logger:   tt.fields.logger,
-			}
-			if gotResult := e.Toggle(tt.args.eventFuncs...); gotResult != tt.wantResult {
-				t.Errorf("Toggle() = %v, want %v", gotResult, tt.wantResult)
-			}
-		})
-	}
-}
-
 func Test_eventLoop_Trigger(t *testing.T) {
 	var (
 		ctxCancelled, _ = context.WithDeadline(context.Background(), time.Time{})
@@ -413,10 +371,19 @@ func Test_eventLoop_Trigger(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Trigger disabled",
+			name: "Trigger func disabled",
 			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger,
 				disabled: []EventFunction{TRIGGER}},
 			args:    args{ctx: context.Background(), triggerName: "Trig"},
+			wantErr: true,
+		},
+		{
+			name:   "Trigger name disabled",
+			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			args:   args{ctx: context.Background(), triggerName: "Trig"},
+			init: func(el Interface, p event.Interface) {
+				el.ToggleTriggers("Trig")
+			},
 			wantErr: true,
 		},
 		{

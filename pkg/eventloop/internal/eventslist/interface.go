@@ -7,13 +7,15 @@ import (
 type Interface interface {
 	TriggerName(triggerName string) Priority
 	RemoveEventByUUIDs(uuids ...string) []string
-	GetEventIdsByTriggerName(triggerName string) (result []string, err error)
 }
 
 type Priority interface {
 	Priority(priority int) *EventsByUUIDString
 	Len() int
-	GetKeys() (keys []int)
+	GetSortedPriorityNums() (keys []int)
+	IsDisabled() bool
+	SetIsDisabled(b bool)
+	GetAllEvents() (result []string, err error)
 }
 
 type EventID interface {

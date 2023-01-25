@@ -407,7 +407,11 @@ func (e *eventLoop) RemoveEventByUUIDs(UUIDs ...string) []string {
 
 // GetAttachedEvents возвращает все события, прикреплённые к triggerName
 func (e *eventLoop) GetAttachedEvents(triggerName string) (result []string, err error) {
-	return e.events.GetEventIdsByTriggerName(triggerName)
+	result, err = e.events.TriggerName(triggerName).GetAllEvents()
+	if err != nil {
+		err = fmt.Errorf("TriggerName: %v (%w)", triggerName, err)
+	}
+	return
 }
 
 func (e *eventLoop) Sync() error {

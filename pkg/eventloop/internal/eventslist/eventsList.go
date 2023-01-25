@@ -24,20 +24,6 @@ func (el *eventsList) TriggerName(triggerName string) Priority {
 	return &result
 }
 
-// GetEventIdsByName возвращает из eventloop список айдишек событий, повешенных на событие eventName
-func (el *eventsList) GetEventIdsByTriggerName(triggerName string) (result []string, err error) {
-	pl := el.priorities[triggerName]
-	if pl.Len() == 0 {
-		return nil, fmt.Errorf("no such trigger name: %v", triggerName)
-	}
-	for _, priors := range el.priorities[triggerName] {
-		for _, evnt := range priors {
-			result = append(result, evnt.GetUUID())
-		}
-	}
-	return result, nil
-}
-
 func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings []string) {
 	remainings = uuids[:0]
 	for _, id := range uuids {
@@ -64,10 +50,10 @@ func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings
 }
 
 func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
-	for priorKey, priorValue := range *pl {
+	for priorKey, priorValue := range pl.data {
 		if modIds := priorValue.iterateDeletionEvents(uuids); len(modIds) != len(uuids) {
 			if len(priorValue) == 0 {
-				delete(*pl, priorKey)
+				delete(pl.data, priorKey)
 			}
 			uuids = modIds
 			if len(uuids) == 0 {
@@ -85,7 +71,7 @@ func (el *eventsList) RemoveEventByUUIDs(uuids ...string) []string {
 	defer el.mx.Unlock()
 	for eventNameKey, eventNameValue := range el.priorities {
 		if modIds := eventNameValue.iterateDeletionPriorities(uuids); len(modIds) != len(uuids) {
-			if len(eventNameValue) == 0 {
+			if len(eventNameValue.data) == 0 {
 				delete(el.priorities, eventNameKey)
 			}
 			uuids = modIds
