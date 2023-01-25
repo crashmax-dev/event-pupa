@@ -1,0 +1,56 @@
+package eventloop
+
+import (
+	"fmt"
+
+	"eventloop/pkg/eventloop/internal"
+	"eventloop/pkg/logger"
+	"golang.org/x/exp/slices"
+)
+
+func toggle[T comparable](container *[]T, logger logger.Interface, items ...T) (result string) {
+	c := *container
+	for _, v := range items {
+		if result != "" {
+			result += " | "
+		}
+		// Включение
+		if x := slices.Index(c, v); x != -1 {
+			result += fmt.Sprintf("Enabling %v", v)
+			logger.Info(result)
+			c = internal.RemoveSliceItemByIndex(c, x)
+		} else { // Выключение
+			result += fmt.Sprintf("Disabling %v", v)
+			logger.Info(result)
+			c = append(c, v)
+		}
+	}
+	*container = c
+	return
+}
+
+// ToggleEventLoopFunc выключает функции менеджера событий (REGISTER и TRIGGER).
+// При попытке использования этих функций выводится ошибка.
+// Функции можно включить обратно простым прокидыванием тех же параметров, в зависимости от того что надо включить.
+func (e *eventLoop) ToggleEventLoopFuncs(eventFuncs ...EventFunction) string {
+	return toggle(&e.disabled, e.logger, eventFuncs...)
+}
+
+func (e *eventLoop) ToggleTriggers(triggerNames ...string) (result string) {
+	for _, v := range triggerNames {
+		if result != "" {
+			result += " | "
+		}
+		// Включение
+		if e.events.TriggerName(v).IsDisabled() {
+			result += fmt.Sprintf("Enabling %v", v)
+			e.logger.Info(result)
+			e.events.TriggerName(v).SetIsDisabled(false)
+		} else { // Выключение
+			result += fmt.Sprintf("Disabling %v", v)
+			e.logger.Info(result)
+			e.events.TriggerName(v).SetIsDisabled(true)
+		}
+	}
+	return
+}

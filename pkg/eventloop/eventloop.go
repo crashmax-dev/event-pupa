@@ -272,6 +272,10 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		return errors.New(str)
 	}
 
+	if e.events.TriggerName(triggerName).IsDisabled() {
+		return errFunc("can't trigger event, trigger name is disabled")
+	}
+
 	e.logger.Debugw("Trying to get mutex", "triggerName", triggerName)
 	e.mx.Lock()
 	defer e.mx.Unlock()
@@ -335,27 +339,6 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 	} else {
 		ev.RunFunction(ctx)
 	}
-}
-
-// Toggle выключает функции менеджера событий, ON и TRIGGER. При попытке использования этих функций выводится ошибка.
-// Функции можно включить обратно простым прокидыванием тех же параметров, в зависимости от того что надо включить.
-func (e *eventLoop) Toggle(eventFuncs ...EventFunction) (result string) {
-	for _, v := range eventFuncs {
-		if result != "" {
-			result += " | "
-		}
-		// Включение
-		if x := slices.Index(e.disabled, v); x != -1 {
-			result += fmt.Sprintf("Enabling %v", v)
-			e.logger.Info(result)
-			e.disabled = internal.RemoveSliceItemByIndex(e.disabled, x)
-		} else { // Выключение
-			result += fmt.Sprintf("Disabling %v", v)
-			e.logger.Info(result)
-			e.disabled = append(e.disabled, v)
-		}
-	}
-	return
 }
 
 // isEventDone нужен для прекращения работы ивентов-интервалов.
