@@ -20,7 +20,7 @@ type EventFunction string
 
 const (
 	TRIGGER  EventFunction = "TRIGGER"
-	REGISTER               = "REGISTER"
+	REGISTER EventFunction = "REGISTER"
 )
 
 // eventLoop представляет собой менеджер событий. Позволяет использовать как классические события с названиями для
@@ -252,6 +252,13 @@ func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
 // В Ch пишется резульат выполнения каждого триггера, после использования канал закрывается. Поэтому для каждого вызова
 // нужно создавать новый channelEx
 func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
+	errFunc := func(msg string) error {
+		e.logger.Warnw(msg,
+			"eventname", triggerName)
+		internal.WriteToExecCh(ctx, "")
+		return errors.New(msg)
+	}
+
 	triggerCtx := loggerEventLoop.WithLogger(ctx, e.logger)
 
 	var deferErr error
@@ -265,11 +272,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 
 	// Выключен ли Триггер
 	if slices.Contains(e.disabled, TRIGGER) {
-		str := "can't trigger event, trigger is disabled"
-		e.logger.Warnw(str,
-			"eventname", triggerName)
-		internal.WriteToExecCh(ctx, "")
-		return errors.New(str)
+		return errFunc("can't trigger event, trigger function is disabled")
 	}
 
 	if e.events.TriggerName(triggerName).IsDisabled() {
