@@ -7,21 +7,21 @@ import (
 type Triggers map[string]*priorityList
 
 type eventsList struct {
-	priorities Triggers
-	mx         sync.Mutex
+	prioritiesByTrigger Triggers
+	mx                  sync.Mutex
 }
 
 func New() Interface {
-	result := eventsList{priorities: make(map[string]*priorityList)}
+	result := eventsList{prioritiesByTrigger: make(map[string]*priorityList)}
 	return &result
 }
 
 // EventName
 func (el *eventsList) TriggerName(triggerName string) Priority {
-	if el.priorities[triggerName] == nil {
-		el.priorities[triggerName] = &priorityList{data: make(map[int]EventsByUUIDString)}
+	if el.prioritiesByTrigger[triggerName] == nil {
+		el.prioritiesByTrigger[triggerName] = &priorityList{data: make(map[int]EventsByUUIDString)}
 	}
-	return el.priorities[triggerName]
+	return el.prioritiesByTrigger[triggerName]
 }
 
 func (el *eventsList) RemoveTriggers(triggers ...string) []string {
@@ -34,10 +34,10 @@ func (el *eventsList) RemoveTriggers(triggers ...string) []string {
 func (el *eventsList) RemoveEventByUUIDs(uuids ...string) []string {
 	el.mx.Lock()
 	defer el.mx.Unlock()
-	for eventNameKey, eventNameValue := range el.priorities {
+	for eventNameKey, eventNameValue := range el.prioritiesByTrigger {
 		if modIds := eventNameValue.iterateDeletionPriorities(uuids); len(modIds) != len(uuids) {
 			if len(eventNameValue.data) == 0 {
-				delete(el.priorities, eventNameKey)
+				delete(el.prioritiesByTrigger, eventNameKey)
 			}
 			uuids = modIds
 			if len(uuids) == 0 {
