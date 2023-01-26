@@ -11,7 +11,7 @@ import (
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/event/after"
 	"eventloop/pkg/eventloop/event/subscriber"
-	"eventloop/pkg/eventloop/internal/eventslist"
+	"eventloop/pkg/eventloop/internal/triggerslist"
 	"eventloop/pkg/logger"
 )
 
@@ -27,7 +27,7 @@ func Test_eventLoop_GetAttachedEvents(t *testing.T) {
 		}
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 	}
@@ -43,7 +43,7 @@ func Test_eventLoop_GetAttachedEvents(t *testing.T) {
 		wantErr    bool
 	}
 	var defaultFields = fields{
-		eventslist.New(),
+		triggerslist.New(),
 		new(sync.RWMutex),
 		[]EventFunction{},
 	}
@@ -127,7 +127,7 @@ func Test_eventLoop_RegisterEvent(t *testing.T) {
 		evMock, _       = event.NewEvent(event.Args{Fun: defaultFunc, Subscriber: subscriber.Listener})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -145,32 +145,32 @@ func Test_eventLoop_RegisterEvent(t *testing.T) {
 	}{
 		{
 			name:    "Cancelled context",
-			fields:  fields{events: eventslist.New(), logger: lgger, mx: &sync.RWMutex{}},
+			fields:  fields{events: triggerslist.New(), logger: lgger, mx: &sync.RWMutex{}},
 			args:    args{ctx: ctxCancelled, newEvent1: ev1, newEvent2: ev2},
 			wantErr: true,
 		},
 		{
 			name: "Disabled register",
-			fields: fields{events: eventslist.New(), logger: lgger,
+			fields: fields{events: triggerslist.New(), logger: lgger,
 				disabled: []EventFunction{REGISTER}, mx: &sync.RWMutex{}},
 			args:    args{ctx: ctx, newEvent1: ev1, newEvent2: ev2},
 			wantErr: true,
 		},
 		{
 			name:    "Reserved trigger name",
-			fields:  fields{events: eventslist.New(), logger: lgger, mx: &sync.RWMutex{}},
+			fields:  fields{events: triggerslist.New(), logger: lgger, mx: &sync.RWMutex{}},
 			args:    args{ctx: ctx, newEvent1: evReserved, newEvent2: ev1},
 			wantErr: true,
 		},
 		{
 			name:    "No event type",
-			fields:  fields{events: eventslist.New(), logger: lgger, mx: &sync.RWMutex{}},
+			fields:  fields{events: triggerslist.New(), logger: lgger, mx: &sync.RWMutex{}},
 			args:    args{ctx: ctx, newEvent1: evMock, newEvent2: ev2},
 			wantErr: true,
 		},
 		{
 			name:   "Default",
-			fields: fields{events: eventslist.New(), logger: lgger, mx: &sync.RWMutex{}},
+			fields: fields{events: triggerslist.New(), logger: lgger, mx: &sync.RWMutex{}},
 			args:   args{ctx: ctx, newEvent1: ev1, newEvent2: ev2},
 		},
 	}
@@ -198,7 +198,7 @@ func Test_eventLoop_RemoveEventByUUIDs(t *testing.T) {
 		}})
 	)
 	type fields struct {
-		events eventslist.Interface
+		events triggerslist.Interface
 		mx     *sync.RWMutex
 		logger logger.Interface
 	}
@@ -214,7 +214,7 @@ func Test_eventLoop_RemoveEventByUUIDs(t *testing.T) {
 	}{
 		{
 			name:   "Default",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{},
 			init: func(loop Interface, p event.Interface) args {
 				loop.RegisterEvent(context.Background(), p, p)
@@ -224,7 +224,7 @@ func Test_eventLoop_RemoveEventByUUIDs(t *testing.T) {
 		},
 		{
 			name:   "Empty",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ids: []string{}},
 			want:   []string{},
 		},
@@ -258,7 +258,7 @@ func Test_eventLoop_Subscribe(t *testing.T) {
 		}, Subscriber: subscriber.Trigger})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -276,13 +276,13 @@ func Test_eventLoop_Subscribe(t *testing.T) {
 	}{
 		{
 			name:    "Context cancelled",
-			fields:  fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields:  fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:    args{ctxCancelled, []event.Interface{evTrig}, []event.Interface{evSub}},
 			wantErr: true,
 		},
 		{
 			name:   "Default",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args: args{ctx: context.Background(), triggers: []event.Interface{evTrig},
 				listeners: []event.Interface{evSub}},
 			wantErr: false,
@@ -308,7 +308,7 @@ func Test_eventLoop_Sync(t *testing.T) {
 		lgger, _ = loggerImplementation.NewLogger("Debug", "test", "test")
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -320,7 +320,7 @@ func Test_eventLoop_Sync(t *testing.T) {
 	}{
 		{
 			name:    "Default",
-			fields:  fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields:  fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			wantErr: false,
 		},
 	}
@@ -348,7 +348,7 @@ func Test_eventLoop_Trigger(t *testing.T) {
 		}, IsOnce: true})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -366,20 +366,20 @@ func Test_eventLoop_Trigger(t *testing.T) {
 	}{
 		{
 			name:    "Context cancelled",
-			fields:  fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields:  fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:    args{ctx: ctxCancelled, triggerName: "Trig"},
 			wantErr: true,
 		},
 		{
 			name: "Trigger func disabled",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger,
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger,
 				disabled: []EventFunction{TRIGGER}},
 			args:    args{ctx: context.Background(), triggerName: "Trig"},
 			wantErr: true,
 		},
 		{
 			name:   "Trigger name disabled",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: context.Background(), triggerName: "Trig"},
 			init: func(el Interface, p event.Interface) {
 				el.ToggleTriggers("Trig")
@@ -388,7 +388,7 @@ func Test_eventLoop_Trigger(t *testing.T) {
 		},
 		{
 			name:   "Once",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: context.Background(), triggerName: "Trig"},
 			init: func(el Interface, p event.Interface) {
 				el.RegisterEvent(context.Background(), p)
@@ -422,7 +422,7 @@ func Test_eventLoop_addEvent(t *testing.T) {
 		}})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -438,7 +438,7 @@ func Test_eventLoop_addEvent(t *testing.T) {
 	}{
 		{
 			name:   "Default",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{triggerName: "Trigger", newEvent: ev},
 		},
 	}
@@ -461,7 +461,7 @@ func Test_eventLoop_checkContext(t *testing.T) {
 		ctxCancelled, _ = context.WithDeadline(context.Background(), time.Time{})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -479,13 +479,13 @@ func Test_eventLoop_checkContext(t *testing.T) {
 	}{
 		{
 			name:    "Context Cancelled",
-			fields:  fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields:  fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:    args{ctx: ctxCancelled, message: "Error"},
 			wantErr: true,
 		},
 		{
 			name:    "Context OK",
-			fields:  fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields:  fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:    args{ctx: context.Background()},
 			wantErr: false,
 		},
@@ -515,7 +515,7 @@ func Test_eventLoop_runScheduledEvent(t *testing.T) {
 		}, IntervalTime: time.Microsecond, IsOnce: true})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -531,12 +531,12 @@ func Test_eventLoop_runScheduledEvent(t *testing.T) {
 	}{
 		{
 			name:   "Tick",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: ctx, ev: ev},
 		},
 		{
 			name:   "Stop",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: ctxCancelled, ev: ev},
 		},
 	}
@@ -575,7 +575,7 @@ func Test_eventLoop_runnerListener(t *testing.T) {
 		}, Subscriber: subscriber.Listener})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -592,7 +592,7 @@ func Test_eventLoop_runnerListener(t *testing.T) {
 	}{
 		{
 			name:   "Default",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: context.Background(), v: ev1},
 			init: func(ctx context.Context, ev event.Interface) context.Context {
 				ctx = initFunc(ctx, ev)
@@ -607,7 +607,7 @@ func Test_eventLoop_runnerListener(t *testing.T) {
 		},
 		{
 			name:   "Exit",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: ctxCancelled, v: ev2},
 			init:   initFunc,
 		},
@@ -646,7 +646,7 @@ func Test_eventLoop_runnerTrigger(t *testing.T) {
 		ctxCancelled, _ = context.WithDeadline(context.Background(), time.Time{})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -664,7 +664,7 @@ func Test_eventLoop_runnerTrigger(t *testing.T) {
 		{
 			name: "Default",
 			fields: fields{
-				events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger,
+				events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger,
 			},
 			args: args{ctx: context.Background(), v: ev1},
 			init: func(ctx context.Context, ev event.Interface) context.Context {
@@ -682,7 +682,7 @@ func Test_eventLoop_runnerTrigger(t *testing.T) {
 		},
 		{
 			name:   "Exit",
-			fields: fields{events: eventslist.New(), mx: &sync.RWMutex{}, logger: lgger},
+			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{}, logger: lgger},
 			args:   args{ctx: ctxCancelled, v: ev2},
 			init:   initFunc,
 		},
@@ -721,7 +721,7 @@ func Test_eventLoop_triggerEventFunc(t *testing.T) {
 		})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -739,7 +739,7 @@ func Test_eventLoop_triggerEventFunc(t *testing.T) {
 		{
 			name: "After",
 			fields: fields{
-				events: eventslist.New(),
+				events: triggerslist.New(),
 				mx:     &sync.RWMutex{},
 				logger: lgger,
 			},
@@ -752,7 +752,7 @@ func Test_eventLoop_triggerEventFunc(t *testing.T) {
 		{
 			name: "Interval",
 			fields: fields{
-				events: eventslist.New(),
+				events: triggerslist.New(),
 				mx:     &sync.RWMutex{},
 				logger: lgger,
 			},
@@ -792,14 +792,14 @@ func Test_eventLoop_triggerEventFuncList(t *testing.T) {
 		}})
 	)
 	type fields struct {
-		events   eventslist.Interface
+		events   triggerslist.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
 	}
 	type args struct {
 		ctx  context.Context
-		list eventslist.EventsByUUIDString
+		list triggerslist.EventsByUUIDString
 	}
 	tests := []struct {
 		name   string
@@ -809,11 +809,11 @@ func Test_eventLoop_triggerEventFuncList(t *testing.T) {
 		{
 			name: "Default",
 			fields: fields{
-				events: eventslist.New(),
+				events: triggerslist.New(),
 				mx:     &sync.RWMutex{},
 				logger: lgger,
 			},
-			args: args{ctx: context.Background(), list: eventslist.EventsByUUIDString{"1": ev,
+			args: args{ctx: context.Background(), list: triggerslist.EventsByUUIDString{"1": ev,
 				"2": ev}},
 		},
 	}

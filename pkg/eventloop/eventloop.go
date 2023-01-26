@@ -11,7 +11,7 @@ import (
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"eventloop/pkg/eventloop/internal"
-	"eventloop/pkg/eventloop/internal/eventslist"
+	"eventloop/pkg/eventloop/internal/triggerslist"
 	loggerEventLoop "eventloop/pkg/logger"
 	"golang.org/x/exp/slices"
 )
@@ -27,7 +27,7 @@ const (
 // каждого, так и одноразовые, выполняющиеся с определённым интервалом. Также можно задавать приоритет обычным событиям.
 // Для использования нужно создавать event.
 type eventLoop struct {
-	events eventslist.Interface
+	events triggerslist.Interface
 	mx     *sync.RWMutex
 
 	disabled []EventFunction
@@ -45,7 +45,7 @@ func NewEventLoop(level string) Interface {
 	}
 	return &eventLoop{
 		mx:     &sync.RWMutex{},
-		events: eventslist.New(),
+		events: triggerslist.New(),
 		logger: elLogger,
 	}
 }
@@ -319,7 +319,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	return deferErr
 }
 
-func (e *eventLoop) triggerEventFuncList(ctx context.Context, list eventslist.EventsByUUIDString) {
+func (e *eventLoop) triggerEventFuncList(ctx context.Context, list triggerslist.EventsByUUIDString) {
 	for _, listItem := range list {
 		listItem.RunFunction(ctx)
 	}

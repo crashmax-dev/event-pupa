@@ -1,4 +1,4 @@
-package eventslist
+package triggerslist
 
 import (
 	"context"
