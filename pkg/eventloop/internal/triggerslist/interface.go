@@ -20,6 +20,6 @@ type Priority interface {
 
 type EventID interface {
 	List() EventsByUUIDString
-	EventID(eventID string) event.Interface
+	Event(eventID string) event.Interface
 	AddEvent(newEvent event.Interface)
 }

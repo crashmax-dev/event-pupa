@@ -14,6 +14,6 @@ func (eil *EventsByUUIDString) AddEvent(newEvent event.Interface) {
 	(*eil)[newEvent.GetUUID()] = newEvent
 }
 
-func (eil *EventsByUUIDString) EventID(eventUUIDString string) event.Interface {
+func (eil *EventsByUUIDString) Event(eventUUIDString string) event.Interface {
 	return (*eil)[eventUUIDString]
 }

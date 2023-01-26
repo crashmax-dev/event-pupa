@@ -33,7 +33,7 @@ func TestEventIdsList_AddEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.eil.AddEvent(tt.args.newEvent)
-			if newEvt := tt.eil.EventID(tt.args.newEvent.GetUUID()); newEvt.GetUUID() != tt.
+			if newEvt := tt.eil.Event(tt.args.newEvent.GetUUID()); newEvt.GetUUID() != tt.
 				args.newEvent.GetUUID() {
 				t.Errorf("AddEvent() = %v, wantResult %v", newEvt.GetUUID(), tt.
 					args.newEvent.GetUUID())
@@ -70,8 +70,8 @@ func TestEventIdsList_EventID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.eil.EventID(tt.args.eventID); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("EventID() = %v, wantResult %v", got, tt.want)
+			if got := tt.eil.Event(tt.args.eventID); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Event() = %v, wantResult %v", got, tt.want)
 			}
 		})
 	}
