@@ -22,4 +22,5 @@ type EventID interface {
 	List() EventsByUUIDString
 	Event(eventID string) event.Interface
 	AddEvent(newEvent event.Interface)
+	RemoveEvent(uuid string)
 }

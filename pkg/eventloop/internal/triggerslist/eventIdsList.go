@@ -14,6 +14,22 @@ func (eil *EventsByUUIDString) AddEvent(newEvent event.Interface) {
 	(*eil)[newEvent.GetUUID()] = newEvent
 }
 
+func (eil *EventsByUUIDString) RemoveEvent(ev event.Interface) {
+	delete(*eil, ev.GetUUID())
+
+	if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
+		intervalComp.GetQuitChannel() <- true
+	}
+
+	if afterComp, afterErr := ev.After(); afterErr == nil {
+		afterComp.GetBreakChannel() <- true
+	}
+
+	if sub, subErr := ev.Subscriber(); subErr == nil {
+		sub.Exit() <- struct{}{}
+	}
+}
+
 func (eil *EventsByUUIDString) Event(eventUUIDString string) event.Interface {
 	return (*eil)[eventUUIDString]
 }
@@ -26,19 +42,7 @@ func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings
 			remainings = append(remainings, id)
 			continue
 		}
-		delete(*eil, id)
-
-		if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
-			intervalComp.GetQuitChannel() <- true
-		}
-
-		if afterComp, afterErr := ev.After(); afterErr == nil {
-			afterComp.GetBreakChannel() <- true
-		}
-
-		if sub, subErr := ev.Subscriber(); subErr == nil {
-			sub.Exit() <- struct{}{}
-		}
+		eil.RemoveEvent(ev)
 	}
 	return remainings
 }
