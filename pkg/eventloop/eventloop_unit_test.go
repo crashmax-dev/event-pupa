@@ -342,7 +342,7 @@ func Test_eventLoop_Sync(t *testing.T) {
 func Test_eventLoop_Trigger(t *testing.T) {
 	var (
 		ctxCancelled, _ = context.WithDeadline(context.Background(), time.Time{})
-		lgger, _        = loggerImplementation.NewLogger("Debug", "test", "test")
+		lgger           = newTestLogger()
 		ev, _           = event.NewEvent(event.Args{TriggerName: "Trig", Fun: func(ctx context.Context) string {
 			return "OK"
 		}, IsOnce: true})

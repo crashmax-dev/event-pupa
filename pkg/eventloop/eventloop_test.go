@@ -65,14 +65,14 @@ func TestToggleOn(t *testing.T) {
 	})
 	<-execCh
 
-	evLoop.Toggle(TOGGLENAME)
+	evLoop.ToggleEventLoopFuncs(TOGGLENAME)
 
 	errG.Go(func() error {
 		return evLoop.RegisterEvent(ctx, eventDefault2)
 	})
 	<-execCh
 
-	evLoop.Toggle(TOGGLENAME)
+	evLoop.ToggleEventLoopFuncs(TOGGLENAME)
 
 	errG.Go(func() error {
 		return evLoop.RegisterEvent(ctx, eventDefault2)
@@ -122,14 +122,14 @@ func TestToggleTrigger(t *testing.T) {
 	})
 	<-execCh
 
-	evLoop.Toggle(TRIGGER)
+	evLoop.ToggleEventLoopFuncs(TRIGGER)
 
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, EVENTNAME)
 	})
 	<-execCh
 
-	evLoop.Toggle(TRIGGER)
+	evLoop.ToggleEventLoopFuncs(TRIGGER)
 
 	errG.Go(func() error {
 		return evLoop.Trigger(ctx, EVENTNAME)
