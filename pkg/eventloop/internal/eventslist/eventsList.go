@@ -1,27 +1,27 @@
 package eventslist
 
 import (
-	"fmt"
 	"sync"
 )
 
+type Triggers map[string]*priorityList
+
 type eventsList struct {
-	priorities map[string]priorityList
+	priorities Triggers
 	mx         sync.Mutex
 }
 
 func New() Interface {
-	result := eventsList{priorities: make(map[string]priorityList)}
+	result := eventsList{priorities: make(map[string]*priorityList)}
 	return &result
 }
 
 // EventName
 func (el *eventsList) TriggerName(triggerName string) Priority {
 	if el.priorities[triggerName] == nil {
-		el.priorities[triggerName] = make(map[int]EventsByUUIDString)
+		el.priorities[triggerName] = &priorityList{data: make(map[int]EventsByUUIDString)}
 	}
-	result := el.priorities[triggerName]
-	return &result
+	return el.priorities[triggerName]
 }
 
 func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings []string) {

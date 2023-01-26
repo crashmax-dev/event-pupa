@@ -239,7 +239,7 @@ func TestNew(t *testing.T) {
 	}{
 		{
 			name: "Default",
-			want: &eventsList{priorities: make(map[string]priorityList)},
+			want: &eventsList{priorities: make(Triggers)},
 		},
 	}
 	for _, tt := range tests {
@@ -252,9 +252,13 @@ func TestNew(t *testing.T) {
 }
 
 func Test_eventsList_EventName(t *testing.T) {
-	var searchList = priorityList{1: make(EventsByUUIDString), 2: make(EventsByUUIDString)}
+	var (
+		searchList = priorityList{data: Priorities{1: make(EventsByUUIDString),
+			2: make(EventsByUUIDString)}}
+		emptyList = priorityList{}
+	)
 	type fields struct {
-		priorities map[string]priorityList
+		priorities Triggers
 		mx         sync.Mutex
 	}
 	type args struct {
@@ -268,14 +272,14 @@ func Test_eventsList_EventName(t *testing.T) {
 	}{
 		{
 			name: "With priority",
-			fields: fields{priorities: map[string]priorityList{"1": make(priorityList),
-				"2": searchList}},
+			fields: fields{priorities: Triggers{"1": {data: make(Priorities)},
+				"2": &searchList}},
 			args: args{eventName: "2"},
 			want: &searchList,
 		},
 		{
 			name:   "No priority",
-			fields: fields{priorities: make(map[string]priorityList)},
+			fields: fields{priorities: Triggers{"BIBA": &emptyList}},
 			args:   args{eventName: "BIBA"},
 			want:   &emptyList,
 		},
@@ -298,12 +302,14 @@ func Test_priorityList_GetAllEvents(t *testing.T) {
 		ev, _ = event.NewEvent(event.Args{Fun: func(ctx context.Context) string {
 			return ""
 		}, TriggerName: "1"})
-		container = map[string]priorityList{"TRIG1": {1: EventsByUUIDString{"1": ev, "2": ev}},
-			"TRIG2": {0: EventsByUUIDString{"4": ev}, 2: EventsByUUIDString{"5": ev}},
-			"TRIG3": {10: {}}}
+		container = Triggers{"TRIG1": {data: Priorities{1: EventsByUUIDString{"1": ev,
+			"2": ev}}},
+			"TRIG2": {data: Priorities{0: EventsByUUIDString{"4": ev},
+				2: EventsByUUIDString{"5": ev}}},
+			"TRIG3": {data: Priorities{10: {}}}}
 	)
 	type fields struct {
-		priorities map[string]priorityList
+		priorities Triggers
 		mx         sync.Mutex
 	}
 	type args struct {
@@ -361,7 +367,7 @@ func Test_eventsList_RemoveEventByUUIDs(t *testing.T) {
 		return ""
 	}, TriggerName: "TRIG"})
 	type fields struct {
-		priorities map[string]priorityList
+		priorities Triggers
 		mx         sync.Mutex
 	}
 	type args struct {
@@ -375,37 +381,43 @@ func Test_eventsList_RemoveEventByUUIDs(t *testing.T) {
 	}{
 		{
 			name: "Default",
-			fields: fields{priorities: map[string]priorityList{"TRIG1": {1: EventsByUUIDString{"1": ev, "2": ev}},
-				"TRIG2": {0: EventsByUUIDString{"4": ev}, 2: EventsByUUIDString{"5": ev}},
-				"TRIG3": {10: {}}}},
+			fields: fields{priorities: Triggers{
+				"TRIG1": {data: Priorities{1: EventsByUUIDString{"1": ev, "2": ev}}},
+				"TRIG2": {data: Priorities{0: EventsByUUIDString{"4": ev},
+					2: EventsByUUIDString{"5": ev}}},
+				"TRIG3": {data: Priorities{10: {}}}}},
 			args: args{[]string{"4", "2", "1"}},
 			want: []string{},
 		},
 		{
 			name: "Empty args",
-			fields: fields{priorities: map[string]priorityList{"TRIG1": {1: EventsByUUIDString{"1": ev, "2": ev}},
-				"TRIG2": {0: EventsByUUIDString{"4": ev}, 2: EventsByUUIDString{"5": ev}},
-				"TRIG3": {10: {}}}},
+			fields: fields{priorities: Triggers{
+				"TRIG1": {data: Priorities{1: {"1": ev, "2": ev}}},
+				"TRIG2": {data: Priorities{0: {"4": ev},
+					2: {"5": ev}}},
+				"TRIG3": {data: Priorities{10: {}}}}},
 			args: args{[]string{}},
 			want: []string{},
 		},
 		{
 			name:   "Empty container",
-			fields: fields{priorities: make(map[string]priorityList)},
+			fields: fields{priorities: make(Triggers)},
 			args:   args{[]string{"1", "2"}},
 			want:   []string{"1", "2"},
 		},
 		{
 			name:   "Empty container and args",
-			fields: fields{priorities: make(map[string]priorityList)},
+			fields: fields{priorities: make(Triggers)},
 			args:   args{[]string{}},
 			want:   []string{},
 		},
 		{
 			name: "Partially find",
-			fields: fields{priorities: map[string]priorityList{"TRIG1": {1: EventsByUUIDString{"1": ev, "2": ev}},
-				"TRIG2": {0: EventsByUUIDString{"4": ev}, 2: EventsByUUIDString{"5": ev}},
-				"TRIG3": {10: {}}}},
+			fields: fields{priorities: Triggers{
+				"TRIG1": {data: Priorities{1: EventsByUUIDString{"1": ev, "2": ev}}},
+				"TRIG2": {data: Priorities{0: EventsByUUIDString{"4": ev},
+					2: EventsByUUIDString{"5": ev}}},
+				"TRIG3": {data: Priorities{10: {}}}}},
 			args: args{[]string{"10", "4"}},
 			want: []string{"10"},
 		},
@@ -431,7 +443,7 @@ func Test_priorityList_GetKeys(t *testing.T) {
 	}{
 		{
 			name:     "Default",
-			pl:       priorityList{1: {}, 6: {}, 3: {}, -5: {}},
+			pl:       priorityList{data: Priorities{1: {}, 6: {}, 3: {}, -5: {}}},
 			wantKeys: []int{-5, 1, 3, 6},
 		},
 		{
@@ -457,7 +469,7 @@ func Test_priorityList_Len(t *testing.T) {
 	}{
 		{
 			name: "Default",
-			pl:   priorityList{1: {}, 2: {}},
+			pl:   priorityList{data: Priorities{1: {}, 2: {}}},
 			want: 2,
 		},
 		{
@@ -490,13 +502,13 @@ func Test_priorityList_Priority(t *testing.T) {
 	}{
 		{
 			name: "Default",
-			pl:   priorityList{1: {}, 2: {"1": ev, "2": ev}},
+			pl:   priorityList{data: Priorities{1: {}, 2: {"1": ev, "2": ev}}},
 			args: args{2},
 			want: &EventsByUUIDString{"1": ev, "2": ev},
 		},
 		{
 			name: "No priority",
-			pl:   priorityList{1: {}, 2: {"1": ev, "2": ev}},
+			pl:   priorityList{data: Priorities{1: {}, 2: {"1": ev, "2": ev}}},
 			args: args{10},
 			want: &EventsByUUIDString{},
 		},
@@ -525,19 +537,19 @@ func Test_priorityList_iterateDeletionPriorities(t *testing.T) {
 	}{
 		{
 			name: "Default",
-			pl:   priorityList{1: {"6": ev}, 2: {"1": ev, "2": ev}},
+			pl:   priorityList{data: Priorities{1: {"6": ev}, 2: {"1": ev, "2": ev}}},
 			args: args{[]string{"6", "2"}},
 			want: []string{},
 		},
 		{
 			name: "Partially deleted",
-			pl:   priorityList{1: {"6": ev}, 2: {"1": ev, "2": ev}},
+			pl:   priorityList{data: Priorities{1: {"6": ev}, 2: {"1": ev, "2": ev}}},
 			args: args{[]string{"10", "2"}},
 			want: []string{"10"},
 		},
 		{
 			name: "Fully deleted",
-			pl:   priorityList{1: {"6": ev}, 2: {"1": ev, "2": ev}},
+			pl:   priorityList{data: Priorities{1: {"6": ev}, 2: {"1": ev, "2": ev}}},
 			args: args{[]string{"6", "2", "1"}},
 			want: []string{},
 		},
