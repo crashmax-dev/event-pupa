@@ -24,44 +24,9 @@ func (el *eventsList) TriggerName(triggerName string) Priority {
 	return el.priorities[triggerName]
 }
 
-func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings []string) {
-	remainings = uuids[:0]
-	for _, id := range uuids {
-		ev := eil.EventID(id)
-		if ev == nil {
-			remainings = append(remainings, id)
-			continue
-		}
-		delete(*eil, id)
-
-		if intervalComp, errInterval := ev.Interval(); errInterval == nil && intervalComp.IsRunning() {
-			intervalComp.GetQuitChannel() <- true
-		}
-
-		if afterComp, afterErr := ev.After(); afterErr == nil {
-			afterComp.GetBreakChannel() <- true
-		}
-
-		if sub, subErr := ev.Subscriber(); subErr == nil {
-			sub.Exit() <- struct{}{}
-		}
-	}
-	return remainings
-}
-
-func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
-	for priorKey, priorValue := range pl.data {
-		if modIds := priorValue.iterateDeletionEvents(uuids); len(modIds) != len(uuids) {
-			if len(priorValue) == 0 {
-				delete(pl.data, priorKey)
-			}
-			uuids = modIds
-			if len(uuids) == 0 {
-				return uuids
-			}
-		}
-	}
-	return uuids
+func (el *eventsList) RemoveTriggers(triggers ...string) []string {
+	panic("Not implemented")
+	return []string{}
 }
 
 // RemoveEventByUUIDs удаляет события. Возвращает пустой срез, если всё удалено, или срез айдишек, которые не были
@@ -73,6 +38,21 @@ func (el *eventsList) RemoveEventByUUIDs(uuids ...string) []string {
 		if modIds := eventNameValue.iterateDeletionPriorities(uuids); len(modIds) != len(uuids) {
 			if len(eventNameValue.data) == 0 {
 				delete(el.priorities, eventNameKey)
+			}
+			uuids = modIds
+			if len(uuids) == 0 {
+				return uuids
+			}
+		}
+	}
+	return uuids
+}
+
+func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
+	for priorKey, priorValue := range pl.data {
+		if modIds := priorValue.iterateDeletionEvents(uuids); len(modIds) != len(uuids) {
+			if len(priorValue) == 0 {
+				delete(pl.data, priorKey)
 			}
 			uuids = modIds
 			if len(uuids) == 0 {
