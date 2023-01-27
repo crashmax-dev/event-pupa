@@ -74,9 +74,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 
 		// ON
 		if triggerName := evnt.GetTriggerName(); triggerName != "" {
-			fmt.Println("OK TRIGGER ", triggerName)
 			if slices.Contains(restrictedTriggers, eventLoopSystemTrigger(triggerName)) {
-				fmt.Println("OK3")
 				errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
 				e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
 				internal.WriteToExecCh(ctx, "")
@@ -95,7 +93,6 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 				"eventId",
 				evnt.GetUUID())
 		} else {
-			fmt.Println("OK2")
 			errStr := "event must be at least ON, INTERVAL or AFTER"
 			errNew := fmt.Errorf(errStr)
 			e.logger.Debugw(errStr, "eventId", evnt.GetUUID())
