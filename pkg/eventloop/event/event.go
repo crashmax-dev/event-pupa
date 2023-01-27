@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,14 +21,6 @@ import (
 // event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)
 
 type Type string
-
-const (
-	TRIGGER    Type = "TRIGGER"
-	ONCE       Type = "ONCE"
-	INTERVAL   Type = "INTERVAL"
-	AFTER      Type = "AFTER"
-	SUBSCRIBER Type = "SUBSCRIBER"
-)
 
 type Args struct {
 	TriggerName string
@@ -46,6 +39,8 @@ type event struct {
 	priority    int
 	fun         Func
 	result      string
+
+	disabled bool
 
 	mx sync.Mutex
 
@@ -102,19 +97,19 @@ func (ev *event) GetUUID() string {
 
 func (ev *event) GetTypes() (out []Type) {
 	if ev.triggerName != "" {
-		out = append(out, TRIGGER)
+		out = append(out, "TRIGGER")
 	}
 	if ev.once != nil {
-		out = append(out, ONCE)
+		out = append(out, "ONCE")
 	}
 	if ev.after != nil {
-		out = append(out, AFTER)
+		out = append(out, "AFTER")
 	}
 	if ev.interval != nil {
-		out = append(out, INTERVAL)
+		out = append(out, "INTERVAL")
 	}
 	if ev.subscriber != nil {
-		out = append(out, SUBSCRIBER)
+		out = append(out, "SUBSCRIBER")
 	}
 	return
 }
@@ -168,6 +163,24 @@ func (ev *event) Once() (once.Interface, error) {
 
 func (ev *event) After() (after.Interface, error) {
 	return getSubInterface(ev.after, eventErrors.after)
+}
+
+func AsType(s string) (Type, error) {
+	s = strings.ToUpper(s)
+	switch s {
+	case "TRIGGER":
+		return "TRIGGER", nil
+	case "ONCE":
+		return "ONCE", nil
+	case "INTERVAL":
+		return "INTERVAL", nil
+	case "AFTER":
+		return "AFTER", nil
+	case "SUBSCRIBER":
+		return "SUBSCRIBER", nil
+	default:
+		return "", fmt.Errorf("no such type: %v", s)
+	}
 }
 
 func getSubInterface[T any](i T, err error) (T, error) {
