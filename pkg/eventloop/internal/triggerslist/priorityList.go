@@ -52,3 +52,18 @@ func (el *priorityList) GetAllEvents() (result []string, err error) {
 	}
 	return result, nil
 }
+
+func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
+	for priorKey, priorValue := range pl.data {
+		if modIds := priorValue.iterateDeletionEvents(uuids); len(modIds) != len(uuids) {
+			if len(priorValue) == 0 {
+				delete(pl.data, priorKey)
+			}
+			uuids = modIds
+			if len(uuids) == 0 {
+				return uuids
+			}
+		}
+	}
+	return uuids
+}
