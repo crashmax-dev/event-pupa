@@ -46,3 +46,9 @@ func (eil *EventsByUUIDString) iterateDeletionEvents(uuids []string) (remainings
 	}
 	return remainings
 }
+
+func (eil *EventsByUUIDString) clearEvents() {
+	for _, e := range *eil {
+		eil.RemoveEvent(e)
+	}
+}

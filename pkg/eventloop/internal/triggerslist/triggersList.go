@@ -24,9 +24,19 @@ func (el *eventsList) TriggerName(triggerName string) Priority {
 	return el.prioritiesByTrigger[triggerName]
 }
 
-func (el *eventsList) RemoveTriggers(triggers ...string) []string {
-	panic("Not implemented")
-	return []string{}
+func (el *eventsList) RemoveTriggers(triggers ...string) (result []string) {
+	el.mx.Lock()
+	defer el.mx.Unlock()
+
+	for _, v := range triggers {
+		if _, ok := el.prioritiesByTriggerName[v]; !ok {
+			result = append(result, v)
+			continue
+		}
+		el.prioritiesByTriggerName[v].clearPriorities()
+		delete(el.prioritiesByTriggerName, v)
+	}
+	return result
 }
 
 // RemoveEventByUUIDs удаляет события. Возвращает пустой срез, если всё удалено, или срез айдишек, которые не были

@@ -562,3 +562,45 @@ func Test_priorityList_iterateDeletionPriorities(t *testing.T) {
 		})
 	}
 }
+
+func Test_eventsList_RemoveTriggers(t *testing.T) {
+	var (
+		ev, _ = event.NewEvent(event.Args{Fun: func(ctx context.Context) string {
+			return ""
+		}, TriggerName: "TRIG1"})
+	)
+	type fields struct {
+		prioritiesByTrigger Triggers
+		mx                  sync.Mutex
+	}
+	type args struct {
+		triggers []string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []string
+	}{
+		{
+			name: "Default",
+			fields: fields{prioritiesByTrigger: Triggers{"TRIG1": &priorityList{data: Priorities{1: EventsByUUIDString{"1": ev, "2": ev},
+				2: EventsByUUIDString{"5": ev}}},
+				"TRIG2": &priorityList{data: Priorities{0: EventsByUUIDString{"1": ev}}},
+			}},
+			args: args{triggers: []string{"TRIG1", "TRIG3"}},
+			want: []string{"TRIG3"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			el := &eventsList{
+				prioritiesByTriggerName: tt.fields.prioritiesByTrigger,
+				mx:                      tt.fields.mx,
+			}
+			if got := el.RemoveTriggers(tt.args.triggers...); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RemoveTriggers() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

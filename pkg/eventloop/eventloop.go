@@ -401,8 +401,12 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	}
 }
 
-func (e *eventLoop) RemoveEventByUUIDs(UUIDs ...string) []string {
-	return e.events.RemoveEventByUUIDs(UUIDs...)
+func (e *eventLoop) RemoveEventByUUIDs(uUIDs ...string) []string {
+	return e.events.RemoveEventByUUIDs(uUIDs...)
+}
+
+func (e *eventLoop) RemoveTriggers(triggers ...string) []string {
+	return e.events.RemoveTriggers(triggers...)
 }
 
 // GetAttachedEvents возвращает все события, прикреплённые к triggerName

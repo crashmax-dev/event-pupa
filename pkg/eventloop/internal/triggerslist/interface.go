@@ -7,6 +7,7 @@ import (
 type Interface interface {
 	TriggerName(triggerName string) Priority
 	RemoveEventByUUIDs(uuids ...string) []string
+	RemoveTriggers(triggers ...string) []string
 }
 
 type Priority interface {

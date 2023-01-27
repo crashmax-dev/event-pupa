@@ -14,6 +14,7 @@ type Interface interface {
 	// RemoveEventByUUIDs удаляет событие по срезу идентификаторов. Возвращает срез оставшихся событий из запроса, которые
 	// не были удалены
 	RemoveEventByUUIDs(UUIDs ...string) []string
+	RemoveTriggers(triggers ...string) []string
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
 	GetAttachedEvents(triggerName string) (result []string, err error)
 	Sync() error

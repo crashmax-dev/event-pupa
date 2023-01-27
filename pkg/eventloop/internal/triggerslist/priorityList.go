@@ -67,3 +67,10 @@ func (pl *priorityList) iterateDeletionPriorities(uuids []string) []string {
 	}
 	return uuids
 }
+
+func (pl *priorityList) clearPriorities() {
+	for priorityKey, p := range pl.data {
+		p.clearEvents()
+		delete(pl.data, priorityKey)
+	}
+}
