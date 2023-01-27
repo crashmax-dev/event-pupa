@@ -239,7 +239,7 @@ func TestNew(t *testing.T) {
 	}{
 		{
 			name: "Default",
-			want: &eventsList{prioritiesByTrigger: make(Triggers)},
+			want: &eventsList{prioritiesByTriggerName: make(Triggers)},
 		},
 	}
 	for _, tt := range tests {
@@ -287,8 +287,8 @@ func Test_eventsList_EventName(t *testing.T) {
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
 			el := &eventsList{
-				prioritiesByTrigger: tt.fields.priorities,
-				mx:                  tt.fields.mx, //nolint:govet
+				prioritiesByTriggerName: tt.fields.priorities,
+				mx:                      tt.fields.mx, //nolint:govet
 			}
 			if got := el.TriggerName(tt.args.eventName); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("TriggerName() = %v, wantResult %v", got, tt.want)
@@ -347,8 +347,8 @@ func Test_priorityList_GetAllEvents(t *testing.T) {
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
 			el := &eventsList{
-				prioritiesByTrigger: tt.fields.priorities,
-				mx:                  tt.fields.mx, //nolint:govet
+				prioritiesByTriggerName: tt.fields.priorities,
+				mx:                      tt.fields.mx, //nolint:govet
 			}
 			gotResult, err := el.TriggerName(tt.args.triggerName).GetAllEvents()
 			if (err != nil) != tt.wantErr {
@@ -425,8 +425,8 @@ func Test_eventsList_RemoveEventByUUIDs(t *testing.T) {
 	for _, tt := range tests { //nolint:govet
 		t.Run(tt.name, func(t *testing.T) {
 			el := &eventsList{
-				prioritiesByTrigger: tt.fields.priorities,
-				mx:                  tt.fields.mx, //nolint:govet
+				prioritiesByTriggerName: tt.fields.priorities,
+				mx:                      tt.fields.mx, //nolint:govet
 			}
 			if got := el.RemoveEventByUUIDs(tt.args.ids...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("RemoveEventByUUIDs() = %v, wantResult %v", got, tt.want)
