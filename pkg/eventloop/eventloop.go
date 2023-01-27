@@ -27,8 +27,9 @@ const (
 // каждого, так и одноразовые, выполняющиеся с определённым интервалом. Также можно задавать приоритет обычным событиям.
 // Для использования нужно создавать event.
 type eventLoop struct {
-	events triggerslist.Interface
-	mx     *sync.RWMutex
+	events       triggerslist.Interface
+	eventsByType map[event.Type][]event.Interface
+	mx           *sync.RWMutex
 
 	disabled []EventFunction
 
@@ -44,9 +45,10 @@ func NewEventLoop(level string) Interface {
 		fmt.Printf("logger init error: %v", err)
 	}
 	return &eventLoop{
-		mx:     &sync.RWMutex{},
-		events: triggerslist.New(),
-		logger: elLogger,
+		mx:           &sync.RWMutex{},
+		events:       triggerslist.New(),
+		eventsByType: map[event.Type][]event.Interface{},
+		logger:       elLogger,
 	}
 }
 
@@ -142,6 +144,12 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 
 func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
 	e.events.TriggerName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
+	for _, t := range newEvent.GetTypes() {
+		if e.eventsByType[t] == nil {
+			e.eventsByType[t] = []event.Interface{}
+		}
+		e.eventsByType[t] = append(e.eventsByType[t], newEvent)
+	}
 }
 
 func isContextDone(ctx context.Context) bool {
@@ -413,6 +421,18 @@ func (e *eventLoop) GetAttachedEvents(triggerName string) (result []string, err 
 		err = fmt.Errorf("TriggerName: %v (%w)", triggerName, err)
 	}
 	return
+}
+
+func (e *eventLoop) GetEventsByType(eventType string) (result []string, errReturn error) {
+	t, err := event.AsType(eventType)
+	if err != nil {
+		return nil, err
+	}
+	result = make([]string, 0, len(e.eventsByType[t]))
+	for _, v := range e.eventsByType[t] {
+		result = append(result, v.GetUUID())
+	}
+	return result, nil
 }
 
 func (e *eventLoop) GetTriggerNames() AllTriggers {
