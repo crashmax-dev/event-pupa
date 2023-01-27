@@ -1,14 +1,25 @@
 package eventloop
 
-type eventLoopSystemEvent string
+type eventLoopSystemTrigger string
+
+type AllTriggers struct {
+	userTriggers   []string
+	systemTriggers []eventLoopSystemTrigger
+}
+
+var (
+	ReturnIriggers = AllTriggers{
+		systemTriggers: allSystemTriggers,
+	}
+)
 
 const (
-	INTERVALED     eventLoopSystemEvent = "@INTERVALED"
-	AFTER          eventLoopSystemEvent = "@AFTER"
-	BEFORE_TRIGGER eventLoopSystemEvent = "@BEFORE_TRIGGER"
-	AFTER_TRIGGER  eventLoopSystemEvent = "@AFTER_TRIGGER"
-	BEFORE_CREATE  eventLoopSystemEvent = "@BEFORE_CREATE"
-	AFTER_CREATE   eventLoopSystemEvent = "@AFTER_CREATE"
+	INTERVALED     eventLoopSystemTrigger = "@INTERVALED"
+	AFTER          eventLoopSystemTrigger = "@AFTER"
+	BEFORE_TRIGGER eventLoopSystemTrigger = "@BEFORE_TRIGGER"
+	AFTER_TRIGGER  eventLoopSystemTrigger = "@AFTER_TRIGGER"
+	BEFORE_CREATE  eventLoopSystemTrigger = "@BEFORE_CREATE"
+	AFTER_CREATE   eventLoopSystemTrigger = "@AFTER_CREATE"
 )
 
 const (
@@ -16,14 +27,14 @@ const (
 	AFTER_PRIORITY  = -1
 )
 
-var eventLoopEvents = []eventLoopSystemEvent{INTERVALED,
+var allSystemTriggers = []eventLoopSystemTrigger{INTERVALED,
 	BEFORE_TRIGGER,
 	AFTER_TRIGGER,
 	BEFORE_CREATE,
 	AFTER_CREATE,
 	AFTER}
 
-var restrictedEvents = []eventLoopSystemEvent{
+var restrictedTriggers = []eventLoopSystemTrigger{
 	INTERVALED,
 	AFTER,
 }

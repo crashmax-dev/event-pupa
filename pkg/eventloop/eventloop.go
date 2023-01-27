@@ -75,7 +75,7 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 		// ON
 		if triggerName := evnt.GetTriggerName(); triggerName != "" {
 			fmt.Println("OK TRIGGER ", triggerName)
-			if slices.Contains(restrictedEvents, eventLoopSystemEvent(triggerName)) {
+			if slices.Contains(restrictedTriggers, eventLoopSystemTrigger(triggerName)) {
 				fmt.Println("OK3")
 				errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
 				e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
