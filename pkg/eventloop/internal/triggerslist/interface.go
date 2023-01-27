@@ -6,6 +6,7 @@ import (
 
 type Interface interface {
 	TriggerName(triggerName string) Priority
+	GetAll() []string
 	RemoveEventByUUIDs(uuids ...string) []string
 	RemoveTriggers(triggers ...string) []string
 }

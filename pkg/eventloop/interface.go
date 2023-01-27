@@ -17,5 +17,6 @@ type Interface interface {
 	RemoveTriggers(triggers ...string) []string
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
 	GetAttachedEvents(triggerName string) (result []string, err error)
+	GetTriggerNames() AllTriggers
 	Sync() error
 }

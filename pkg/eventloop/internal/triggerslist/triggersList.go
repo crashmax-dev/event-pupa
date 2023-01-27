@@ -24,6 +24,14 @@ func (el *eventsList) TriggerName(triggerName string) Priority {
 	return el.prioritiesByTriggerName[triggerName]
 }
 
+func (el *eventsList) GetAll() (result []string) {
+	result = make([]string, 0, len(el.prioritiesByTriggerName))
+	for k := range el.prioritiesByTriggerName {
+		result = append(result, k)
+	}
+	return
+}
+
 func (el *eventsList) RemoveTriggers(triggers ...string) (result []string) {
 	el.mx.Lock()
 	defer el.mx.Unlock()

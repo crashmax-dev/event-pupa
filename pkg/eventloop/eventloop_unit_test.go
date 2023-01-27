@@ -918,3 +918,71 @@ func Test_isEventDone(t *testing.T) {
 		})
 	}
 }
+
+func Test_eventLoop_GetTriggerNames(t *testing.T) {
+	var (
+		lgger  = newTestLogger()
+		ev1, _ = event.NewEvent(event.Args{TriggerName: "Trig1",
+			Fun: func(ctx context.Context) string {
+				return ""
+			}})
+		ev2, _ = event.NewEvent(event.Args{TriggerName: "Trig2",
+			Fun: func(ctx context.Context) string {
+				return ""
+			}})
+	)
+	type fields struct {
+		events   triggerslist.Interface
+		mx       *sync.RWMutex
+		disabled []EventFunction
+		logger   logger.Interface
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		init   func(e Interface)
+		want   AllTriggers
+	}{
+		{
+			name: "Default",
+			fields: fields{
+				events: triggerslist.New(),
+				mx:     &sync.RWMutex{},
+				logger: lgger,
+			},
+			init: func(e Interface) {
+				e.RegisterEvent(context.Background(), ev1)
+				e.RegisterEvent(context.Background(), ev2)
+			},
+			want: AllTriggers{systemTriggers: allSystemTriggers, userTriggers: []string{"Trig1",
+				"Trig2"}},
+		},
+		{
+			name: "Empty",
+			fields: fields{
+				events: triggerslist.New(),
+				mx:     &sync.RWMutex{},
+				logger: lgger,
+			},
+			want: AllTriggers{systemTriggers: allSystemTriggers, userTriggers: []string{}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &eventLoop{
+				events:   tt.fields.events,
+				mx:       tt.fields.mx,
+				disabled: tt.fields.disabled,
+				logger:   tt.fields.logger,
+			}
+			if tt.init != nil {
+				tt.init(e)
+			}
+			if got := e.GetTriggerNames(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetTriggerNames() = %v, want %v", got, tt.want)
+			} else {
+				t.Logf("%v", got)
+			}
+		})
+	}
+}

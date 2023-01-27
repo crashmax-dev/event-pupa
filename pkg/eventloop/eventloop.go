@@ -415,6 +415,11 @@ func (e *eventLoop) GetAttachedEvents(triggerName string) (result []string, err 
 	return
 }
 
+func (e *eventLoop) GetTriggerNames() AllTriggers {
+	ReturnIriggers.userTriggers = e.events.GetAll()
+	return ReturnIriggers
+}
+
 func (e *eventLoop) Sync() error {
 	return e.logger.Sync()
 }
