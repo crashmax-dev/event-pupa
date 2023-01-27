@@ -143,6 +143,10 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 	return nil
 }
 
+func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
+	e.events.TriggerName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
+}
+
 func isContextDone(ctx context.Context) bool {
 	select {
 	case <-ctx.Done():
@@ -241,10 +245,6 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 			subComponent.UnlockMutex()
 		}
 	}
-}
-
-func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
-	e.events.TriggerName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
 }
 
 // Trigger вызывает событие с определённым triggerName. Функция ждёт выполнения всех добавленных на событие функций,
