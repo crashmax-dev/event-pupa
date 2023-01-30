@@ -17,7 +17,7 @@ type Priority interface {
 	GetSortedPriorityNums() (keys []int)
 	IsDisabled() bool
 	SetIsDisabled(b bool)
-	GetAllEvents() (result []string, err error)
+	GetAllEventIds() (result []string, err error)
 }
 
 type EventID interface {

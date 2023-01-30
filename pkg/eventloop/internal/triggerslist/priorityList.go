@@ -41,7 +41,7 @@ func (pl *priorityList) SetIsDisabled(b bool) {
 	pl.disabled = b
 }
 
-func (el *priorityList) GetAllEvents() (result []string, err error) {
+func (el *priorityList) GetAllEventIds() (result []string, err error) {
 	for _, priors := range el.data {
 		for _, evnt := range priors {
 			result = append(result, evnt.GetUUID())

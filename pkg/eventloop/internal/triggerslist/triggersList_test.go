@@ -350,7 +350,7 @@ func Test_priorityList_GetAllEvents(t *testing.T) {
 				prioritiesByTriggerName: tt.fields.priorities,
 				mx:                      tt.fields.mx, //nolint:govet
 			}
-			gotResult, err := el.TriggerName(tt.args.triggerName).GetAllEvents()
+			gotResult, err := el.TriggerName(tt.args.triggerName).GetAllEventIds()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetEventIdsByTriggerName() error = %v, wantErr %v", err, tt.wantErr)
 				return
