@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"eventloop/internal/httpapi/handler"
 	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
+
+	"eventloop/internal/httpapi/handler"
 )
 
 func readResponse(resp *http.Response) (result string, err error) {
@@ -105,10 +106,12 @@ func removeEvent(t *testing.T, ids []string) string {
 	return result
 }
 
-func subscribeEvents(t *testing.T, eventName string, inputJSON struct {
-	Listeners []int `json:"listeners"`
-	Triggers  []int `json:"triggers"`
-}) string {
+func subscribeEvents(
+	t *testing.T, eventName string, inputJSON struct {
+		Listeners []int `json:"listeners"`
+		Triggers  []int `json:"triggers"`
+	},
+) string {
 	requestURL := fmt.Sprintf("http://localhost:8090/subscribe/%v", eventName)
 
 	encodedJSON, errJson := json.Marshal(inputJSON)
