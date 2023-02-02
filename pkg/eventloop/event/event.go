@@ -66,7 +66,8 @@ func NewEvent(args Args) (Interface, error) {
 		return nil, errors.New("no event type, event will never trigger")
 	}
 
-	newEvent := &event{uuid: uuid.NewString(),
+	newEvent := &event{
+		uuid:        uuid.NewString(),
 		fun:         args.Fun,
 		triggerName: args.TriggerName,
 		priority:    args.Priority,
@@ -170,28 +171,11 @@ func (ev *event) After() (after.Interface, error) {
 	return getSubInterface(ev.after, eventErrors.after)
 }
 
-func AsType(s string) (Type, error) {
-	s = strings.ToUpper(s)
-	switch s {
-	case "TRIGGER":
-		return "TRIGGER", nil
-	case "ONCE":
-		return "ONCE", nil
-	case "INTERVAL":
-		return "INTERVAL", nil
-	case "AFTER":
-		return "AFTER", nil
-	case "SUBSCRIBER":
-		return "SUBSCRIBER", nil
-	default:
-		return "", fmt.Errorf("no such type: %v", s)
-	}
-}
-
 func getSubInterface[T any](i T, err error) (T, error) {
 	if reflect.ValueOf(i).IsValid() && !reflect.ValueOf(i).IsZero() {
 		return i, nil
 	}
 	err = fmt.Errorf("it is not an event type: %w", err)
+	//goland:noinspection GoLinter
 	return *new(T), err
 }
