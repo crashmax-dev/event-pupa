@@ -405,12 +405,8 @@ func (e *eventLoop) RemoveTriggers(triggers ...string) []string {
 }
 
 // GetAttachedEvents возвращает все события, прикреплённые к triggerName
-func (e *eventLoop) GetAttachedEvents(triggerName string) (result []string, err error) {
-	result, err = e.events.TriggerName(triggerName).GetAllEventIds()
-	if err != nil {
-		err = fmt.Errorf("TriggerName: %v (%w)", triggerName, err)
-	}
-	return
+func (e *eventLoop) GetAttachedEvents(triggerName string) (result []event.Interface) {
+	return e.events.EventsByTrigger(triggerName)
 }
 
 func (e *eventLoop) GetEventsByType(eventType string) (result []string, errReturn error) {
