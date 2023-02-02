@@ -46,8 +46,8 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	param := strings.TrimPrefix(request.URL.Path, "/subscribe/")
-	if len(strings.SplitAfter(param, "/")) > 1 {
+	triggerName := strings.TrimPrefix(request.URL.Path, "/subscribe/")
+	if len(strings.SplitAfter(triggerName, "/")) > 1 {
 		helper.ServerLogErr(writer, "Invalid params", sh.logger, 400)
 		return
 	}
@@ -56,19 +56,19 @@ func (sh *subscribeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 		triggers, listeners []event.Interface
 	)
 	for _, v := range sInfo.Triggers {
-		newEvent, err := eventpreset.CreateEvent(v, eventpreset.REGULAR)
+		newEvent, err := eventpreset.CreateEvent(v, eventpreset.REGULAR, triggerName)
 		if err != nil {
 			sh.baseHandler.logger.Errorf(helper.APIMessage("Error while creating trigger event: %v"), err)
 		} else {
 			triggers = append(triggers, newEvent)
-			if errOn := sh.baseHandler.evLoop.On(ctx, param, newEvent, nil); errOn != nil {
-				sh.baseHandler.logger.Errorf(helper.APIMessage("schedule event fail: %v"), errOn)
+			if errRegister := sh.baseHandler.evLoop.RegisterEvent(ctx, newEvent); errRegister != nil {
+				sh.baseHandler.logger.Errorf(helper.APIMessage("schedule event fail: %v"), errRegister)
 			}
 		}
 	}
 
 	for _, v := range sInfo.Listeners {
-		newEvent, err := eventpreset.CreateEvent(v, eventpreset.REGULAR)
+		newEvent, err := eventpreset.CreateEvent(v, eventpreset.REGULAR, "")
 		if err != nil {
 			sh.baseHandler.logger.Errorf(helper.APIMessage("Error while creating listener event: %v"), err)
 		} else {

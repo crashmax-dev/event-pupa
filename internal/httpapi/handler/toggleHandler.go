@@ -1,15 +1,15 @@
 package handler
 
 import (
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/eventloop"
 	"io"
 	"net/http"
 	"strings"
+
+	"eventloop/internal/httpapi/helper"
 )
 
-// toggleHandler включает и выключает ивенты. Для срабатывания отправляется POST запрос на /toggle/
-// Принимает в параметрах запроса строку с перечислением функций через
+// toggleHandler включает и выключает триггеры. Для срабатывания отправляется POST запрос на /toggle/
+// Принимает в параметрах запроса строку с перечислением названий триггеров через
 // запятую, которые надо включить или выключить.
 type toggleHandler struct {
 	baseHandler
@@ -30,15 +30,7 @@ func (tg *toggleHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
 	s := strings.Split(string(b), ",")
 
-	var ef []eventloop.EventFunction
-
-	for _, v := range s {
-		elem := eventloop.EventFunctionMapping[v]
-		if elem > 0 {
-			ef = append(ef, elem)
-		}
-	}
-	outputStr := tg.baseHandler.evLoop.Toggle(ef...)
+	outputStr := tg.baseHandler.evLoop.ToggleTriggers(s...)
 	tg.baseHandler.logger.Infof(outputStr)
 	_, ioerr := io.WriteString(writer, outputStr)
 	if ioerr != nil {

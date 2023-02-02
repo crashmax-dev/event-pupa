@@ -3,13 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"eventloop/internal/httpapi/eventpreset"
 	"eventloop/internal/httpapi/helper"
+	"eventloop/pkg/eventloop"
 	"eventloop/pkg/eventloop/event"
 	"github.com/google/uuid"
 )
@@ -37,7 +37,6 @@ type ScheduleResponse struct {
 // @Accept	plain
 // @Produce	json
 // @Param		eventPresetId	path	number	false		"Predefined preset for new event" example(1)
-// @Param		schedulerMethod	body	string	false	"Method for scheduler to start or stop" example(START)
 // @Success	200	{object}	ScheduleResponse	"info about event, scheduler and scheduler execution results if scheduler stops"
 // @Failure	400	{string}	string	"no event preset requested"
 // @Failure	400	{string}	string	"no such event preset"
@@ -62,37 +61,14 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 
 	JSON.UUID = sh.scheduleEvent(ctx, writer, &JSON, param)
 
-	if b, err := io.ReadAll(request.Body); err != nil {
-		JSON.SchedulerStatus = helper.ServerJSONLogErr(writer,
-			"bad request: %v",
-			sh.baseHandler.logger,
-			400,
-			err)
+	if errSS := sh.baseHandler.evLoop.Trigger(ctx, string(eventpreset.INTERVALED)); errSS != nil {
+		writer.WriteHeader(500)
+		JSON.SchedulerStatus = "Event trigger error"
+		sh.baseHandler.logger.Errorf(helper.APIMessage("scheduler start fail: %v"), errSS)
 	} else {
-		switch sm := strings.ToLower(string(b)); sm {
-		case "start":
-			if errSS := sh.baseHandler.evLoop.StartScheduler(ctx); errSS != nil {
-				if sh.baseHandler.evLoop.Scheduler().IsSchedulerRunning() {
-					writer.WriteHeader(400)
-					JSON.SchedulerStatus = "Scheduler is already running"
-				} else {
-					writer.WriteHeader(500)
-				}
-				sh.baseHandler.logger.Errorf(helper.APIMessage("scheduler start fail: %v"), errSS)
-			} else {
-				JSON.SchedulerStatus = "Scheduler started"
-			}
-		case "stop":
-			sh.baseHandler.evLoop.StopScheduler()
-			JSON = ScheduleResponse{EventStatus: JSON.EventStatus,
-				SchedulerStatus: "Scheduler stopped",
-				Result:          sh.baseHandler.evLoop.Scheduler().GetSchedulerResults()}
-
-		default:
-			sh.baseHandler.logger.Errorf(helper.APIMessage("No known method: %v"), sm)
-			JSON.SchedulerStatus = "no know method for scheduler status change"
-		}
+		JSON.SchedulerStatus = "Scheduler started"
 	}
+
 	byteJSON, _ := json.Marshal(JSON)
 	if _, errWrite := writer.Write(byteJSON); errWrite != nil {
 		sh.baseHandler.logger.Errorf(helper.APIMessage("Error responding: %v"), errWrite.Error())
@@ -100,10 +76,12 @@ func (sh *schedulerHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 }
 
 // scheduleEvent получаем ID ивента из URL, и создаём ивент
-func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
+func (sh *schedulerHandler) scheduleEvent(
+	ctx context.Context,
 	writer http.ResponseWriter,
 	jSON *ScheduleResponse,
-	param string) uuid.UUID {
+	param string,
+) uuid.UUID {
 	var (
 		id       int
 		newEvent event.Interface
@@ -115,17 +93,29 @@ func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
 	}
 
 	if id, err = strconv.Atoi(param); err != nil {
-		jSON.EventStatus = helper.ServerJSONLogErr(writer, "no event preset requested: %v", sh.baseHandler.logger, 400, param)
+		jSON.EventStatus = helper.ServerJSONLogErr(
+			writer,
+			"no event preset requested: %v",
+			sh.baseHandler.logger,
+			400,
+			param,
+		)
 		sh.logger.Debugf(helper.APIMessage("no event preset requested details: %v"), err)
 		return uuid.Nil
 	}
 
-	if newEvent, err = eventpreset.CreateEvent(id, eventpreset.INTERVALED); err != nil {
-		jSON.EventStatus = helper.ServerJSONLogErr(writer, "error while creating event: %v", sh.baseHandler.logger, 400, err)
+	if newEvent, err = eventpreset.CreateEvent(id, eventpreset.INTERVALED, string(eventloop.INTERVALED)); err != nil {
+		jSON.EventStatus = helper.ServerJSONLogErr(
+			writer,
+			"error while creating event: %v",
+			sh.baseHandler.logger,
+			400,
+			err,
+		)
 		return uuid.Nil
 	}
 
-	if err = sh.baseHandler.evLoop.ScheduleEvent(ctx, newEvent, nil); err != nil {
+	if err = sh.baseHandler.evLoop.RegisterEvent(ctx, newEvent); err != nil {
 		writer.WriteHeader(500)
 		jSON.EventStatus = "schedule event fail"
 		sh.baseHandler.logger.Errorf(helper.APIMessage("schedule event fail: %v"), err)
@@ -133,5 +123,5 @@ func (sh *schedulerHandler) scheduleEvent(ctx context.Context,
 	}
 
 	jSON.EventStatus = "Event is scheduled succesfully"
-	return newEvent.GetID()
+	return uuid.MustParse(newEvent.GetUUID())
 }

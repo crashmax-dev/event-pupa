@@ -34,7 +34,7 @@ func (th *triggerHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 
 	var errTrig error
 	go func() {
-		if errTrig = th.baseHandler.evLoop.Trigger(triggerCtx, param, ch); errTrig != nil {
+		if errTrig = th.baseHandler.evLoop.Trigger(triggerCtx, param); errTrig != nil {
 			io.WriteString(writer, "Event trigger fail")
 			th.baseHandler.logger.Errorf(helper.APIMessage("event trigger fail: %v"), errTrig)
 			return
