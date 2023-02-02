@@ -424,7 +424,7 @@ func (e *eventLoop) GetEventsByType(eventType string) (result []string, errRetur
 }
 
 func (e *eventLoop) GetTriggerNames() AllTriggers {
-	ReturnIriggers.userTriggers = e.events.GetAll()
+	ReturnIriggers.userTriggers = e.events.GetTriggers()
 	return ReturnIriggers
 }
 
