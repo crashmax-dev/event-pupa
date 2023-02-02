@@ -26,7 +26,10 @@ type test struct {
 	want int
 }
 
-func ctxWithValueAndTimeout(ctx context.Context, key any, val any, timeout time.Duration) (context.Context, context.CancelFunc) {
+func ctxWithValueAndTimeout(ctx context.Context, key any, val any, timeout time.Duration) (
+	context.Context,
+	context.CancelFunc,
+) {
 	return context.WithTimeout(context.WithValue(ctx, key, val), timeout)
 }
 
@@ -60,27 +63,35 @@ func TestToggleOn(t *testing.T) {
 		t.Error("Error creating events: ", errNE1, errNE2)
 	}
 
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.RegisterEvent(ctx, eventDefault)
+		},
+	)
 	<-execCh
 
 	evLoop.ToggleEventLoopFuncs(TOGGLENAME)
 
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault2)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.RegisterEvent(ctx, eventDefault2)
+		},
+	)
 	<-execCh
 
 	evLoop.ToggleEventLoopFuncs(TOGGLENAME)
 
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault2)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.RegisterEvent(ctx, eventDefault2)
+		},
+	)
 	<-execCh
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, TRIGGERNAME)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, TRIGGERNAME)
+		},
+	)
 	<-execCh
 	result, _ := strconv.Atoi(<-execCh)
 
@@ -117,23 +128,29 @@ func TestToggleTrigger(t *testing.T) {
 
 	defer cancel()
 
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, eventDefault)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.RegisterEvent(ctx, eventDefault)
+		},
+	)
 	<-execCh
 
 	evLoop.ToggleEventLoopFuncs(TRIGGER)
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, EVENTNAME)
+		},
+	)
 	<-execCh
 
 	evLoop.ToggleEventLoopFuncs(TRIGGER)
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, EVENTNAME)
+		},
+	)
 	result, _ := strconv.Atoi(<-execCh)
 
 	if err := errG.Wait(); err != nil {
@@ -198,7 +215,8 @@ func TestIsScheduledEventDone(t *testing.T) {
 			errorFunc: func() {
 				t.Errorf("isEventDone by context: false; Want: true")
 			},
-		}}
+		},
+	}
 
 	for _, testValue := range tests {
 		var exitCh <-chan struct{}
@@ -249,13 +267,17 @@ func TestStartScheduler(t *testing.T) {
 	if neErr != nil {
 		t.Error(neErr)
 	}
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, evSched)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.RegisterEvent(ctx, evSched)
+		},
+	)
 	<-execCh
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, string(INTERVALED))
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, string(INTERVALED))
+		},
+	)
 
 	var result string
 	for i := 0; i < EXECUTIONS; i++ {
@@ -294,17 +316,23 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	if neErr != nil {
 		t.Error(neErr)
 	}
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, string(INTERVALED))
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, string(INTERVALED))
+		},
+	)
 	<-execCh
-	errG.Go(func() error {
-		return evLoop.RegisterEvent(ctx, evSched)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.RegisterEvent(ctx, evSched)
+		},
+	)
 	<-execCh
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, string(INTERVALED))
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, string(INTERVALED))
+		},
+	)
 	var result string
 	for i := 0; i < EXECUTIONS; i++ {
 		result = <-execCh
@@ -359,25 +387,31 @@ func TestRemoveEvent(t *testing.T) {
 		<-execCh
 	}
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, string(INTERVALED))
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, string(INTERVALED))
+		},
+	)
 	for i := 0; i < IntervalExecs; i++ {
 		<-execCh
 	}
 
 	t.Log(evLoop.RemoveEventByUUIDs(eventDefault3.GetUUID(), evSched.GetUUID(), eventDefault.GetUUID()))
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, TriggerName)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, TriggerName)
+		},
+	)
 	result, _ := strconv.Atoi(<-execCh)
 
 	evLoop.RemoveEventByUUIDs(eventDefault2.GetUUID())
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, TriggerName)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, TriggerName)
+		},
+	)
 	<-execCh
 
 	if err := errG.Wait(); err != nil {
@@ -405,8 +439,13 @@ func TestSubevent(t *testing.T) {
 			mx.Unlock()
 			return strconv.Itoa(number)
 		}
-		execCh                    = make(chan string)
-		ctx, cancel               = ctxWithValueAndTimeout(context.Background(), internal.EXEC_CH_CTX_KEY, execCh, time.Second)
+		execCh      = make(chan string)
+		ctx, cancel = ctxWithValueAndTimeout(
+			context.Background(),
+			internal.EXEC_CH_CTX_KEY,
+			execCh,
+			time.Second,
+		)
 		errG                      = new(errgroup.Group)
 		eventArgs                 = event.Args{Fun: numIncMutex, TriggerName: TRIGGERNAME}
 		argsListener, argsTrigger = eventArgs, eventArgs
@@ -436,17 +475,25 @@ func TestSubevent(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		<-execCh
 	}
-	errG.Go(func() error {
-		return evLoop.Subscribe(ctx, []event.Interface{eventDefault, eventDefault2, eventDefault3},
-			[]event.Interface{evListener, evListener2})
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Subscribe(
+				ctx, []event.Interface{eventDefault, eventDefault2, eventDefault3},
+				[]event.Interface{evListener, evListener2},
+			)
+		},
+	)
 	<-execCh
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, TRIGGERNAME)
-	})
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, TRIGGERNAME)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, TRIGGERNAME)
+		},
+	)
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, TRIGGERNAME)
+		},
+	)
 	var result string
 	for i := 0; i < 10; i++ {
 		result = <-execCh
@@ -509,9 +556,11 @@ func TestPrioritySync(t *testing.T) {
 		<-resultCh
 	}
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, TRIGGERNAME)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, TRIGGERNAME)
+		},
+	)
 
 	for i := 0; i < 4; i++ {
 		<-resultCh
@@ -542,10 +591,13 @@ func TestBeforeAfter(t *testing.T) {
 		errG                  = new(errgroup.Group)
 		globalBeforeEventArgs = event.Args{Fun: defaultEventFunc,
 			TriggerName: string(BEFORE_TRIGGER),
-			Priority:    BEFORE_PRIORITY}
-		globalAfterEventArgs = event.Args{Fun: defaultEventFunc,
+			Priority:    BEFORE_PRIORITY,
+		}
+		globalAfterEventArgs = event.Args{
+			Fun:         defaultEventFunc,
 			TriggerName: string(AFTER_TRIGGER),
-			Priority:    AFTER_PRIORITY}
+			Priority:    AFTER_PRIORITY,
+		}
 		beforeEventArgs = event.Args{
 			Fun:         defaultEventFunc,
 			TriggerName: EVENTNAME,
@@ -576,13 +628,17 @@ func TestBeforeAfter(t *testing.T) {
 	evLoop.RegisterEvent(ctx, laEvent)
 	evLoop.RegisterEvent(ctx, lbEvent)
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, EVENTNAME)
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, EVENTNAME)
+		},
+	)
 
-	errG.Go(func() error {
-		return evLoop.Trigger(ctx, "Random Event")
-	})
+	errG.Go(
+		func() error {
+			return evLoop.Trigger(ctx, "Random Event")
+		},
+	)
 
 	if err := errG.Wait(); err != nil {
 		t.Errorf(err.Error())

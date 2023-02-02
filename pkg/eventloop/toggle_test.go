@@ -57,20 +57,22 @@ func Test_eventLoop_ToggleTriggers(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := &eventLoop{
-				events:   tt.fields.events,
-				mx:       tt.fields.mx,
-				disabled: tt.fields.disabled,
-				logger:   tt.fields.logger,
-			}
-			if tt.init != nil {
-				tt.init(e.events, tt.args.triggerNames[0])
-			}
-			if got := e.ToggleTriggers(tt.args.triggerNames...); got != tt.want {
-				t.Errorf("ToggleTriggers() = %v, want %v", got, tt.want)
-			}
-		})
+		t.Run(
+			tt.name, func(t *testing.T) {
+				e := &eventLoop{
+					events:   tt.fields.events,
+					mx:       tt.fields.mx,
+					disabled: tt.fields.disabled,
+					logger:   tt.fields.logger,
+				}
+				if tt.init != nil {
+					tt.init(e.events, tt.args.triggerNames[0])
+				}
+				if got := e.ToggleTriggers(tt.args.triggerNames...); got != tt.want {
+					t.Errorf("ToggleTriggers() = %v, want %v", got, tt.want)
+				}
+			},
+		)
 	}
 }
 
@@ -99,16 +101,18 @@ func Test_eventLoop_Toggle(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := &eventLoop{
-				events:   tt.fields.events,
-				mx:       tt.fields.mx,
-				disabled: tt.fields.disabled,
-				logger:   tt.fields.logger,
-			}
-			if gotResult := e.ToggleEventLoopFuncs(tt.args.eventFuncs...); gotResult != tt.wantResult {
-				t.Errorf("ToggleEventLoopFunc() = %v, want %v", gotResult, tt.wantResult)
-			}
-		})
+		t.Run(
+			tt.name, func(t *testing.T) {
+				e := &eventLoop{
+					events:   tt.fields.events,
+					mx:       tt.fields.mx,
+					disabled: tt.fields.disabled,
+					logger:   tt.fields.logger,
+				}
+				if gotResult := e.ToggleEventLoopFuncs(tt.args.eventFuncs...); gotResult != tt.wantResult {
+					t.Errorf("ToggleEventLoopFunc() = %v, want %v", gotResult, tt.wantResult)
+				}
+			},
+		)
 	}
 }

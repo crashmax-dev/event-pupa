@@ -69,7 +69,8 @@ func NewEvent(args Args) (Interface, error) {
 	newEvent := &event{uuid: uuid.NewString(),
 		fun:         args.Fun,
 		triggerName: args.TriggerName,
-		priority:    args.Priority}
+		priority:    args.Priority,
+	}
 
 	if args.IsOnce {
 		newEvent.once = once.NewOnce()
