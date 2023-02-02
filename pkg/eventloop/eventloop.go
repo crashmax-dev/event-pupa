@@ -414,12 +414,10 @@ func (e *eventLoop) GetAttachedEvents(triggerName string) (result []event.Interf
 }
 
 func (e *eventLoop) GetEventsByType(eventType string) (result []string, errReturn error) {
-	t, err := event.AsType(eventType)
-	if err != nil {
-		return nil, err
-	}
-	result = make([]string, 0, len(e.eventsByType[t]))
-	for _, v := range e.eventsByType[t] {
+	events := e.events.GetEventsByType(eventType)
+
+	result = make([]string, 0, len(events))
+	for _, v := range events {
 		result = append(result, v.GetUUID())
 	}
 	return result, nil
