@@ -18,5 +18,4 @@ type Interface interface {
 	Subscribe(ctx context.Context, triggers []event.Interface, listeners []event.Interface) error
 	GetAttachedEvents(triggerName string) (result []event.Interface)
 	GetTriggerNames() AllTriggers
-	Sync() error
 }

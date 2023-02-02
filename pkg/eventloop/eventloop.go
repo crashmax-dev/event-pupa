@@ -57,7 +57,8 @@ func (e *eventLoop) RegisterEvent(
 	e.mx.Lock()
 	defer e.mx.Unlock()
 	for _, evnt := range newEvents {
-		if ctxErr := e.checkContext(ctx, "can't register event, context is done",
+		if ctxErr := e.checkContext(
+			ctx, "can't register event, context is done",
 			"events", evnt.GetUUID(),
 			"trigger", evnt.GetTriggerName(),
 		); ctxErr != nil {
@@ -117,7 +118,8 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 
 	if isContextDone(subCtx) {
 		errStr := "can't subscribe, context is done"
-		e.logger.Warnw(errStr,
+		e.logger.Warnw(
+			errStr,
 			"triggers", triggers,
 			"listeners", listeners,
 		)
@@ -265,7 +267,8 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 
 	var deferErr error
 
-	if ctxErr := e.checkContext(triggerCtx,
+	if ctxErr := e.checkContext(
+		triggerCtx,
 		"can't trigger event, context is done",
 		"triggerName", triggerName,
 	); ctxErr != nil {
@@ -341,7 +344,8 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 
 // isEventDone нужен для прекращения работы ивентов-интервалов.
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
-func isEventDone[T any](ctx context.Context,
+func isEventDone[T any](
+	ctx context.Context,
 	eventCh <-chan T,
 	logger loggerEventLoop.Interface,
 ) <-chan struct{} {
@@ -367,7 +371,8 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	schedCtx, cancel := context.WithCancel(ctx)
 	intervalComponent, _ := ev.Interval()
 	evntInterval := intervalComponent.GetDuration()
-	e.logger.Infow("Scheduled ev starting with interval",
+	e.logger.Infow(
+		"Scheduled ev starting with interval",
 		"ev", ev.GetUUID(),
 		"interval", evntInterval,
 	)
@@ -426,10 +431,6 @@ func (e *eventLoop) GetEventsByType(eventType string) (result []string, errRetur
 func (e *eventLoop) GetTriggerNames() AllTriggers {
 	ReturnIriggers.userTriggers = e.events.GetTriggers()
 	return ReturnIriggers
-}
-
-func (e *eventLoop) Sync() error {
-	return e.logger.Sync()
 }
 
 func (e *eventLoop) checkContext(ctx context.Context, message string, loggerArgs ...string) error {
