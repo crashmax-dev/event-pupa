@@ -80,18 +80,18 @@ func (eh *eventHandler) postput(ctx context.Context, writer http.ResponseWriter,
 		return
 	}
 
-	eventName := params[1]
-	newEvent, _ := eventpreset.CreateEvent(id, eventpreset.REGULAR)
+	triggerName := params[1]
+	newEvent, _ := eventpreset.CreateEvent(id, eventpreset.REGULAR, triggerName)
 
-	errOn := eh.baseHandler.evLoop.On(ctx, eventName, newEvent, nil)
+	errOn := eh.baseHandler.evLoop.RegisterEvent(ctx, newEvent)
 	if errOn != nil {
 		helper.ServerLogErr(writer, "Event is not created", eh.logger, 400)
 		eh.logger.Error(errOn)
 		return
 	}
 
-	eh.baseHandler.logger.Infof(helper.APIMessage("Event type %v created for %v"), id, eventName)
-	_, err = io.WriteString(writer, newEvent.GetID().String())
+	eh.baseHandler.logger.Infof(helper.APIMessage("Event type %v created for %v"), id, triggerName)
+	_, err = io.WriteString(writer, newEvent.GetUUID())
 	if err != nil {
 		eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), err)
 	}
@@ -119,8 +119,12 @@ func (eh *eventHandler) delete(writer http.ResponseWriter, request *http.Request
 		}
 		eh.baseHandler.logger.Infof(helper.APIMessage("Removing events %v"), sl)
 
-		ids := eh.baseHandler.evLoop.RemoveEventByUUIDs(sl)
-		output, _ := json.Marshal(ids)
+		stringIds := make([]string, 0, len(sl))
+		for _, id := range sl {
+			stringIds = append(stringIds, id.String())
+		}
+		remainIds := eh.baseHandler.evLoop.RemoveEventByUUIDs(stringIds...)
+		output, _ := json.Marshal(remainIds)
 
 		_, errRespond := writer.Write(output)
 		if errRespond != nil {
