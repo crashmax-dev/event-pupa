@@ -330,7 +330,7 @@ func Test_event_GetTypes(t *testing.T) {
 				once:        once.NewOnce(),
 				after:       after.New(after.Args{Date: time.Now()}),
 			},
-			wantOut: []Type{TRIGGER, ONCE, AFTER, INTERVAL, SUBSCRIBER},
+			wantOut: []Type{"TRIGGER", "ONCE", "AFTER", "INTERVAL", "SUBSCRIBER"},
 		},
 		{
 			name:    "No types",
