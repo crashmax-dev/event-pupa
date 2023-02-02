@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -121,6 +121,10 @@ func (ev *event) GetTriggerName() string {
 
 func (ev *event) GetPriority() int {
 	return ev.priority
+}
+
+func (ev *event) GetPriorityString() string {
+	return strconv.Itoa(ev.priority)
 }
 
 func (ev *event) RunFunction(ctx context.Context) {

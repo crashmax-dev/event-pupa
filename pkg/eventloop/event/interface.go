@@ -12,6 +12,7 @@ import (
 type Interface interface {
 	GetUUID() string
 	GetPriority() int
+	GetPriorityString() string
 	GetTriggerName() string
 	RunFunction(ctx context.Context)
 	After() (after.Interface, error)
