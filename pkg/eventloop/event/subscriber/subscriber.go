@@ -12,7 +12,6 @@ type channelsByUUIDString map[string]InterfaceSubChannels
 
 const (
 	TriggerListener SubChInfo = 1
-	DeleteChannel   SubChInfo = -1
 )
 
 const (
