@@ -50,14 +50,17 @@ func NewEventLoop(level string) Interface {
 	}
 }
 
-func (e *eventLoop) RegisterEvent(ctx context.Context,
-	newEvents ...event.Interface) (errReturn error) {
+func (e *eventLoop) RegisterEvent(
+	ctx context.Context,
+	newEvents ...event.Interface,
+) (errReturn error) {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 	for _, evnt := range newEvents {
 		if ctxErr := e.checkContext(ctx, "can't register event, context is done",
 			"events", evnt.GetUUID(),
-			"trigger", evnt.GetTriggerName()); ctxErr != nil {
+			"trigger", evnt.GetTriggerName(),
+		); ctxErr != nil {
 			internal.WriteToExecCh(ctx, "")
 			errReturn = internal.WrapError(errReturn, ctxErr)
 			continue
@@ -65,8 +68,10 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 		// Если выключено добавление - не добавляем
 		if slices.Contains(e.disabled, REGISTER) {
 			errStr := "register disabled, can't register event"
-			e.logger.Warnw(errStr,
-				"event", evnt.GetUUID())
+			e.logger.Warnw(
+				errStr,
+				"event", evnt.GetUUID(),
+			)
 			internal.WriteToExecCh(ctx, "")
 			errReturn = internal.WrapError(errReturn, errors.New(errStr))
 			continue
@@ -91,7 +96,8 @@ func (e *eventLoop) RegisterEvent(ctx context.Context,
 			e.addEvent(string(AFTER), evnt)
 			e.logger.Debugw("Event added", "start_time", afterComp.GetDuration(),
 				"eventId",
-				evnt.GetUUID())
+				evnt.GetUUID(),
+			)
 		} else {
 			errStr := "event must be at least ON, INTERVAL or AFTER"
 			errNew := fmt.Errorf(errStr)
@@ -117,7 +123,8 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		errStr := "can't subscribe, context is done"
 		e.logger.Warnw(errStr,
 			"triggers", triggers,
-			"listeners", listeners)
+			"listeners", listeners,
+		)
 		return errors.New(errStr)
 	}
 	for _, listener := range listeners {
@@ -191,8 +198,10 @@ func (e *eventLoop) runnerListener(ctx context.Context, v event.Interface) {
 				if ch.IsClosed() {
 					delete(channels, id)
 				}
-				logTxt := fmt.Sprintf("Reading channel from %v [%v/%v]", id, i,
-					len(channels))
+				logTxt := fmt.Sprintf(
+					"Reading channel from %v [%v/%v]", id, i,
+					len(channels),
+				)
 				e.logger.Debugw(logTxt, "event", v.GetUUID())
 				i--
 			}
@@ -239,8 +248,10 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 				if chnl.IsClosed() {
 					delete(channels, id)
 				}
-				logTxt := fmt.Sprintf("Writing channel for %v [%v/%v]", id, i,
-					len(channels))
+				logTxt := fmt.Sprintf(
+					"Writing channel for %v [%v/%v]", id, i,
+					len(channels),
+				)
 				e.logger.Debugw(logTxt, "event", v.GetUUID())
 				chnl.GetInfoCh() <- subscriber.TriggerListener
 				i++
@@ -256,8 +267,10 @@ func (e *eventLoop) runnerTrigger(ctx context.Context, v event.Interface) {
 // нужно создавать новый channelEx
 func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	errFunc := func(msg string) error {
-		e.logger.Warnw(msg,
-			"eventname", triggerName)
+		e.logger.Warnw(
+			msg,
+			"eventname", triggerName,
+		)
 		internal.WriteToExecCh(ctx, "")
 		return errors.New(msg)
 	}
@@ -268,7 +281,8 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 
 	if ctxErr := e.checkContext(triggerCtx,
 		"can't trigger event, context is done",
-		"triggerName", triggerName); ctxErr != nil {
+		"triggerName", triggerName,
+	); ctxErr != nil {
 		internal.WriteToExecCh(ctx, "")
 		return ctxErr
 	}
@@ -343,7 +357,8 @@ func (e *eventLoop) triggerEventFunc(ctx context.Context, ev event.Interface) {
 // Чекает разные каналы, и если с любого пришёл сигнал - всё, гг (либо канал самого ивента, канал ивентлупа и context.Done()
 func isEventDone[T any](ctx context.Context,
 	eventCh <-chan T,
-	logger loggerEventLoop.Interface) <-chan struct{} {
+	logger loggerEventLoop.Interface,
+) <-chan struct{} {
 	result := make(chan struct{})
 	go func(eventCh <-chan T) {
 		select {
@@ -368,7 +383,8 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 	evntInterval := intervalComponent.GetDuration()
 	e.logger.Infow("Scheduled ev starting with interval",
 		"ev", ev.GetUUID(),
-		"interval", evntInterval)
+		"interval", evntInterval,
+	)
 	ticker := time.NewTicker(evntInterval)
 	intervalComponent.SetRunning(true)
 
@@ -383,9 +399,11 @@ func (e *eventLoop) runScheduledEvent(ctx context.Context, ev event.Interface) {
 			go func(ev event.Interface) {
 				ev.RunFunction(schedCtx)
 				if once, onceErr := ev.Once(); onceErr == nil {
-					once.Do(func() {
-						cancel()
-					})
+					once.Do(
+						func() {
+							cancel()
+						},
+					)
 					return
 				}
 			}(ev)
@@ -433,8 +451,10 @@ func (e *eventLoop) Sync() error {
 func (e *eventLoop) checkContext(ctx context.Context, message string, loggerArgs ...string) error {
 	if isContextDone(ctx) {
 		errStr := fmt.Sprintf("%v (%v)", message, ctx.Err())
-		e.logger.Warnw(errStr,
-			loggerArgs)
+		e.logger.Warnw(
+			errStr,
+			loggerArgs,
+		)
 		return errors.New(errStr)
 	}
 	return nil
