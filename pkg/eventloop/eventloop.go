@@ -133,7 +133,7 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 			tSub, _ := t.Subscriber()
 			tSub.AddChannel(listener.GetUUID(), ch, &generalClosedInfo)
 		}
-		e.addEvent("", listener)
+		e.events.AddEvent(listener)
 		// Запскаем ждуна для слушателя, когда триггеры сработают, и срабатываем сами
 		go e.runnerListener(subCtx, listener)
 	}
@@ -141,16 +141,6 @@ func (e *eventLoop) Subscribe(ctx context.Context, triggers []event.Interface, l
 		go e.runnerTrigger(subCtx, t)
 	}
 	return nil
-}
-
-func (e *eventLoop) addEvent(triggerName string, newEvent event.Interface) {
-	e.events.TriggerName(triggerName).Priority(newEvent.GetPriority()).AddEvent(newEvent)
-	for _, t := range newEvent.GetTypes() {
-		if e.eventsByType[t] == nil {
-			e.eventsByType[t] = []event.Interface{}
-		}
-		e.eventsByType[t] = append(e.eventsByType[t], newEvent)
-	}
 }
 
 func isContextDone(ctx context.Context) bool {
