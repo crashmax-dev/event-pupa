@@ -37,19 +37,19 @@ func (e *eventLoop) ToggleEventLoopFuncs(eventFuncs ...EventFunction) string {
 }
 
 func (e *eventLoop) ToggleTriggers(triggerNames ...string) (result string) {
-	for _, v := range triggerNames {
+	for _, name := range triggerNames {
 		if result != "" {
 			result += " | "
 		}
 		// Включение
-		if e.events.TriggerName(v).IsDisabled() {
-			result += fmt.Sprintf("Enabling %v", v)
+		if !e.events.IsTriggerEnabled(name) {
+			result += fmt.Sprintf("Enabling %v", name)
 			e.logger.Info(result)
-			e.events.TriggerName(v).SetIsDisabled(false)
+			e.events.ToggleTrigger(name, true)
 		} else { // Выключение
-			result += fmt.Sprintf("Disabling %v", v)
+			result += fmt.Sprintf("Disabling %v", name)
 			e.logger.Info(result)
-			e.events.TriggerName(v).SetIsDisabled(true)
+			e.events.ToggleTrigger(name, false)
 		}
 	}
 	return

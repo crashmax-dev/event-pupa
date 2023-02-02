@@ -70,6 +70,7 @@ func TestToggleOn(t *testing.T) {
 	)
 	<-execCh
 
+	// Выключаем регистрацию и регистрируем
 	evLoop.ToggleEventLoopFuncs(TOGGLENAME)
 
 	errG.Go(
@@ -79,6 +80,7 @@ func TestToggleOn(t *testing.T) {
 	)
 	<-execCh
 
+	// Включаем регистрацию и регаем
 	evLoop.ToggleEventLoopFuncs(TOGGLENAME)
 
 	errG.Go(
@@ -180,12 +182,13 @@ func TestIsScheduledEventDone(t *testing.T) {
 		init      func() <-chan struct{}
 		done      func()
 		errorFunc func()
-	}{{
-		name: "No cancel event",
-		done: func() {
-			t.Errorf("isEventDone: true; Want: false")
+	}{
+		{
+			name: "No cancel event",
+			done: func() {
+				t.Errorf("isEventDone: true; Want: false")
+			},
 		},
-	},
 		{
 			name: "Event channel cancel",
 			init: func() <-chan struct{} {
@@ -262,7 +265,7 @@ func TestStartScheduler(t *testing.T) {
 
 	errG.SetLimit(-1)
 
-	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL})
+	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL, TriggerName: string(INTERVALED)})
 	defer evLoop.RemoveEventByUUIDs(evSched.GetUUID())
 	if neErr != nil {
 		t.Error(neErr)
@@ -311,7 +314,7 @@ func TestScheduleEventAfterStartAndStop(t *testing.T) {
 	)
 	defer cancel()
 
-	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL})
+	evSched, neErr := event.NewEvent(event.Args{Fun: numInc, IntervalTime: INTERVAL, TriggerName: string(INTERVALED)})
 	defer evLoop.RemoveEventByUUIDs(evSched.GetUUID())
 	if neErr != nil {
 		t.Error(neErr)
@@ -367,9 +370,13 @@ func TestRemoveEvent(t *testing.T) {
 		errG        = new(errgroup.Group)
 	)
 	defer cancel()
-	evSched, neErr1 := event.NewEvent(event.Args{
-		Fun:          numInc,
-		IntervalTime: Interval})
+	evSched, neErr1 := event.NewEvent(
+		event.Args{
+			Fun:          numInc,
+			IntervalTime: Interval,
+			TriggerName:  string(INTERVALED),
+		},
+	)
 	eventDefault, neErr2 := event.NewEvent(event.Args{Fun: numInc, TriggerName: TriggerName})
 	eventDefault2, neErr3 := event.NewEvent(event.Args{Fun: numInc, TriggerName: TriggerName})
 	eventDefault3, neErr4 := event.NewEvent(event.Args{Fun: numInc, TriggerName: TriggerName})
@@ -578,7 +585,7 @@ func TestPrioritySync(t *testing.T) {
 // Before-After
 func TestBeforeAfter(t *testing.T) {
 	const (
-		WANT      = 6
+		WANT      = 4
 		EVENTNAME = "BEFORE_AFTER_EVENT"
 	)
 	var (
@@ -589,7 +596,8 @@ func TestBeforeAfter(t *testing.T) {
 		}
 		ctx, cancel           = context.WithTimeout(context.Background(), time.Second)
 		errG                  = new(errgroup.Group)
-		globalBeforeEventArgs = event.Args{Fun: defaultEventFunc,
+		globalBeforeEventArgs = event.Args{
+			Fun:         defaultEventFunc,
 			TriggerName: string(BEFORE_TRIGGER),
 			Priority:    BEFORE_PRIORITY,
 		}

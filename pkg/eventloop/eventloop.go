@@ -11,7 +11,7 @@ import (
 	"eventloop/pkg/eventloop/event"
 	"eventloop/pkg/eventloop/event/subscriber"
 	"eventloop/pkg/eventloop/internal"
-	"eventloop/pkg/eventloop/internal/triggerslist"
+	"eventloop/pkg/eventloop/internal/eventsContainer"
 	loggerEventLoop "eventloop/pkg/logger"
 	"golang.org/x/exp/slices"
 )
@@ -27,9 +27,8 @@ const (
 // каждого, так и одноразовые, выполняющиеся с определённым интервалом. Также можно задавать приоритет обычным событиям.
 // Для использования нужно создавать event.
 type eventLoop struct {
-	events       triggerslist.Interface
-	eventsByType map[event.Type][]event.Interface
-	mx           *sync.RWMutex
+	events eventsContainer.Interface
+	mx     *sync.RWMutex
 
 	disabled []EventFunction
 
@@ -45,10 +44,9 @@ func NewEventLoop(level string) Interface {
 		fmt.Printf("logger init error: %v", err)
 	}
 	return &eventLoop{
-		mx:           &sync.RWMutex{},
-		events:       triggerslist.New(),
-		eventsByType: map[event.Type][]event.Interface{},
-		logger:       elLogger,
+		mx:     &sync.RWMutex{},
+		events: eventsContainer.New(),
+		logger: elLogger,
 	}
 }
 
@@ -280,7 +278,7 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		return errFunc("can't trigger event, trigger function is disabled")
 	}
 
-	if e.events.TriggerName(triggerName).IsDisabled() {
+	if !e.events.IsTriggerEnabled(triggerName) {
 		return errFunc("can't trigger event, trigger name is disabled")
 	}
 
@@ -291,40 +289,32 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 	e.logger.Infow("ChanTrigger event", "triggerName", triggerName)
 
 	// Run before global events
-	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(string(BEFORE_TRIGGER)).Priority(BEFORE_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.EventsByTrigger(string(BEFORE_TRIGGER))...)
 
-	// Run before events
-	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(triggerName).Priority(BEFORE_PRIORITY).List())
+	eventsByPriority := e.events.GetPrioritySortedEventsByTrigger(triggerName)
+	for _, ev := range eventsByPriority {
+		e.logger.Debugw("Start runFunc goroutine", "eventId", ev.GetUUID())
+		go e.triggerEventFunc(triggerCtx, ev)
 
-	keys := e.events.TriggerName(triggerName).GetSortedPriorityNums()
-	if priorIndex := len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0 {
-		for priorIndex = len(keys) - 1; priorIndex >= 0 && keys[priorIndex] >= 0; priorIndex-- {
-			priority := keys[priorIndex]
-			for _, loopevent := range e.events.TriggerName(triggerName).Priority(priority).List() {
-				e.logger.Debugw("Start runFunc goroutine", "eventId", loopevent.GetUUID())
-				go e.triggerEventFunc(triggerCtx, loopevent)
-
-				if once, err := loopevent.Once(); err == nil {
-					once.Do(func() {
-						e.RemoveEventByUUIDs(loopevent.GetUUID())
-					})
-				}
-			}
+		if once, err := ev.Once(); err == nil {
+			once.Do(
+				func() {
+					e.RemoveEventByUUIDs(ev.GetUUID())
+				},
+			)
 		}
-	} else {
+	}
+	if len(eventsByPriority) == 0 {
 		internal.WriteToExecCh(triggerCtx, "")
 	}
 
 	// Run after global events
-	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(string(AFTER_TRIGGER)).Priority(AFTER_PRIORITY).List())
-
-	// Run after events
-	e.triggerEventFuncList(triggerCtx, e.events.TriggerName(triggerName).Priority(AFTER_PRIORITY).List())
+	e.triggerEventFuncList(triggerCtx, e.events.EventsByTrigger(string(AFTER_TRIGGER))...)
 
 	return deferErr
 }
 
-func (e *eventLoop) triggerEventFuncList(ctx context.Context, list triggerslist.EventsByUUIDString) {
+func (e *eventLoop) triggerEventFuncList(ctx context.Context, list ...event.Interface) {
 	for _, listItem := range list {
 		listItem.RunFunction(ctx)
 	}

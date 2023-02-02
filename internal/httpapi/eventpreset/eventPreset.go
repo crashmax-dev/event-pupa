@@ -2,7 +2,6 @@ package eventpreset
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -25,14 +24,14 @@ var Events = [...]EventFunc{event1, event2}
 // CreateEvent создаёт событие из пресета id с типом eventType (типы REGULAR, INTERVALED).
 // Возвращает ошибку, если такого пресета нет
 // Интервал интервального ивента 500 ms
-func CreateEvent(id int, eventType EventType) (event.Interface, error) {
+func CreateEvent(id int, eventType EventType, triggerName string) (event.Interface, error) {
 	switch eventType {
 	case REGULAR:
-		return event.NewEvent(Events[id-1]()), nil
+		return event.NewEvent(event.Args{Fun: Events[id-1](), TriggerName: triggerName})
 	case INTERVALED:
-		return event.NewIntervalEvent(Events[id-1](), 500*time.Millisecond), nil
+		return event.NewEvent(event.Args{Fun: Events[id-1](), IntervalTime: 500 * time.Millisecond})
 	default:
-		return nil, errors.New(fmt.Sprintf("No such type: %v", eventType))
+		return nil, fmt.Errorf("No such type: %v", eventType)
 	}
 }
 
