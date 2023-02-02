@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"eventloop/internal/loggerImplementation"
-	"eventloop/pkg/eventloop/internal/triggerslist"
+	"eventloop/pkg/eventloop/internal/eventsContainer"
 	"eventloop/pkg/logger"
 )
 
@@ -19,7 +19,7 @@ func newTestLogger() logger.Interface {
 
 func Test_eventLoop_ToggleTriggers(t *testing.T) {
 	type fields struct {
-		events   triggerslist.Interface
+		events   eventsContainer.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -31,26 +31,30 @@ func Test_eventLoop_ToggleTriggers(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		init   func(p triggerslist.Interface, tNames ...string)
+		init   func(p eventsContainer.Interface, tNames ...string)
 		want   string
 	}{
 		{
 			name: "No events",
-			fields: fields{events: triggerslist.New(),
+			fields: fields{
+				events: eventsContainer.New(),
 				mx:     &sync.RWMutex{},
-				logger: newTestLogger()},
+				logger: newTestLogger(),
+			},
 			args: args{triggerNames: []string{"Trigger1", "Trigger2"}},
 			want: "Disabling Trigger1 | Disabling Trigger2",
 		},
 		{
 			name: "Disabled trigger",
-			fields: fields{events: triggerslist.New(),
+			fields: fields{
+				events: eventsContainer.New(),
 				mx:     &sync.RWMutex{},
-				logger: newTestLogger()},
+				logger: newTestLogger(),
+			},
 			args: args{triggerNames: []string{"Trigger1", "Trigger2"}},
-			init: func(p triggerslist.Interface, tNames ...string) {
+			init: func(p eventsContainer.Interface, tNames ...string) {
 				for _, v := range tNames {
-					p.TriggerName(v).SetIsDisabled(true)
+					p.ToggleTrigger(v, false)
 				}
 			},
 			want: "Enabling Trigger1 | Disabling Trigger2",
@@ -78,7 +82,7 @@ func Test_eventLoop_ToggleTriggers(t *testing.T) {
 
 func Test_eventLoop_Toggle(t *testing.T) {
 	type fields struct {
-		events   triggerslist.Interface
+		events   eventsContainer.Interface
 		mx       *sync.RWMutex
 		disabled []EventFunction
 		logger   logger.Interface
@@ -94,8 +98,10 @@ func Test_eventLoop_Toggle(t *testing.T) {
 	}{
 		{
 			name: "Disable and Enable",
-			fields: fields{events: triggerslist.New(), mx: &sync.RWMutex{},
-				disabled: []EventFunction{REGISTER}, logger: newTestLogger()},
+			fields: fields{
+				events: eventsContainer.New(), mx: &sync.RWMutex{},
+				disabled: []EventFunction{REGISTER}, logger: newTestLogger(),
+			},
 			args:       args{eventFuncs: []EventFunction{REGISTER, TRIGGER}},
 			wantResult: "Enabling REGISTER | Disabling TRIGGER",
 		},
