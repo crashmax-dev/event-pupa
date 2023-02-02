@@ -70,7 +70,7 @@ func main() {
 }
 
 func initLogger() (loggerInterface.Interface, error) {
-	appLogger, err := logger.NewLogger(_LOGLEVEL, "logs", "")
+	appLogger, err := loggerImplementation.NewLogger(_LOGLEVEL, "logs", "")
 	if err != nil {
 		return nil, err
 	}
