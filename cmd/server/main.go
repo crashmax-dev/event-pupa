@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"eventloop/internal/httpapi"
-	"eventloop/internal/logger"
+	"eventloop/internal/loggerImplementation"
 	"eventloop/pkg/eventloop"
 	loggerInterface "eventloop/pkg/logger"
 )

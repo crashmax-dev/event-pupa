@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	loggerImplement "eventloop/internal/logger"
+	loggerImplement "eventloop/internal/loggerImplementation"
 	"eventloop/pkg/eventloop"
 	"eventloop/pkg/logger"
 )
