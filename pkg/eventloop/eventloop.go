@@ -79,22 +79,18 @@ func (e *eventLoop) RegisterEvent(
 
 		// ON
 		if triggerName := evnt.GetTriggerName(); triggerName != "" {
-			if slices.Contains(restrictedTriggers, eventLoopSystemTrigger(triggerName)) {
-				errStr := fmt.Sprintf("ChanTrigger name %v is reserved", triggerName)
-				e.logger.Warnf("ChanTrigger name %v is reserved", triggerName)
-				internal.WriteToExecCh(ctx, "")
-				errReturn = internal.WrapError(errReturn, errors.New(errStr))
-				continue
-			}
-			e.addEvent(evnt.GetTriggerName(), evnt)
-			e.logger.Debugw("Event added", "triggerName", evnt.GetTriggerName(), "eventId",
-				evnt.GetUUID())
+			e.events.AddEvent(evnt)
+			e.logger.Debugw(
+				"Event added", "triggerName", evnt.GetTriggerName(), "eventId",
+				evnt.GetUUID(),
+			)
 		} else if intervalComp, intervalErr := evnt.Interval(); intervalErr == nil { // INTERVAL
-			e.addEvent(string(INTERVALED), evnt)
+			e.events.AddEvent(evnt)
 			e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
 		} else if afterComp, afterErr := evnt.After(); afterErr == nil { // AFTER
-			e.addEvent(string(AFTER), evnt)
-			e.logger.Debugw("Event added", "start_time", afterComp.GetDuration(),
+			e.events.AddEvent(evnt)
+			e.logger.Debugw(
+				"Event added", "start_time", afterComp.GetDuration(),
 				"eventId",
 				evnt.GetUUID(),
 			)
