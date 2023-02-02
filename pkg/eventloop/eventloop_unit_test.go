@@ -89,26 +89,33 @@ func Test_eventLoop_GetAttachedEvents(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lgger, _ := loggerImplementation.NewLogger("DEBUG", "test", "")
-			e := &eventLoop{
-				events:   tt.fields.events,
-				mx:       tt.fields.mx,
-				disabled: tt.fields.disabled,
-				logger:   lgger,
-			}
-			if tt.initFunc != nil {
-				tt.wantResult = tt.initFunc(tt.args.triggerName, e)
-			}
-			gotResult, err := e.GetAttachedEvents(tt.args.triggerName)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetAttachedEvents() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotResult, tt.wantResult) {
-				t.Errorf("GetAttachedEvents() gotResult = %v, want %v", gotResult, tt.wantResult)
-			}
-		})
+		t.Run(
+			tt.name, func(t *testing.T) {
+				lgger, _ := loggerImplementation.NewLogger("DEBUG", "test", "")
+				e := &eventLoop{
+					events:   tt.fields.events,
+					mx:       tt.fields.mx,
+					disabled: tt.fields.disabled,
+					logger:   lgger,
+				}
+				if tt.initFunc != nil {
+					tt.wantResult = tt.initFunc(tt.args.triggerName, e)
+				}
+				gotResult := e.GetAttachedEvents(tt.args.triggerName)
+				if len(gotResult) != len(tt.wantResult) {
+					t.Errorf("GetAttachedEvents() gotResult = %v, want %v", gotResult, tt.wantResult)
+				}
+				for _, item := range gotResult {
+					if slices.IndexFunc(
+						tt.wantResult, func(e event.Interface) bool {
+							return e.GetUUID() == item.GetUUID()
+						},
+					) < 0 {
+						t.Errorf("GetAttachedEvents() gotResult = %v, want %v", gotResult, tt.wantResult)
+					}
+				}
+			},
+		)
 	}
 }
 

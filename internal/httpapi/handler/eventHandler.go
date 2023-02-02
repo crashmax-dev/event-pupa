@@ -49,18 +49,16 @@ func (eh *eventHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 //	@Router		/events/{triggerName} [get]
 func (eh *eventHandler) get(writer http.ResponseWriter, eventName string) {
 	eh.baseHandler.logger.Debugf(helper.APIMessage("GET request"))
-	if evnts, err := eh.baseHandler.evLoop.GetAttachedEvents(eventName); err == nil {
-		if codedMessage, errJSON := json.Marshal(evnts); errJSON == nil {
-			_, errW := writer.Write(codedMessage)
-			if errW != nil {
-				eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), errW)
-			}
-		} else {
-			helper.ServerLogErr(writer, errJSON.Error(), eh.baseHandler.logger, 500)
+	evnts := eh.baseHandler.evLoop.GetAttachedEvents(eventName)
+	if codedMessage, errJSON := json.Marshal(evnts); errJSON == nil {
+		_, errW := writer.Write(codedMessage)
+		if errW != nil {
+			eh.baseHandler.logger.Errorf(helper.APIMessage("error responding: %v"), errW)
 		}
 	} else {
-		helper.ServerLogErr(writer, err.Error(), eh.baseHandler.logger, 404)
+		helper.ServerLogErr(writer, errJSON.Error(), eh.baseHandler.logger, 500)
 	}
+
 }
 
 // postput godoc
