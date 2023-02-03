@@ -1,4 +1,4 @@
-module eventloop
+module gitlab.com/YSX/eventloop
 
 go 1.19
 
