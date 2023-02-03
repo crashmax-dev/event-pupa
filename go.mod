@@ -2,7 +2,7 @@ module gitlab.com/YSX/eventloop
 
 go 1.19
 
-replace eventloop => gitlab.com/YSX/eventloop latest
+replace eventloop => gitlab.com/YSX/eventloop v0.1.1
 
 require (
 	github.com/google/uuid v1.3.0
