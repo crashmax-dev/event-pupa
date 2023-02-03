@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/channelEx"
+	"gitlab.com/YSX/eventloop/internal/httpapi/helper"
+	"gitlab.com/YSX/eventloop/pkg/channelEx"
 )
 
 // triggerHandler триггерит ивенты по имени

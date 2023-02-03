@@ -1,7 +1,7 @@
 package eventsContainer
 
 import (
-	"eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 )
 
 func (el *eventsList) removeEvent(e event.Interface) {

@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	"eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 	"golang.org/x/exp/maps"
 )
 

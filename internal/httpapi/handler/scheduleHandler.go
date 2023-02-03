@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"eventloop/internal/httpapi/eventpreset"
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/eventloop"
-	"eventloop/pkg/eventloop/event"
 	"github.com/google/uuid"
+	"gitlab.com/YSX/eventloop/internal/httpapi/eventpreset"
+	"gitlab.com/YSX/eventloop/internal/httpapi/helper"
+	"gitlab.com/YSX/eventloop/pkg/eventloop"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 )
 
 // schedulerHandler запускает и останавливает выполнение интервальных событий, создаёт новые из пресетов

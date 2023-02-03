@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 )
 
 var (

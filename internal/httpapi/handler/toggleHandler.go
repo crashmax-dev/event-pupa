@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"eventloop/internal/httpapi/helper"
+	"gitlab.com/YSX/eventloop/internal/httpapi/helper"
 )
 
 // toggleHandler включает и выключает триггеры. Для срабатывания отправляется POST запрос на /toggle/

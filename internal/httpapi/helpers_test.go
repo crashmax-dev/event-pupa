@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"eventloop/internal/httpapi/handler"
+	"gitlab.com/YSX/eventloop/internal/httpapi/handler"
 )
 
 func readResponse(resp *http.Response) (result string, err error) {

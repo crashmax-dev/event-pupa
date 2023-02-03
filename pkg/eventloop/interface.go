@@ -3,7 +3,7 @@ package eventloop
 import (
 	"context"
 
-	"eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 )
 
 type Interface interface {

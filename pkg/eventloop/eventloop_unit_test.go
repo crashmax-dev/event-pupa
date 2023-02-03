@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"eventloop/internal/loggerImplementation"
-	"eventloop/pkg/eventloop/event"
-	"eventloop/pkg/eventloop/event/after"
-	"eventloop/pkg/eventloop/event/subscriber"
-	"eventloop/pkg/eventloop/internal/eventsContainer"
-	"eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/internal/loggerImplementation"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/after"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/subscriber"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/internal/eventsContainer"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 	"golang.org/x/exp/slices"
 )
 

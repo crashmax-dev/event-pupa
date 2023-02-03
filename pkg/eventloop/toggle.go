@@ -3,8 +3,8 @@ package eventloop
 import (
 	"fmt"
 
-	"eventloop/pkg/eventloop/internal"
-	"eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/internal"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 	"golang.org/x/exp/slices"
 )
 

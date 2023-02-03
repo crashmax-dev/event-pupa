@@ -4,9 +4,9 @@ import (
 	"sync"
 	"testing"
 
-	"eventloop/internal/loggerImplementation"
-	"eventloop/pkg/eventloop/internal/eventsContainer"
-	"eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/internal/loggerImplementation"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/internal/eventsContainer"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 )
 
 func newTestLogger() logger.Interface {

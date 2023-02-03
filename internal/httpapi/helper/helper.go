@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 )
 
 var (
@@ -29,11 +29,13 @@ func ServerLogErr(writer http.ResponseWriter, format string, logger logger.Inter
 	}
 }
 
-func ServerJSONLogErr(writer http.ResponseWriter,
+func ServerJSONLogErr(
+	writer http.ResponseWriter,
 	format string,
 	logger logger.Interface,
 	statusCode int,
-	a ...any) string {
+	a ...any,
+) string {
 	errs := fmt.Sprintf(format, a...)
 	logger.Error(APIPrefix + errs)
 

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"eventloop/pkg/eventloop/event"
-	"eventloop/pkg/eventloop/event/subscriber"
-	"eventloop/pkg/eventloop/internal"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/subscriber"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/internal"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 )
