@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -43,9 +43,15 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 		return nil, err
 	}
 
-	filename := getOSFilePath(filepath.Join(path,
-		fmt.Sprintf("log_%s%s.log", postfix,
-			time.Now().Format("02012006"))))
+	filename := getOSFilePath(
+		filepath.Join(
+			path,
+			fmt.Sprintf(
+				"log_%s%s.log", postfix,
+				time.Now().Format("02012006"),
+			),
+		),
+	)
 
 	outputPath := []string{filename}
 	if levelSelected == zapcore.DebugLevel {
@@ -64,7 +70,8 @@ func NewLogger(level string, path string, postfix string) (logger.Interface, err
 			FunctionKey:  "function",
 			EncodeLevel:  zapcore.LowercaseLevelEncoder,
 			EncodeTime:   zapcore.ISO8601TimeEncoder,
-			EncodeCaller: zapcore.FullCallerEncoder},
+			EncodeCaller: zapcore.FullCallerEncoder,
+		},
 		OutputPaths:      []string{filename},
 		ErrorOutputPaths: []string{filename},
 	}

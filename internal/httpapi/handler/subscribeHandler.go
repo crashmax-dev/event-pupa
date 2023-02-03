@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"eventloop/internal/httpapi/eventpreset"
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/internal/httpapi/eventpreset"
+	"gitlab.com/YSX/eventloop/internal/httpapi/helper"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 )
 
 // subscribeHandler подписывает ивенты на события. Запрос должен быть JSON вида, числом обозначается пресет ивента:

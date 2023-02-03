@@ -8,14 +8,14 @@ import (
 	"strconv"
 	"time"
 
-	"eventloop/cmd/server/docs"
-	"eventloop/internal/httpapi/handler"
-	"eventloop/internal/httpapi/helper"
-	"eventloop/pkg/eventloop"
-	"eventloop/pkg/logger"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"gitlab.com/YSX/eventloop/cmd/server/docs"
+	"gitlab.com/YSX/eventloop/internal/httpapi/handler"
+	"gitlab.com/YSX/eventloop/internal/httpapi/helper"
+	"gitlab.com/YSX/eventloop/pkg/eventloop"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 
-	_ "eventloop/cmd/server/docs"
+	_ "gitlab.com/YSX/eventloop/cmd/server/docs"
 )
 
 const _APIPREFIX = "[API] "
@@ -28,11 +28,13 @@ var (
 func StartServer(port int, evLoop eventloop.Interface, srvLogger logger.Interface) error {
 	helper.APIMessageSetPrefix(_APIPREFIX)
 
-	handlersMap := map[string]handler.Type{"/events/": handler.EVENT,
+	handlersMap := map[string]handler.Type{
+		"/events/":    handler.EVENT,
 		"/trigger/":   handler.TRIGGER,
 		"/subscribe/": handler.SUBSCRIBE,
 		"/toggle/":    handler.TOGGLE,
-		"/scheduler/": handler.SCHEDULER}
+		"/scheduler/": handler.SCHEDULER,
+	}
 
 	mux := http.NewServeMux()
 	for k, v := range handlersMap {
@@ -41,8 +43,13 @@ func StartServer(port int, evLoop eventloop.Interface, srvLogger logger.Interfac
 
 	// Swagger
 	docs.SwaggerInfo.Host = fmt.Sprintf(docs.SwaggerInfo.Host, port)
-	mux.HandleFunc("/swagger/", httpSwagger.Handler(httpSwagger.URL(
-		fmt.Sprintf("http://localhost:%v/swagger/doc.json", port))))
+	mux.HandleFunc(
+		"/swagger/", httpSwagger.Handler(
+			httpSwagger.URL(
+				fmt.Sprintf("http://localhost:%v/swagger/doc.json", port),
+			),
+		),
+	)
 
 	serv = http.Server{
 		Addr:         ":" + strconv.Itoa(port),

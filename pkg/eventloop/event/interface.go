@@ -3,10 +3,10 @@ package event
 import (
 	"context"
 
-	"eventloop/pkg/eventloop/event/after"
-	"eventloop/pkg/eventloop/event/interval"
-	"eventloop/pkg/eventloop/event/once"
-	"eventloop/pkg/eventloop/event/subscriber"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/after"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/interval"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/once"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/subscriber"
 )
 
 type Interface interface {

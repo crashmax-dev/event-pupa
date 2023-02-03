@@ -8,10 +8,10 @@ import (
 	"strings"
 	"syscall"
 
-	"eventloop/internal/httpapi"
-	"eventloop/internal/loggerImplementation"
-	"eventloop/pkg/eventloop"
-	loggerInterface "eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/internal/httpapi"
+	"gitlab.com/YSX/eventloop/internal/loggerImplementation"
+	"gitlab.com/YSX/eventloop/pkg/eventloop"
+	loggerInterface "gitlab.com/YSX/eventloop/pkg/logger"
 )
 
 const (

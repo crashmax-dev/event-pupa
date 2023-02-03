@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	loggerImplement "eventloop/internal/loggerImplementation"
-	"eventloop/pkg/eventloop"
-	"eventloop/pkg/logger"
+	loggerImplement "gitlab.com/YSX/eventloop/internal/loggerImplementation"
+	"gitlab.com/YSX/eventloop/pkg/eventloop"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 )
 
 const OK = "200 OK"

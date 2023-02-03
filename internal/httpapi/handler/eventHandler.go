@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"eventloop/internal/httpapi/eventpreset"
-	"eventloop/internal/httpapi/helper"
 	"github.com/google/uuid"
+	"gitlab.com/YSX/eventloop/internal/httpapi/eventpreset"
+	"gitlab.com/YSX/eventloop/internal/httpapi/helper"
 )
 
 // eventHandler для обработки запросов по получению событий, по созданию и аттачу событий, удалению.

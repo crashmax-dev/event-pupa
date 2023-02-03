@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"eventloop/pkg/eventloop"
-	"eventloop/pkg/logger"
+	"gitlab.com/YSX/eventloop/pkg/eventloop"
+	"gitlab.com/YSX/eventloop/pkg/logger"
 )
 
 type Type uint8

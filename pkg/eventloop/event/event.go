@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"eventloop/pkg/eventloop/event/after"
-	"eventloop/pkg/eventloop/event/interval"
-	"eventloop/pkg/eventloop/event/once"
-	"eventloop/pkg/eventloop/event/subscriber"
-	"eventloop/pkg/eventloop/internal"
-	loggerEventLoop "eventloop/pkg/logger"
 	"github.com/google/uuid"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/after"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/interval"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/once"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event/subscriber"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/internal"
+	loggerEventLoop "gitlab.com/YSX/eventloop/pkg/logger"
 )
 
 // event - обычное событие, которое может иметь свойства других событий (одноразовых, интервальных, зависимых)

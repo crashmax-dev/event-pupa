@@ -1,7 +1,7 @@
 package eventsContainer
 
 import (
-	"eventloop/pkg/eventloop/event"
+	"gitlab.com/YSX/eventloop/pkg/eventloop/event"
 )
 
 type Interface interface {
