@@ -2,6 +2,8 @@ module gitlab.com/YSX/eventloop
 
 go 1.19
 
+replace eventloop => gitlab.com/YSX/eventloop latest
+
 require (
 	github.com/google/uuid v1.3.0
 	github.com/swaggo/http-swagger v1.3.3
