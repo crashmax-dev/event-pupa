@@ -29,13 +29,16 @@ func toggle[T comparable](container *[]T, logger logger.Interface, items ...T) (
 	return
 }
 
-// ToggleEventLoopFunc выключает функции менеджера событий (REGISTER и TRIGGER).
-// При попытке использования этих функций выводится ошибка.
+// ToggleEventLoopFunc включает/выключает функции менеджера событий (REGISTER и TRIGGER).
+// При попытке использования этих функций возвращается ошибка.
 // Функции можно включить обратно простым прокидыванием тех же параметров, в зависимости от того что надо включить.
 func (e *eventLoop) ToggleEventLoopFuncs(eventFuncs ...EventFunction) string {
 	return toggle(&e.disabled, e.logger, eventFuncs...)
 }
 
+// ToggleTriggers включает/выключает отдельные триггеры.
+// При попытке использования этих триггеров возвращается ошибка.
+// Триггеры можно включить обратно простым прокидыванием тех же параметров, в зависимости от того что надо включить.
 func (e *eventLoop) ToggleTriggers(triggerNames ...string) (result string) {
 	for _, name := range triggerNames {
 		if result != "" {

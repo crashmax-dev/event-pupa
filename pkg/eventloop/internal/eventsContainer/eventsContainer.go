@@ -48,6 +48,8 @@ func New() Interface {
 	return &result
 }
 
+// AddEvent добавляет событие в основное хранилище, и итерируется по типовым хранилищам, добавляет
+// событие в каждое
 func (el *eventsList) AddEvent(newEvent event.Interface) {
 	el.mx.Lock()
 	defer el.mx.Unlock()
@@ -73,6 +75,15 @@ func (el *eventsList) AddEvent(newEvent event.Interface) {
 	}
 }
 
+func (el *eventsList) addToMap(criteria criteriaInfo, newEvent event.Interface) criteriaInfo {
+	if criteria.data == nil {
+		criteria = criteriaInfo{data: make(map[string]event.Interface), isEnabled: true}
+	}
+	criteria.data[newEvent.GetUUID()] = newEvent
+	return criteria
+}
+
+// AddMiddleware добавляет событие как мидлварь. В процессе создаются все нужные мапы и слайсы, если таковых не было
 func (el *eventsList) AddMiddleware(newEvent event.Interface, triggerName string) {
 	el.mx.Lock()
 	defer el.mx.Unlock()
@@ -93,15 +104,7 @@ func (el *eventsList) AddMiddleware(newEvent event.Interface, triggerName string
 	el.eventsByCriteria[TRIGGER][triggerName] = triggerInfo
 }
 
-func (el *eventsList) addToMap(criteria criteriaInfo, newEvent event.Interface) criteriaInfo {
-	if criteria.data == nil {
-		criteria = criteriaInfo{data: make(map[string]event.Interface), isEnabled: true}
-	}
-	criteria.data[newEvent.GetUUID()] = newEvent
-	return criteria
-}
-
-// EventName
+// EventsByTrigger достаёт события по триггер нейму
 func (el *eventsList) EventsByTrigger(triggerName string) (result map[string][]event.Interface) {
 	var (
 		triggerInfo = el.eventsByCriteria[TRIGGER][triggerName]
@@ -127,8 +130,9 @@ func (el *eventsList) GetEventsByType(eventType string) []event.Interface {
 	return maps.Values(el.eventsByCriteria[TYPE][eventType].data)
 }
 
-// RemoveEventByUUIDs удаляет события. Возвращает пустой срез, если всё удалено, или срез айдишек, которые не были
-// найдены и не удалены.
+// RemoveEventByUUIDs удаляет события по UUID. Возвращает пустой срез, если всё удалено, или срез айдишек,
+// которые не были
+// найдены и не удалены. Чистит хранилища, слайсы и т.п. если в нём не остаётся событий
 func (el *eventsList) RemoveEventByUUIDs(uuids ...string) (result []string) {
 	el.mx.Lock()
 	defer el.mx.Unlock()
@@ -151,6 +155,9 @@ func (el *eventsList) RemoveEventByUUIDs(uuids ...string) (result []string) {
 	return result
 }
 
+// RemoveTriggers удаляет события по триггерам. Возвращает пустой срез, если всё удалено, или срез айдишек,
+// которые не были
+// найдены и не удалены. Чистит хранилища, слайсы и т.п. если в нём не остаётся событий
 func (el *eventsList) RemoveTriggers(triggers ...string) (result []string) {
 	el.mx.Lock()
 	defer el.mx.Unlock()
