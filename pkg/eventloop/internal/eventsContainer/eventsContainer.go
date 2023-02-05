@@ -1,6 +1,7 @@
 package eventsContainer
 
 import (
+	"reflect"
 	"sort"
 	"sync"
 
@@ -22,8 +23,9 @@ const (
 )
 
 type criteriaInfo struct {
-	data      eventsMap
-	isEnabled bool
+	data             eventsMap
+	middlewareEvents map[string][]event.Interface
+	isEnabled        bool
 }
 
 type eventsList struct {
@@ -69,7 +71,26 @@ func (el *eventsList) AddEvent(newEvent event.Interface) {
 	}
 }
 
-// Вернули ошибку, а сверху инициализируем красиво
+func (el *eventsList) AddMiddleware(newEvent event.Interface, triggerName string) {
+	el.mx.Lock()
+	defer el.mx.Unlock()
+
+	triggerInfo := el.eventsByCriteria[TRIGGER][triggerName]
+
+	if reflect.DeepEqual(triggerInfo, criteriaInfo{}) {
+		triggerInfo = criteriaInfo{data: eventsMap{}, middlewareEvents: map[string][]event.Interface{}, isEnabled: true}
+	}
+
+	if triggerInfo.middlewareEvents[newEvent.GetTriggerName()] == nil {
+		triggerInfo.middlewareEvents[newEvent.GetTriggerName()] = []event.Interface{}
+	}
+	middlewares := triggerInfo.middlewareEvents[newEvent.GetTriggerName()]
+	middlewares = append(middlewares, newEvent)
+
+	triggerInfo.middlewareEvents[newEvent.GetTriggerName()] = middlewares
+	el.eventsByCriteria[TRIGGER][triggerName] = triggerInfo
+}
+
 func (el *eventsList) addToMap(criteria criteriaInfo, newEvent event.Interface) criteriaInfo {
 	if criteria.data == nil {
 		criteria = criteriaInfo{data: make(map[string]event.Interface), isEnabled: true}
@@ -79,8 +100,17 @@ func (el *eventsList) addToMap(criteria criteriaInfo, newEvent event.Interface) 
 }
 
 // EventName
-func (el *eventsList) EventsByTrigger(triggerName string) []event.Interface {
-	return maps.Values(el.eventsByCriteria[TRIGGER][triggerName].data)
+func (el *eventsList) EventsByTrigger(triggerName string) (result map[string][]event.Interface) {
+	var (
+		triggerInfo = el.eventsByCriteria[TRIGGER][triggerName]
+		events      = maps.Values(triggerInfo.data)
+		preEvents   = triggerInfo.middlewareEvents
+	)
+	result = map[string][]event.Interface{"": events}
+	for _, key := range maps.Keys(preEvents) {
+		result[key] = preEvents[key]
+	}
+	return result
 }
 
 func (el *eventsList) GetTriggers() []string {

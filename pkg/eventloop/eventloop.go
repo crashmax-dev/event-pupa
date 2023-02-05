@@ -92,6 +92,17 @@ func (e *eventLoop) RegisterEvent(
 	return errReturn
 }
 
+func (e *eventLoop) RegisterMiddlewareEvent(ev event.Interface, triggerName string) error {
+	if middlewareName := ev.GetTriggerName(); middlewareName != string(AFTER_TRIGGER) && middlewareName != string(BEFORE_TRIGGER) {
+		return fmt.Errorf(
+			"not an middleware event, " +
+				"pass an event with \"BEFORE_TRIGGER\" or \"AFTER_TRIGGER\" trigger name",
+		)
+	}
+	e.events.AddMiddleware(ev, triggerName)
+	return nil
+}
+
 func isEnoughEventType(p event.Interface) bool {
 	var (
 		triggerName    = p.GetTriggerName()
@@ -285,8 +296,11 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 
 	e.logger.Infow("ChanTrigger event", "triggerName", triggerName)
 
-	// Run before global events
-	e.triggerEventFuncList(triggerCtx, e.events.EventsByTrigger(string(BEFORE_TRIGGER))...)
+	// Запускаем глобальные ивенты для всех триггеров и для вызываемого
+	e.triggerEventFuncList(triggerCtx, e.events.EventsByTrigger(string(BEFORE_TRIGGER))[""]...)
+
+	middlewareEvents := e.events.EventsByTrigger(triggerName)
+	e.triggerEventFuncList(triggerCtx, middlewareEvents[string(BEFORE_TRIGGER)]...)
 
 	eventsByPriority := e.events.GetPrioritySortedEventsByTrigger(triggerName)
 	for _, ev := range eventsByPriority {
@@ -305,8 +319,10 @@ func (e *eventLoop) Trigger(ctx context.Context, triggerName string) error {
 		internal.WriteToExecCh(triggerCtx, "")
 	}
 
+	e.triggerEventFuncList(triggerCtx, middlewareEvents[string(AFTER_TRIGGER)]...)
+
 	// Run after global events
-	e.triggerEventFuncList(triggerCtx, e.events.EventsByTrigger(string(AFTER_TRIGGER))...)
+	e.triggerEventFuncList(triggerCtx, e.events.EventsByTrigger(string(AFTER_TRIGGER))[""]...)
 
 	return deferErr
 }
@@ -408,7 +424,7 @@ func (e *eventLoop) RemoveTriggers(triggers ...string) []string {
 }
 
 // GetAttachedEvents возвращает все события, прикреплённые к triggerName
-func (e *eventLoop) GetAttachedEvents(triggerName string) (result []event.Interface) {
+func (e *eventLoop) GetAttachedEvents(triggerName string) (result map[string][]event.Interface) {
 	return e.events.EventsByTrigger(triggerName)
 }
 

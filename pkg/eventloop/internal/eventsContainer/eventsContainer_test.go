@@ -355,3 +355,62 @@ func Test_eventsList_AddEvent(t *testing.T) {
 		)
 	}
 }
+
+func Test_eventsList_AddMiddleware(t *testing.T) {
+	const EVENT_TRIGGER = "EVENT_MIDDLEWARE"
+	var (
+		ev, _ = event.NewEvent(
+			event.Args{
+				Fun: func(ctx context.Context) string {
+					return ""
+				}, TriggerName: EVENT_TRIGGER,
+			},
+		)
+	)
+	type fields struct {
+		events           eventsMap
+		eventsByCriteria eventsByCriteriaName
+		mx               sync.Mutex
+	}
+	type args struct {
+		newEvent    event.Interface
+		triggerName string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   map[string][]event.Interface
+	}{
+		{
+			name: "Default",
+			fields: fields{
+				eventsByCriteria: eventsByCriteriaName{
+					"TRIGGER": make(eventsByCriteria),
+				},
+				mx: sync.Mutex{},
+			},
+			args: args{ev, "TRIG1"},
+			want: map[string][]event.Interface{EVENT_TRIGGER: {ev}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(
+			tt.name, func(t *testing.T) {
+				el := &eventsList{
+					events:           tt.fields.events,
+					eventsByCriteria: tt.fields.eventsByCriteria,
+					mx:               tt.fields.mx,
+				}
+				el.AddMiddleware(tt.args.newEvent, tt.args.triggerName)
+				if middlewareEvents := el.eventsByCriteria[TRIGGER][tt.args.triggerName].middlewareEvents; !reflect.
+					DeepEqual(middlewareEvents, tt.want) {
+					t.Errorf(
+						"Middleware events want = %v, got = %v",
+						tt.want, middlewareEvents,
+					)
+				}
+			},
+		)
+	}
+}

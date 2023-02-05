@@ -6,7 +6,8 @@ import (
 
 type Interface interface {
 	AddEvent(newEvent event.Interface)
-	EventsByTrigger(triggerName string) []event.Interface
+	AddMiddleware(newEvent event.Interface, triggerName string)
+	EventsByTrigger(triggerName string) map[string][]event.Interface
 	GetTriggers() []string
 	GetAll() []event.Interface
 	GetEventsByType(eventType string) []event.Interface
