@@ -116,7 +116,7 @@ func Test_eventLoop_GetAttachedEvents(t *testing.T) {
 				if len(gotResult) != len(tt.wantResult) {
 					t.Errorf("GetAttachedEvents() gotResult = %v, want %v", gotResult, tt.wantResult)
 				}
-				for _, item := range gotResult {
+				for _, item := range gotResult[""] {
 					if slices.IndexFunc(
 						tt.wantResult, func(e event.Interface) bool {
 							return e.GetUUID() == item.GetUUID()
