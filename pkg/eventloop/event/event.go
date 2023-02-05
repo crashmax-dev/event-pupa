@@ -59,7 +59,6 @@ func NewEvent(args Args) (Interface, error) {
 
 	// У ивента нет никаких условий для триггера
 	if args.TriggerName == "" &&
-		!args.IsOnce &&
 		args.IntervalTime.String() == "0s" &&
 		args.DateAfter == (after.Args{}) &&
 		args.Subscriber == "" {
