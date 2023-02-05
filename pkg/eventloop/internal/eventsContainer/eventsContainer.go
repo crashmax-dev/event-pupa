@@ -49,6 +49,8 @@ func New() Interface {
 }
 
 func (el *eventsList) AddEvent(newEvent event.Interface) {
+	el.mx.Lock()
+	defer el.mx.Unlock()
 	el.events[newEvent.GetUUID()] = newEvent
 	for criteria, events := range el.eventsByCriteria {
 		switch criteria {
