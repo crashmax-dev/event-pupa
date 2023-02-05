@@ -79,33 +79,27 @@ func (e *eventLoop) RegisterEvent(
 		}
 
 		// ON
-		if triggerName := evnt.GetTriggerName(); triggerName != "" {
+		if isEnoughEventType(evnt) {
 			e.events.AddEvent(evnt)
 			e.logger.Debugw(
-				"Event added", "triggerName", evnt.GetTriggerName(), "eventId",
+				"Event added", "eventId",
 				evnt.GetUUID(),
 			)
-		} else if intervalComp, intervalErr := evnt.Interval(); intervalErr == nil { // INTERVAL
-			e.events.AddEvent(evnt)
-			e.logger.Debugw("Event added", "interval", intervalComp.GetDuration())
-		} else if afterComp, afterErr := evnt.After(); afterErr == nil { // AFTER
-			e.events.AddEvent(evnt)
-			e.logger.Debugw(
-				"Event added", "start_time", afterComp.GetDuration(),
-				"eventId",
-				evnt.GetUUID(),
-			)
-		} else {
-			errStr := "event must be at least ON, INTERVAL or AFTER"
-			errNew := fmt.Errorf(errStr)
-			e.logger.Debugw(errStr, "eventId", evnt.GetUUID())
-			errReturn = internal.WrapError(errReturn, errNew)
-			continue
 		}
 
 		internal.WriteToExecCh(ctx, "")
 	}
 	return errReturn
+}
+
+func isEnoughEventType(p event.Interface) bool {
+	var (
+		triggerName    = p.GetTriggerName()
+		_, intervalErr = p.Interval()
+		_, afterErr    = p.After()
+	)
+
+	return triggerName != "" || intervalErr != nil || afterErr != nil
 }
 
 // Subscribe подписывает список событий listeners на список событий triggers. Само событие триггерится с помощью Trigger/
